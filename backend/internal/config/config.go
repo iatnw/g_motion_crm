@@ -28,7 +28,10 @@ type DatabaseConfig struct {
 
 type AWSConfig struct{}
 
-type AuthConfig struct{}
+type AuthConfig struct {
+	JWTSecret  string
+	TOTPIssuer string
+}
 
 type TwilioConfig struct{}
 
@@ -49,6 +52,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("APP_PORT is required")
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is required")
+	}
+
 	return &Config{
 		App: AppConfig{
 			Env:     os.Getenv("APP_ENV"),
@@ -57,6 +65,10 @@ func Load() (*Config, error) {
 		},
 		Database: DatabaseConfig{
 			DatabaseURL: dbURL,
+		},
+		Auth: AuthConfig{
+			JWTSecret:  jwtSecret,
+			TOTPIssuer: os.Getenv("TOTP_ISSUER"),
 		},
 	}, nil
 }
