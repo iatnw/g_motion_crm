@@ -27,6 +27,9 @@ go.work.sum
 # env file
 .env
 
+# JetBrains IDE
+.idea/
+
 # Air build output
 tmp/
 
