@@ -6,6 +6,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +18,7 @@ type Querier interface {
 	CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, error)
 	CreateDealer(ctx context.Context, arg CreateDealerParams) (Dealer, error)
 	CreateDocument(ctx context.Context, arg CreateDocumentParams) (Document, error)
+	CreateSetting(ctx context.Context, arg CreateSettingParams) (Setting, error)
 	DeleteDocument(ctx context.Context, id uuid.UUID) (Document, error)
 	GetBroker(ctx context.Context, id uuid.UUID) (Broker, error)
 	GetClient(ctx context.Context, id uuid.UUID) (Client, error)
@@ -24,6 +26,7 @@ type Querier interface {
 	GetDeal(ctx context.Context, id uuid.UUID) (Deal, error)
 	GetDealer(ctx context.Context, id uuid.UUID) (Dealer, error)
 	GetDocument(ctx context.Context, id uuid.UUID) (Document, error)
+	GetSetting(ctx context.Context) (Setting, error)
 	ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error)
 	ListBrokers(ctx context.Context) ([]Broker, error)
 	ListClients(ctx context.Context) ([]Client, error)
@@ -39,6 +42,8 @@ type Querier interface {
 	UpdateDealBrokerFeeStatus(ctx context.Context, arg UpdateDealBrokerFeeStatusParams) (Deal, error)
 	UpdateDealReferralStatus(ctx context.Context, arg UpdateDealReferralStatusParams) (Deal, error)
 	UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dealer, error)
+	UpdateOwnerPassword(ctx context.Context, ownerPasswordHash string) (Setting, error)
+	UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret sql.NullString) (Setting, error)
 }
 
 var _ Querier = (*Queries)(nil)
