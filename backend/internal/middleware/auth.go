@@ -12,7 +12,7 @@ type contextKey string
 
 const claimsKey contextKey = "claims"
 
-func Auth(parseToken func(string) (*service.Claims, error)) func(http.Handler) http.Handler {
+func Auth(parseToken func(string) (*service.Claims, error), requiredStage string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -29,7 +29,7 @@ func Auth(parseToken func(string) (*service.Claims, error)) func(http.Handler) h
 				return
 			}
 
-			if claims.Stage != "authenticated" {
+			if claims.Stage != requiredStage {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}

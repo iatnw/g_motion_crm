@@ -48,14 +48,20 @@ func main() {
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			log.Printf("failed to write health response: %v", err)
+		}
 	})
 
 	r.Post("/auth/login", authHandler.Login)
-	r.Post("/auth/totp/verify", authHandler.VerifyTOTP)
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(authService.ParseToken))
+		r.Use(middleware.Auth(authService.ParseToken, "totp_pending"))
+		r.Post("/auth/totp/verify", authHandler.VerifyTOTP)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
 		r.Post("/auth/totp/setup", authHandler.SetUpTOTP)
 		r.Post("/auth/totp/enable", authHandler.EnableTOTP)
 		r.Post("/auth/totp/disable", authHandler.DisableTOTP)
