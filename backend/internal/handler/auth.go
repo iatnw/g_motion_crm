@@ -42,10 +42,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(loginResponse{
+	err = json.NewEncoder(w).Encode(loginResponse{
 		Token:        result.Token,
 		TOTPRequired: result.TOTPRequired,
 	})
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 type verifyTOTPRequest struct {
@@ -65,14 +69,18 @@ func (h *AuthHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 	token, err := h.auth.VerifyTOTP(r.Context(), req.Code)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidTOTP) {
-			http.Error(w, "invalid totp code", http.StatusUnauthorized)
+			http.Error(w, "invalid TOTP code", http.StatusUnauthorized)
 			return
 		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(verifyTOTPResponse{Token: token})
+	err = json.NewEncoder(w).Encode(verifyTOTPResponse{Token: token})
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 type setupTOTPResponse struct {
@@ -84,17 +92,21 @@ func (h *AuthHandler) SetUpTOTP(w http.ResponseWriter, r *http.Request) {
 	secret, keyURI, err := h.auth.SetUpTOTP(r.Context())
 	if err != nil {
 		if errors.Is(err, service.ErrTOTPAlreadyEnabled) {
-			http.Error(w, "totp already enabled", http.StatusConflict)
+			http.Error(w, "TOTP already enabled", http.StatusConflict)
 			return
 		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(setupTOTPResponse{
+	err = json.NewEncoder(w).Encode(setupTOTPResponse{
 		Secret: secret,
 		KeyURI: keyURI,
 	})
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 type enableTOTPRequest struct {
@@ -111,7 +123,7 @@ func (h *AuthHandler) EnableTOTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.auth.EnableTOTP(r.Context(), req.Secret, req.Code); err != nil {
 		if errors.Is(err, service.ErrInvalidTOTP) {
-			http.Error(w, "invalid totp code", http.StatusUnauthorized)
+			http.Error(w, "invalid TOTP code", http.StatusUnauthorized)
 			return
 		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)

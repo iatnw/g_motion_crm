@@ -39,7 +39,10 @@ type TallyConfig struct{}
 
 func Load() (*Config, error) {
 	if os.Getenv("APP_ENV") == "" {
-		godotenv.Load()
+		err := godotenv.Load()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")

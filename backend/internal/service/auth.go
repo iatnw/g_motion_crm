@@ -15,9 +15,9 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidTOTP        = errors.New("invalid totp code")
-	ErrTOTPNotEnabled     = errors.New("totp not enabled")
-	ErrTOTPAlreadyEnabled = errors.New("totp already enabled")
+	ErrInvalidTOTP        = errors.New("invalid TOTP code")
+	ErrTOTPNotEnabled     = errors.New("TOTP not enabled")
+	ErrTOTPAlreadyEnabled = errors.New("TOTP already enabled")
 )
 
 type AuthService struct {
