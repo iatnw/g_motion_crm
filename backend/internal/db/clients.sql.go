@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -18,17 +19,64 @@ INSERT INTO clients(
     phone,
     email,
     source,
-    status
-) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at
+    status,
+    notes,
+    date_of_birth,
+    address,
+    city,
+    state,
+    zip,
+    ssn,
+    housing_status,
+    housing_duration,
+    housing_monthly_payment,
+    employer_name,
+    employer_address,
+    employer_city,
+    employer_state,
+    employer_zip,
+    occupation,
+    employer_phone,
+    employment_status,
+    employment_duration,
+    gross_monthly_income,
+    other_monthly_income,
+    other_income_source
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
+) RETURNING id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source
 `
 
 type CreateClientParams struct {
-	FirstName string            `json:"first_name"`
-	LastName  string            `json:"last_name"`
-	Phone     string            `json:"phone"`
-	Email     string            `json:"email"`
-	Source    NullClientsSource `json:"source"`
-	Status    ClientStatus      `json:"status"`
+	FirstName             string               `json:"first_name"`
+	LastName              string               `json:"last_name"`
+	Phone                 string               `json:"phone"`
+	Email                 string               `json:"email"`
+	Source                NullClientsSource    `json:"source"`
+	Status                ClientStatus         `json:"status"`
+	Notes                 sql.NullString       `json:"notes"`
+	DateOfBirth           sql.NullTime         `json:"date_of_birth"`
+	Address               sql.NullString       `json:"address"`
+	City                  sql.NullString       `json:"city"`
+	State                 sql.NullString       `json:"state"`
+	Zip                   sql.NullString       `json:"zip"`
+	Ssn                   sql.NullString       `json:"ssn"`
+	HousingStatus         sql.NullString       `json:"housing_status"`
+	HousingDuration       sql.NullString       `json:"housing_duration"`
+	HousingMonthlyPayment sql.NullString       `json:"housing_monthly_payment"`
+	EmployerName          sql.NullString       `json:"employer_name"`
+	EmployerAddress       sql.NullString       `json:"employer_address"`
+	EmployerCity          sql.NullString       `json:"employer_city"`
+	EmployerState         sql.NullString       `json:"employer_state"`
+	EmployerZip           sql.NullString       `json:"employer_zip"`
+	Occupation            sql.NullString       `json:"occupation"`
+	EmployerPhone         sql.NullString       `json:"employer_phone"`
+	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
+	EmploymentDuration    sql.NullString       `json:"employment_duration"`
+	GrossMonthlyIncome    sql.NullString       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    sql.NullString       `json:"other_monthly_income"`
+	OtherIncomeSource     sql.NullString       `json:"other_income_source"`
 }
 
 func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Client, error) {
@@ -39,6 +87,28 @@ func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Cli
 		arg.Email,
 		arg.Source,
 		arg.Status,
+		arg.Notes,
+		arg.DateOfBirth,
+		arg.Address,
+		arg.City,
+		arg.State,
+		arg.Zip,
+		arg.Ssn,
+		arg.HousingStatus,
+		arg.HousingDuration,
+		arg.HousingMonthlyPayment,
+		arg.EmployerName,
+		arg.EmployerAddress,
+		arg.EmployerCity,
+		arg.EmployerState,
+		arg.EmployerZip,
+		arg.Occupation,
+		arg.EmployerPhone,
+		arg.EmploymentStatus,
+		arg.EmploymentDuration,
+		arg.GrossMonthlyIncome,
+		arg.OtherMonthlyIncome,
+		arg.OtherIncomeSource,
 	)
 	var i Client
 	err := row.Scan(
@@ -52,12 +122,33 @@ func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Cli
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DateOfBirth,
+		&i.Address,
+		&i.City,
+		&i.State,
+		&i.Zip,
+		&i.Ssn,
+		&i.HousingStatus,
+		&i.HousingDuration,
+		&i.HousingMonthlyPayment,
+		&i.EmployerName,
+		&i.EmployerAddress,
+		&i.EmployerCity,
+		&i.EmployerState,
+		&i.EmployerZip,
+		&i.Occupation,
+		&i.EmployerPhone,
+		&i.EmploymentStatus,
+		&i.EmploymentDuration,
+		&i.GrossMonthlyIncome,
+		&i.OtherMonthlyIncome,
+		&i.OtherIncomeSource,
 	)
 	return i, err
 }
 
 const getClient = `-- name: GetClient :one
-SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at FROM clients
+SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source FROM clients
 WHERE id = $1
 `
 
@@ -75,12 +166,33 @@ func (q *Queries) GetClient(ctx context.Context, id uuid.UUID) (Client, error) {
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DateOfBirth,
+		&i.Address,
+		&i.City,
+		&i.State,
+		&i.Zip,
+		&i.Ssn,
+		&i.HousingStatus,
+		&i.HousingDuration,
+		&i.HousingMonthlyPayment,
+		&i.EmployerName,
+		&i.EmployerAddress,
+		&i.EmployerCity,
+		&i.EmployerState,
+		&i.EmployerZip,
+		&i.Occupation,
+		&i.EmployerPhone,
+		&i.EmploymentStatus,
+		&i.EmploymentDuration,
+		&i.GrossMonthlyIncome,
+		&i.OtherMonthlyIncome,
+		&i.OtherIncomeSource,
 	)
 	return i, err
 }
 
 const getClientByPhone = `-- name: GetClientByPhone :one
-SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at FROM clients
+SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source FROM clients
 WHERE phone = $1
 LIMIT 1
 `
@@ -99,12 +211,33 @@ func (q *Queries) GetClientByPhone(ctx context.Context, phone string) (Client, e
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DateOfBirth,
+		&i.Address,
+		&i.City,
+		&i.State,
+		&i.Zip,
+		&i.Ssn,
+		&i.HousingStatus,
+		&i.HousingDuration,
+		&i.HousingMonthlyPayment,
+		&i.EmployerName,
+		&i.EmployerAddress,
+		&i.EmployerCity,
+		&i.EmployerState,
+		&i.EmployerZip,
+		&i.Occupation,
+		&i.EmployerPhone,
+		&i.EmploymentStatus,
+		&i.EmploymentDuration,
+		&i.GrossMonthlyIncome,
+		&i.OtherMonthlyIncome,
+		&i.OtherIncomeSource,
 	)
 	return i, err
 }
 
 const listClients = `-- name: ListClients :many
-SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at FROM clients
+SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source FROM clients
 ORDER BY created_at DESC
 `
 
@@ -128,6 +261,27 @@ func (q *Queries) ListClients(ctx context.Context) ([]Client, error) {
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DateOfBirth,
+			&i.Address,
+			&i.City,
+			&i.State,
+			&i.Zip,
+			&i.Ssn,
+			&i.HousingStatus,
+			&i.HousingDuration,
+			&i.HousingMonthlyPayment,
+			&i.EmployerName,
+			&i.EmployerAddress,
+			&i.EmployerCity,
+			&i.EmployerState,
+			&i.EmployerZip,
+			&i.Occupation,
+			&i.EmployerPhone,
+			&i.EmploymentStatus,
+			&i.EmploymentDuration,
+			&i.GrossMonthlyIncome,
+			&i.OtherMonthlyIncome,
+			&i.OtherIncomeSource,
 		); err != nil {
 			return nil, err
 		}
@@ -145,25 +299,69 @@ func (q *Queries) ListClients(ctx context.Context) ([]Client, error) {
 const updateClient = `-- name: UpdateClient :one
 UPDATE clients
 SET
-    first_name = $2,
-    last_name = $3,
-    phone = $4,
-    email = $5,
-    source = $6,
-    status = $7,
-    updated_at = NOW()
-WHERE id = $1 
-RETURNING id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at
+    first_name              = $2,
+    last_name               = $3,
+    phone                   = $4,
+    email                   = $5,
+    source                  = $6,
+    status                  = $7,
+    notes                   = $8,
+    date_of_birth           = $9,
+    address                 = $10,
+    city                    = $11,
+    state                   = $12,
+    zip                     = $13,
+    ssn                     = $14,
+    housing_status          = $15,
+    housing_duration        = $16,
+    housing_monthly_payment = $17,
+    employer_name           = $18,
+    employer_address        = $19,
+    employer_city           = $20,
+    employer_state          = $21,
+    employer_zip            = $22,
+    occupation              = $23,
+    employer_phone          = $24,
+    employment_status       = $25,
+    employment_duration     = $26,
+    gross_monthly_income    = $27,
+    other_monthly_income    = $28,
+    other_income_source     = $29,
+    updated_at              = NOW()
+WHERE id = $1
+RETURNING id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source
 `
 
 type UpdateClientParams struct {
-	ID        uuid.UUID         `json:"id"`
-	FirstName string            `json:"first_name"`
-	LastName  string            `json:"last_name"`
-	Phone     string            `json:"phone"`
-	Email     string            `json:"email"`
-	Source    NullClientsSource `json:"source"`
-	Status    ClientStatus      `json:"status"`
+	ID                    uuid.UUID            `json:"id"`
+	FirstName             string               `json:"first_name"`
+	LastName              string               `json:"last_name"`
+	Phone                 string               `json:"phone"`
+	Email                 string               `json:"email"`
+	Source                NullClientsSource    `json:"source"`
+	Status                ClientStatus         `json:"status"`
+	Notes                 sql.NullString       `json:"notes"`
+	DateOfBirth           sql.NullTime         `json:"date_of_birth"`
+	Address               sql.NullString       `json:"address"`
+	City                  sql.NullString       `json:"city"`
+	State                 sql.NullString       `json:"state"`
+	Zip                   sql.NullString       `json:"zip"`
+	Ssn                   sql.NullString       `json:"ssn"`
+	HousingStatus         sql.NullString       `json:"housing_status"`
+	HousingDuration       sql.NullString       `json:"housing_duration"`
+	HousingMonthlyPayment sql.NullString       `json:"housing_monthly_payment"`
+	EmployerName          sql.NullString       `json:"employer_name"`
+	EmployerAddress       sql.NullString       `json:"employer_address"`
+	EmployerCity          sql.NullString       `json:"employer_city"`
+	EmployerState         sql.NullString       `json:"employer_state"`
+	EmployerZip           sql.NullString       `json:"employer_zip"`
+	Occupation            sql.NullString       `json:"occupation"`
+	EmployerPhone         sql.NullString       `json:"employer_phone"`
+	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
+	EmploymentDuration    sql.NullString       `json:"employment_duration"`
+	GrossMonthlyIncome    sql.NullString       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    sql.NullString       `json:"other_monthly_income"`
+	OtherIncomeSource     sql.NullString       `json:"other_income_source"`
 }
 
 func (q *Queries) UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error) {
@@ -175,6 +373,28 @@ func (q *Queries) UpdateClient(ctx context.Context, arg UpdateClientParams) (Cli
 		arg.Email,
 		arg.Source,
 		arg.Status,
+		arg.Notes,
+		arg.DateOfBirth,
+		arg.Address,
+		arg.City,
+		arg.State,
+		arg.Zip,
+		arg.Ssn,
+		arg.HousingStatus,
+		arg.HousingDuration,
+		arg.HousingMonthlyPayment,
+		arg.EmployerName,
+		arg.EmployerAddress,
+		arg.EmployerCity,
+		arg.EmployerState,
+		arg.EmployerZip,
+		arg.Occupation,
+		arg.EmployerPhone,
+		arg.EmploymentStatus,
+		arg.EmploymentDuration,
+		arg.GrossMonthlyIncome,
+		arg.OtherMonthlyIncome,
+		arg.OtherIncomeSource,
 	)
 	var i Client
 	err := row.Scan(
@@ -188,6 +408,27 @@ func (q *Queries) UpdateClient(ctx context.Context, arg UpdateClientParams) (Cli
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DateOfBirth,
+		&i.Address,
+		&i.City,
+		&i.State,
+		&i.Zip,
+		&i.Ssn,
+		&i.HousingStatus,
+		&i.HousingDuration,
+		&i.HousingMonthlyPayment,
+		&i.EmployerName,
+		&i.EmployerAddress,
+		&i.EmployerCity,
+		&i.EmployerState,
+		&i.EmployerZip,
+		&i.Occupation,
+		&i.EmployerPhone,
+		&i.EmploymentStatus,
+		&i.EmploymentDuration,
+		&i.GrossMonthlyIncome,
+		&i.OtherMonthlyIncome,
+		&i.OtherIncomeSource,
 	)
 	return i, err
 }
