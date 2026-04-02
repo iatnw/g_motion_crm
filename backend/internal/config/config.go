@@ -17,9 +17,10 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Env     string
-	Port    string
-	BaseURL string
+	Env           string
+	Port          string
+	BaseURL       string
+	EncryptionKey string
 }
 
 type DatabaseConfig struct {
@@ -60,11 +61,17 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
 
+	encryptionKey := os.Getenv("ENCRYPTION_KEY")
+	if encryptionKey == "" {
+		return nil, fmt.Errorf("ENCRYPTION_KEY is required")
+	}
+
 	return &Config{
 		App: AppConfig{
-			Env:     os.Getenv("APP_ENV"),
-			Port:    port,
-			BaseURL: os.Getenv("APP_BASE_URL"),
+			Env:           os.Getenv("APP_ENV"),
+			Port:          port,
+			BaseURL:       os.Getenv("APP_BASE_URL"),
+			EncryptionKey: encryptionKey,
 		},
 		Database: DatabaseConfig{
 			DatabaseURL: dbURL,

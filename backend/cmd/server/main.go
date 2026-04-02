@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -40,10 +41,18 @@ func main() {
 	}
 	queries := db.New(sqlDB)
 
+	encryptionKey, err := hex.DecodeString(cfg.App.EncryptionKey)
+	if err != nil {
+		log.Fatalf("invalid ENCRYPTION_KEY: must be a hex-encoded 32-byte key: %v", err)
+	}
+	if len(encryptionKey) != 32 {
+		log.Fatalf("invalid ENCRYPTION_KEY: must decode to exactly 32 bytes, got %d", len(encryptionKey))
+	}
+
 	authService := service.NewAuth(queries, cfg.Auth)
 	brokerService := service.NewBroker(queries)
 	dealService := service.NewDeal(queries)
-	clientService := service.NewClient(queries)
+	clientService := service.NewClient(queries, encryptionKey)
 
 	authHandler := handler.NewAuthHandler(authService)
 	brokerHandler := handler.NewBrokerHandler(brokerService)

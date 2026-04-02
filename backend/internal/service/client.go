@@ -9,11 +9,12 @@ import (
 )
 
 type ClientService struct {
-	q *db.Queries
+	q             *db.Queries
+	encryptionKey []byte
 }
 
-func NewClient(q *db.Queries) *ClientService {
-	return &ClientService{q: q}
+func NewClient(q *db.Queries, encryptionKey []byte) *ClientService {
+	return &ClientService{q: q, encryptionKey: encryptionKey}
 }
 
 type CreateClientInput struct {
@@ -48,7 +49,15 @@ type CreateClientInput struct {
 }
 
 func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Client, error) {
-	return s.q.CreateClient(ctx, db.CreateClientParams{
+	if in.Ssn.Valid {
+		enc, err := encrypt(s.encryptionKey, in.Ssn.String)
+		if err != nil {
+			return db.Client{}, err
+		}
+		in.Ssn.String = enc
+	}
+
+	client, err := s.q.CreateClient(ctx, db.CreateClientParams{
 		FirstName:             in.FirstName,
 		LastName:              in.LastName,
 		Phone:                 in.Phone,
@@ -78,14 +87,35 @@ func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Cl
 		OtherMonthlyIncome:    in.OtherMonthlyIncome,
 		OtherIncomeSource:     in.OtherIncomeSource,
 	})
+	if err != nil {
+		return db.Client{}, err
+	}
+
+	return s.decryptSSN(client)
 }
 
 func (s *ClientService) Get(ctx context.Context, id uuid.UUID) (db.Client, error) {
-	return s.q.GetClient(ctx, id)
+	client, err := s.q.GetClient(ctx, id)
+	if err != nil {
+		return db.Client{}, err
+	}
+	return s.decryptSSN(client)
 }
 
 func (s *ClientService) List(ctx context.Context) ([]db.Client, error) {
-	return s.q.ListClients(ctx)
+	clients, err := s.q.ListClients(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range clients {
+		clients[i], err = s.decryptSSN(clients[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return clients, nil
 }
 
 type UpdateClientInput struct {
@@ -121,7 +151,15 @@ type UpdateClientInput struct {
 }
 
 func (s *ClientService) Update(ctx context.Context, in UpdateClientInput) (db.Client, error) {
-	return s.q.UpdateClient(ctx, db.UpdateClientParams{
+	if in.Ssn.Valid {
+		enc, err := encrypt(s.encryptionKey, in.Ssn.String)
+		if err != nil {
+			return db.Client{}, err
+		}
+		in.Ssn.String = enc
+	}
+
+	client, err := s.q.UpdateClient(ctx, db.UpdateClientParams{
 		ID:                    in.ID,
 		FirstName:             in.FirstName,
 		LastName:              in.LastName,
@@ -152,4 +190,21 @@ func (s *ClientService) Update(ctx context.Context, in UpdateClientInput) (db.Cl
 		OtherMonthlyIncome:    in.OtherMonthlyIncome,
 		OtherIncomeSource:     in.OtherIncomeSource,
 	})
+	if err != nil {
+		return db.Client{}, err
+	}
+
+	return s.decryptSSN(client)
+}
+
+func (s *ClientService) decryptSSN(client db.Client) (db.Client, error) {
+	if !client.Ssn.Valid {
+		return client, nil
+	}
+	plain, err := decrypt(s.encryptionKey, client.Ssn.String)
+	if err != nil {
+		return db.Client{}, err
+	}
+	client.Ssn.String = plain
+	return client, nil
 }

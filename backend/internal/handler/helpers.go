@@ -26,7 +26,7 @@ func nullUUID(s *string) (uuid.NullUUID, error) {
 	return uuid.NullUUID{UUID: id, Valid: true}, nil
 }
 
-const dateLayout = "2000-01-02"
+const dateLayout = "2006-01-02"
 
 func nullTime(s *string) (sql.NullTime, error) {
 	if s == nil {
