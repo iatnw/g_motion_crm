@@ -102,50 +102,6 @@ func (ns NullClientsSource) Value() (driver.Value, error) {
 	return string(ns.ClientsSource), nil
 }
 
-type DealStatus string
-
-const (
-	DealStatusDraft     DealStatus = "draft"
-	DealStatusActive    DealStatus = "active"
-	DealStatusFunded    DealStatus = "funded"
-	DealStatusCancelled DealStatus = "cancelled"
-)
-
-func (e *DealStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = DealStatus(s)
-	case string:
-		*e = DealStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for DealStatus: %T", src)
-	}
-	return nil
-}
-
-type NullDealStatus struct {
-	DealStatus DealStatus `json:"deal_status"`
-	Valid      bool       `json:"valid"` // Valid is true if DealStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullDealStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.DealStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.DealStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullDealStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.DealStatus), nil
-}
-
 type DocumentType string
 
 const (
@@ -233,6 +189,49 @@ func (ns NullDownPaymentMethod) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.DownPaymentMethod), nil
+}
+
+type EmploymentStatus string
+
+const (
+	EmploymentStatusSelfEmployed EmploymentStatus = "self_employed"
+	EmploymentStatusFullTime     EmploymentStatus = "full_time"
+	EmploymentStatusPartTime     EmploymentStatus = "part_time"
+)
+
+func (e *EmploymentStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EmploymentStatus(s)
+	case string:
+		*e = EmploymentStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EmploymentStatus: %T", src)
+	}
+	return nil
+}
+
+type NullEmploymentStatus struct {
+	EmploymentStatus EmploymentStatus `json:"employment_status"`
+	Valid            bool             `json:"valid"` // Valid is true if EmploymentStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEmploymentStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.EmploymentStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EmploymentStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEmploymentStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EmploymentStatus), nil
 }
 
 type PaymentStatus string
@@ -343,16 +342,37 @@ type Broker struct {
 }
 
 type Client struct {
-	ID        uuid.UUID         `json:"id"`
-	FirstName string            `json:"first_name"`
-	LastName  string            `json:"last_name"`
-	Phone     string            `json:"phone"`
-	Email     string            `json:"email"`
-	Source    NullClientsSource `json:"source"`
-	Status    ClientStatus      `json:"status"`
-	Notes     sql.NullString    `json:"notes"`
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	ID                    uuid.UUID            `json:"id"`
+	FirstName             string               `json:"first_name"`
+	LastName              string               `json:"last_name"`
+	Phone                 string               `json:"phone"`
+	Email                 string               `json:"email"`
+	Source                NullClientsSource    `json:"source"`
+	Status                ClientStatus         `json:"status"`
+	Notes                 sql.NullString       `json:"notes"`
+	CreatedAt             time.Time            `json:"created_at"`
+	UpdatedAt             time.Time            `json:"updated_at"`
+	DateOfBirth           sql.NullTime         `json:"date_of_birth"`
+	Address               sql.NullString       `json:"address"`
+	City                  sql.NullString       `json:"city"`
+	State                 sql.NullString       `json:"state"`
+	Zip                   sql.NullString       `json:"zip"`
+	Ssn                   sql.NullString       `json:"ssn"`
+	HousingStatus         sql.NullString       `json:"housing_status"`
+	HousingDuration       sql.NullString       `json:"housing_duration"`
+	HousingMonthlyPayment sql.NullString       `json:"housing_monthly_payment"`
+	EmployerName          sql.NullString       `json:"employer_name"`
+	EmployerAddress       sql.NullString       `json:"employer_address"`
+	EmployerCity          sql.NullString       `json:"employer_city"`
+	EmployerState         sql.NullString       `json:"employer_state"`
+	EmployerZip           sql.NullString       `json:"employer_zip"`
+	Occupation            sql.NullString       `json:"occupation"`
+	EmployerPhone         sql.NullString       `json:"employer_phone"`
+	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
+	EmploymentDuration    sql.NullString       `json:"employment_duration"`
+	GrossMonthlyIncome    sql.NullString       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    sql.NullString       `json:"other_monthly_income"`
+	OtherIncomeSource     sql.NullString       `json:"other_income_source"`
 }
 
 type Deal struct {
@@ -360,7 +380,6 @@ type Deal struct {
 	ClientID                 uuid.UUID             `json:"client_id"`
 	BrokerID                 uuid.NullUUID         `json:"broker_id"`
 	DealerID                 uuid.NullUUID         `json:"dealer_id"`
-	Status                   DealStatus            `json:"status"`
 	DealDate                 sql.NullTime          `json:"deal_date"`
 	DealNumber               sql.NullString        `json:"deal_number"`
 	Vin                      sql.NullString        `json:"vin"`
