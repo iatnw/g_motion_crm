@@ -39,8 +39,16 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 	queries := db.New(sqlDB)
+
 	authService := service.NewAuth(queries, cfg.Auth)
+	brokerService := service.NewBroker(queries)
+	dealService := service.NewDeal(queries)
+	clientService := service.NewClient(queries)
+
 	authHandler := handler.NewAuthHandler(authService)
+	brokerHandler := handler.NewBrokerHandler(brokerService)
+	dealHandler := handler.NewDealHandler(dealService)
+	clientHandler := handler.NewClientHandler(clientService)
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
@@ -62,10 +70,29 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
+
 		r.Post("/auth/totp/setup", authHandler.SetUpTOTP)
 		r.Post("/auth/totp/enable", authHandler.EnableTOTP)
 		r.Post("/auth/totp/disable", authHandler.DisableTOTP)
 		r.Post("/auth/password", authHandler.SetPassword)
+
+		r.Get("/clients", clientHandler.List)
+		r.Post("/clients", clientHandler.Create)
+		r.Get("/clients/{id}", clientHandler.Get)
+		r.Put("/clients/{id}", clientHandler.Update)
+
+		r.Get("/brokers", brokerHandler.List)
+		r.Post("/brokers", brokerHandler.Create)
+		r.Get("/brokers/{id}", brokerHandler.Get)
+		r.Put("/brokers/{id}", brokerHandler.Update)
+
+		r.Get("/deals", dealHandler.List)
+		r.Post("/deals", dealHandler.Create)
+		r.Get("/deals/{id}", dealHandler.Get)
+		r.Put("/deals/{id}", dealHandler.Update)
+		r.Patch("/deals/{id}/broker-fee-status", dealHandler.UpdateBrokerFeeStatus)
+		r.Patch("/deals/{id}/broker-commission-status", dealHandler.UpdateBrokerCommissionStatus)
+		r.Patch("/deals/{id}/referral-status", dealHandler.UpdateReferralStatus)
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.App.Port)
