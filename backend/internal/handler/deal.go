@@ -1,0 +1,344 @@
+package handler
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/umbrllacrp/g_motion_crm/internal/db"
+	"github.com/umbrllacrp/g_motion_crm/internal/service"
+)
+
+type DealHandler struct {
+	deal *service.DealService
+}
+
+func NewDealHandler(deal *service.DealService) *DealHandler {
+	return &DealHandler{deal: deal}
+}
+
+type dealRequest struct {
+	ClientID               string  `json:"client_id"`
+	BrokerID               *string `json:"broker_id"`
+	DealerID               *string `json:"dealer_id"`
+	DealDate               *string `json:"deal_date"`
+	DealNumber             *string `json:"deal_number"`
+	Vin                    *string `json:"vin"`
+	Make                   *string `json:"make"`
+	Model                  *string `json:"model"`
+	TrimLevel              *string `json:"trim_level"`
+	DownPayment            *string `json:"down_payment"`
+	DownPaymentMethod      *string `json:"down_payment_method"`
+	MonthlyPayment         *string `json:"monthly_payment"`
+	BrokerFee              *string `json:"broker_fee"`
+	BrokerPercent          *string `json:"broker_percent"`
+	BrokerCommission       *string `json:"broker_commission"`
+	BrokerCommissionStatus *string `json:"broker_commission_status"`
+	ReferralAmount         *string `json:"referral_amount"`
+	YourNet                *string `json:"your_net"`
+	BrokerFeeStatus        *string `json:"broker_fee_status"`
+	ReferralStatus         *string `json:"referral_status"`
+}
+
+func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req dealRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.ClientID == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	clientID, err := uuid.Parse(req.ClientID)
+	if err != nil {
+		http.Error(w, "invalid client_id", http.StatusBadRequest)
+		return
+	}
+
+	brokerID, err := nullUUID(req.BrokerID)
+	if err != nil {
+		http.Error(w, "invalid broker_id", http.StatusBadRequest)
+		return
+	}
+
+	dealerID, err := nullUUID(req.DealerID)
+	if err != nil {
+		http.Error(w, "invalid dealer_id", http.StatusBadRequest)
+		return
+	}
+
+	dealDate, err := nullTime(req.DealDate)
+	if err != nil {
+		http.Error(w, "invalid deal_date, expected YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.Create(r.Context(), service.CreateDealInput{
+		ClientID:               clientID,
+		BrokerID:               brokerID,
+		DealerID:               dealerID,
+		DealDate:               dealDate,
+		DealNumber:             nullString(req.DealNumber),
+		Vin:                    nullString(req.Vin),
+		Make:                   nullString(req.Make),
+		Model:                  nullString(req.Model),
+		TrimLevel:              nullString(req.TrimLevel),
+		DownPayment:            nullString(req.DownPayment),
+		DownPaymentMethod:      nullDownPaymentMethod(req.DownPaymentMethod),
+		MonthlyPayment:         nullString(req.MonthlyPayment),
+		BrokerFee:              nullString(req.BrokerFee),
+		BrokerPercent:          nullString(req.BrokerPercent),
+		BrokerCommission:       nullString(req.BrokerCommission),
+		BrokerCommissionStatus: nullPaymentStatus(req.BrokerCommissionStatus),
+		ReferralAmount:         nullString(req.ReferralAmount),
+		YourNet:                nullString(req.YourNet),
+		BrokerFeeStatus:        nullPaymentStatus(req.BrokerFeeStatus),
+		ReferralStatus:         nullReferralStatus(req.ReferralStatus),
+	})
+
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(deal)
+}
+
+func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req dealRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.ClientID == "" {
+		http.Error(w, "client_id is required", http.StatusBadRequest)
+		return
+	}
+
+	clientID, err := uuid.Parse(req.ClientID)
+	if err != nil {
+		http.Error(w, "invalid client_id", http.StatusBadRequest)
+		return
+	}
+
+	brokerID, err := nullUUID(req.BrokerID)
+	if err != nil {
+		http.Error(w, "invalid broker_id", http.StatusBadRequest)
+		return
+	}
+
+	dealerID, err := nullUUID(req.DealerID)
+	if err != nil {
+		http.Error(w, "invalid dealer_id", http.StatusBadRequest)
+		return
+	}
+
+	dealDate, err := nullTime(req.DealDate)
+	if err != nil {
+		http.Error(w, "invalid deal_date, expected YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.Update(r.Context(), service.UpdateDealInput{
+		ID:                     id,
+		ClientID:               clientID,
+		BrokerID:               brokerID,
+		DealerID:               dealerID,
+		DealDate:               dealDate,
+		DealNumber:             nullString(req.DealNumber),
+		Vin:                    nullString(req.Vin),
+		Make:                   nullString(req.Make),
+		Model:                  nullString(req.Model),
+		TrimLevel:              nullString(req.TrimLevel),
+		DownPayment:            nullString(req.DownPayment),
+		DownPaymentMethod:      nullDownPaymentMethod(req.DownPaymentMethod),
+		MonthlyPayment:         nullString(req.MonthlyPayment),
+		BrokerFee:              nullString(req.BrokerFee),
+		BrokerPercent:          nullString(req.BrokerPercent),
+		BrokerCommission:       nullString(req.BrokerCommission),
+		BrokerCommissionStatus: nullPaymentStatus(req.BrokerCommissionStatus),
+		ReferralAmount:         nullString(req.ReferralAmount),
+		YourNet:                nullString(req.YourNet),
+		BrokerFeeStatus:        nullPaymentStatus(req.BrokerFeeStatus),
+		ReferralStatus:         nullReferralStatus(req.ReferralStatus),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(deal)
+}
+
+func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(deal)
+}
+
+func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if clientIDStr := r.URL.Query().Get("client_id"); clientIDStr != "" {
+		clientID, err := uuid.Parse(clientIDStr)
+		if err != nil {
+			http.Error(w, "invalid client id", http.StatusBadRequest)
+			return
+		}
+		deals, err := h.deal.ListByClient(r.Context(), clientID)
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(deals)
+		return
+	}
+
+	deals, err := h.deal.List(r.Context())
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(deals)
+}
+
+func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "" {
+		http.Error(w, "broker fee status is required", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.UpdateBrokerFeeStatus(r.Context(), id, db.PaymentStatus(req.Status))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(deal)
+}
+
+func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "" {
+		http.Error(w, "broker commission status is required", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, db.PaymentStatus(req.Status))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(deal)
+}
+
+func (h *DealHandler) UpdateReferralStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "" {
+		http.Error(w, "referral status is required", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.UpdateReferralStatus(r.Context(), id, db.ReferralStatus(req.Status))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(deal)
+}
