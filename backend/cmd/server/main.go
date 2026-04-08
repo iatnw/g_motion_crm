@@ -53,11 +53,13 @@ func main() {
 	brokerService := service.NewBroker(queries)
 	dealService := service.NewDeal(queries)
 	clientService := service.NewClient(queries, encryptionKey)
+	dealerService := service.NewDealer(queries)
 
 	authHandler := handler.NewAuthHandler(authService)
 	brokerHandler := handler.NewBrokerHandler(brokerService)
 	dealHandler := handler.NewDealHandler(dealService)
 	clientHandler := handler.NewClientHandler(clientService)
+	dealerHandler := handler.NewDealerHandler(dealerService)
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
@@ -94,6 +96,11 @@ func main() {
 		r.Post("/brokers", brokerHandler.Create)
 		r.Get("/brokers/{id}", brokerHandler.Get)
 		r.Put("/brokers/{id}", brokerHandler.Update)
+
+		r.Get("/dealers", dealerHandler.List)
+		r.Post("/dealers", dealerHandler.Create)
+		r.Put("/dealers/{id}", dealerHandler.Update)
+		r.Put("/dealers/{id}", dealerHandler.Update)
 
 		r.Get("/deals", dealHandler.List)
 		r.Post("/deals", dealHandler.Create)
