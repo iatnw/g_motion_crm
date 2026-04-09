@@ -27,7 +27,13 @@ type DatabaseConfig struct {
 	DatabaseURL string
 }
 
-type AWSConfig struct{}
+type AWSConfig struct {
+	Region          string
+	AccessKeyID     string
+	SecretAccessKey string
+	BucketDocs      string
+	BucketBackups   string
+}
 
 type AuthConfig struct {
 	JWTSecret  string
@@ -66,6 +72,30 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("ENCRYPTION_KEY is required")
 	}
 
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		return nil, fmt.Errorf("AWS_REGION is required")
+	}
+
+	accessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
+	if accessKeyID == "" {
+		return nil, fmt.Errorf("AWS_ACCESS_KEY_ID is required")
+	}
+
+	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	if secretAccessKey == "" {
+		return nil, fmt.Errorf("AWS_SECRET_ACCESS_KEY is required")
+	}
+
+	docsBucket := os.Getenv("S3_BUCKET_DOCUMENTS")
+	if docsBucket == "" {
+		return nil, fmt.Errorf("S3_BUCKET_DOCUMENTS is required")
+	}
+	backupsBucket := os.Getenv("S3_BUCKET_BACKUPS")
+	if backupsBucket == "" {
+		return nil, fmt.Errorf("S3_BUCKET_BACKUPS is required")
+	}
+
 	return &Config{
 		App: AppConfig{
 			Env:           os.Getenv("APP_ENV"),
@@ -79,6 +109,13 @@ func Load() (*Config, error) {
 		Auth: AuthConfig{
 			JWTSecret:  jwtSecret,
 			TOTPIssuer: os.Getenv("TOTP_ISSUER"),
+		},
+		AWS: AWSConfig{
+			Region:          region,
+			AccessKeyID:     accessKeyID,
+			SecretAccessKey: secretAccessKey,
+			BucketDocs:      docsBucket,
+			BucketBackups:   backupsBucket,
 		},
 	}, nil
 }
