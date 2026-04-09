@@ -38,6 +38,11 @@ SELECT * FROM clients
 WHERE phone = $1
 LIMIT 1;
 
+-- name: GetClientByEmail :one
+SELECT * FROM clients
+WHERE email = $1
+LIMIT 1;
+
 -- name: GetClient :one
 SELECT * FROM clients
 WHERE id = $1;

@@ -22,6 +22,7 @@ type Querier interface {
 	DeleteDocument(ctx context.Context, id uuid.UUID) (Document, error)
 	GetBroker(ctx context.Context, id uuid.UUID) (Broker, error)
 	GetClient(ctx context.Context, id uuid.UUID) (Client, error)
+	GetClientByEmail(ctx context.Context, email string) (Client, error)
 	GetClientByPhone(ctx context.Context, phone string) (Client, error)
 	GetDeal(ctx context.Context, id uuid.UUID) (Deal, error)
 	GetDealer(ctx context.Context, id uuid.UUID) (Dealer, error)

@@ -42,7 +42,9 @@ type AuthConfig struct {
 
 type TwilioConfig struct{}
 
-type TallyConfig struct{}
+type TallyConfig struct {
+	SigningSecret string
+}
 
 func Load() (*Config, error) {
 	if os.Getenv("APP_ENV") == "" {
@@ -116,6 +118,9 @@ func Load() (*Config, error) {
 			SecretAccessKey: secretAccessKey,
 			BucketDocs:      docsBucket,
 			BucketBackups:   backupsBucket,
+		},
+		Tally: TallyConfig{
+			SigningSecret: os.Getenv("TALLY_SIGNING_SECRET"),
 		},
 	}, nil
 }
