@@ -53,7 +53,7 @@ func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(dealer)
+	json.NewEncoder(w).Encode(toDealerResponse(dealer))
 }
 
 func (h *DealerHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -62,9 +62,8 @@ func (h *DealerHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(dealers)
+	json.NewEncoder(w).Encode(toDealerResponses(dealers))
 }
 
 func (h *DealerHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +84,7 @@ func (h *DealerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(dealer)
+	json.NewEncoder(w).Encode(toDealerResponse(dealer))
 }
 
 func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -124,5 +123,5 @@ func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(dealer)
+	json.NewEncoder(w).Encode(toDealerResponse(dealer))
 }

@@ -53,7 +53,7 @@ func (h *BrokerHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(broker)
+	json.NewEncoder(w).Encode(toBrokerResponse(broker))
 }
 
 func (h *BrokerHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -62,9 +62,8 @@ func (h *BrokerHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(brokers)
+	json.NewEncoder(w).Encode(toBrokerResponses(brokers))
 }
 
 func (h *BrokerHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +84,7 @@ func (h *BrokerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(broker)
+	json.NewEncoder(w).Encode(toBrokerResponse(broker))
 }
 
 func (h *BrokerHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +123,5 @@ func (h *BrokerHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(broker)
+	json.NewEncoder(w).Encode(toBrokerResponse(broker))
 }
-

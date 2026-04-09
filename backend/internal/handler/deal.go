@@ -109,7 +109,7 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(deal)
+	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
 func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +187,7 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deal)
+	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
 func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -207,7 +207,7 @@ func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deal)
+	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
 func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -224,8 +224,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-
-		json.NewEncoder(w).Encode(deals)
+		json.NewEncoder(w).Encode(toDealResponses(deals))
 		return
 	}
 
@@ -234,8 +233,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	json.NewEncoder(w).Encode(deals)
+	json.NewEncoder(w).Encode(toDealResponses(deals))
 }
 
 func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Request) {
@@ -270,7 +268,7 @@ func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deal)
+	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
 func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *http.Request) {
@@ -305,7 +303,7 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deal)
+	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
 func (h *DealHandler) UpdateReferralStatus(w http.ResponseWriter, r *http.Request) {
@@ -340,5 +338,5 @@ func (h *DealHandler) UpdateReferralStatus(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deal)
+	json.NewEncoder(w).Encode(toDealResponse(deal))
 }

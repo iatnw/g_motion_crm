@@ -110,7 +110,7 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(client)
+	json.NewEncoder(w).Encode(toClientResponse(client))
 }
 
 func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +131,7 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(client)
+	json.NewEncoder(w).Encode(toClientResponse(client))
 }
 
 func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -140,9 +140,8 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(clients)
+	json.NewEncoder(w).Encode(toClientResponses(clients))
 }
 
 func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -210,5 +209,5 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(client)
+	json.NewEncoder(w).Encode(toClientResponse(client))
 }
