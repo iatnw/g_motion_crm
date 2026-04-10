@@ -79,6 +79,27 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	downPaymentMethod, err := nullDownPaymentMethod(req.DownPaymentMethod)
+	if err != nil {
+		http.Error(w, "invalid down_payment_method", http.StatusBadRequest)
+		return
+	}
+	brokerCommissionStatus, err := nullPaymentStatus(req.BrokerCommissionStatus)
+	if err != nil {
+		http.Error(w, "invalid broker_commission_status", http.StatusBadRequest)
+		return
+	}
+	brokerFeeStatus, err := nullPaymentStatus(req.BrokerFeeStatus)
+	if err != nil {
+		http.Error(w, "invalid broker_fee_status", http.StatusBadRequest)
+		return
+	}
+	referralStatus, err := nullReferralStatus(req.ReferralStatus)
+	if err != nil {
+		http.Error(w, "invalid referral_status", http.StatusBadRequest)
+		return
+	}
+
 	deal, err := h.deal.Create(r.Context(), service.CreateDealInput{
 		ClientID:               clientID,
 		BrokerID:               brokerID,
@@ -90,16 +111,16 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Model:                  nullString(req.Model),
 		TrimLevel:              nullString(req.TrimLevel),
 		DownPayment:            nullString(req.DownPayment),
-		DownPaymentMethod:      nullDownPaymentMethod(req.DownPaymentMethod),
+		DownPaymentMethod:      downPaymentMethod,
 		MonthlyPayment:         nullString(req.MonthlyPayment),
 		BrokerFee:              nullString(req.BrokerFee),
 		BrokerPercent:          nullString(req.BrokerPercent),
 		BrokerCommission:       nullString(req.BrokerCommission),
-		BrokerCommissionStatus: nullPaymentStatus(req.BrokerCommissionStatus),
+		BrokerCommissionStatus: brokerCommissionStatus,
 		ReferralAmount:         nullString(req.ReferralAmount),
 		YourNet:                nullString(req.YourNet),
-		BrokerFeeStatus:        nullPaymentStatus(req.BrokerFeeStatus),
-		ReferralStatus:         nullReferralStatus(req.ReferralStatus),
+		BrokerFeeStatus:        brokerFeeStatus,
+		ReferralStatus:         referralStatus,
 	})
 
 	if err != nil {
@@ -153,6 +174,26 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid deal_date, expected YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
+	downPaymentMethod, err := nullDownPaymentMethod(req.DownPaymentMethod)
+	if err != nil {
+		http.Error(w, "invalid down_payment_method", http.StatusBadRequest)
+		return
+	}
+	brokerCommissionStatus, err := nullPaymentStatus(req.BrokerCommissionStatus)
+	if err != nil {
+		http.Error(w, "invalid broker_commission_status", http.StatusBadRequest)
+		return
+	}
+	brokerFeeStatus, err := nullPaymentStatus(req.BrokerFeeStatus)
+	if err != nil {
+		http.Error(w, "invalid broker_fee_status", http.StatusBadRequest)
+		return
+	}
+	referralStatus, err := nullReferralStatus(req.ReferralStatus)
+	if err != nil {
+		http.Error(w, "invalid referral_status", http.StatusBadRequest)
+		return
+	}
 
 	deal, err := h.deal.Update(r.Context(), service.UpdateDealInput{
 		ID:                     id,
@@ -166,16 +207,16 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Model:                  nullString(req.Model),
 		TrimLevel:              nullString(req.TrimLevel),
 		DownPayment:            nullString(req.DownPayment),
-		DownPaymentMethod:      nullDownPaymentMethod(req.DownPaymentMethod),
+		DownPaymentMethod:      downPaymentMethod,
 		MonthlyPayment:         nullString(req.MonthlyPayment),
 		BrokerFee:              nullString(req.BrokerFee),
 		BrokerPercent:          nullString(req.BrokerPercent),
 		BrokerCommission:       nullString(req.BrokerCommission),
-		BrokerCommissionStatus: nullPaymentStatus(req.BrokerCommissionStatus),
+		BrokerCommissionStatus: brokerCommissionStatus,
 		ReferralAmount:         nullString(req.ReferralAmount),
 		YourNet:                nullString(req.YourNet),
-		BrokerFeeStatus:        nullPaymentStatus(req.BrokerFeeStatus),
-		ReferralStatus:         nullReferralStatus(req.ReferralStatus),
+		BrokerFeeStatus:        brokerFeeStatus,
+		ReferralStatus:         referralStatus,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -66,37 +67,63 @@ func nullTime(s *string) (sql.NullTime, error) {
 	return sql.NullTime{Time: t, Valid: true}, nil
 }
 
-func nullDownPaymentMethod(s *string) db.NullDownPaymentMethod {
+func nullDownPaymentMethod(s *string) (db.NullDownPaymentMethod, error) {
 	if s == nil {
-		return db.NullDownPaymentMethod{}
+		return db.NullDownPaymentMethod{}, nil
 	}
-	return db.NullDownPaymentMethod{DownPaymentMethod: db.DownPaymentMethod(*s), Valid: true}
+	switch db.DownPaymentMethod(*s) {
+	case db.DownPaymentMethodCash, db.DownPaymentMethodCard:
+		return db.NullDownPaymentMethod{DownPaymentMethod: db.DownPaymentMethod(*s), Valid: true}, nil
+	default:
+		return db.NullDownPaymentMethod{}, fmt.Errorf("invalid down payment method: %s", *s)
+	}
+
 }
 
-func nullPaymentStatus(s *string) db.NullPaymentStatus {
+func nullPaymentStatus(s *string) (db.NullPaymentStatus, error) {
 	if s == nil {
-		return db.NullPaymentStatus{}
+		return db.NullPaymentStatus{}, nil
 	}
-	return db.NullPaymentStatus{PaymentStatus: db.PaymentStatus(*s), Valid: true}
+	switch db.PaymentStatus(*s) {
+	case db.PaymentStatusPending, db.PaymentStatusPaid:
+		return db.NullPaymentStatus{PaymentStatus: db.PaymentStatus(*s), Valid: true}, nil
+	default:
+		return db.NullPaymentStatus{}, fmt.Errorf("invalid payment status: %s", *s)
+	}
 }
 
-func nullReferralStatus(s *string) db.NullReferralStatus {
+func nullReferralStatus(s *string) (db.NullReferralStatus, error) {
 	if s == nil {
-		return db.NullReferralStatus{}
+		return db.NullReferralStatus{}, nil
 	}
-	return db.NullReferralStatus{ReferralStatus: db.ReferralStatus(*s), Valid: true}
+	switch db.ReferralStatus(*s) {
+	case db.ReferralStatusPending, db.ReferralStatusPaid, db.ReferralStatusNone:
+		return db.NullReferralStatus{ReferralStatus: db.ReferralStatus(*s), Valid: true}, nil
+	default:
+		return db.NullReferralStatus{}, fmt.Errorf("invalid referral status: %s", *s)
+	}
 }
 
-func nullClientsSource(s *string) db.NullClientsSource {
+func nullClientsSource(s *string) (db.NullClientsSource, error) {
 	if s == nil {
-		return db.NullClientsSource{}
+		return db.NullClientsSource{}, nil
 	}
-	return db.NullClientsSource{ClientsSource: db.ClientsSource(*s), Valid: true}
+	switch db.ClientsSource(*s) {
+	case db.ClientsSourceInstagram, db.ClientsSourceRepeatClient, db.ClientsSourceOrganic, db.ClientsSourceReferall, db.ClientsSourceTelegram:
+		return db.NullClientsSource{ClientsSource: db.ClientsSource(*s), Valid: true}, nil
+	default:
+		return db.NullClientsSource{}, fmt.Errorf("invalid clients source: %s", *s)
+	}
 }
 
-func nullEmploymentStatus(s *string) db.NullEmploymentStatus {
+func nullEmploymentStatus(s *string) (db.NullEmploymentStatus, error) {
 	if s == nil {
-		return db.NullEmploymentStatus{}
+		return db.NullEmploymentStatus{}, nil
 	}
-	return db.NullEmploymentStatus{EmploymentStatus: db.EmploymentStatus(*s), Valid: true}
+	switch db.EmploymentStatus(*s) {
+	case db.EmploymentStatusSelfEmployed, db.EmploymentStatusPartTime, db.EmploymentStatusFullTime:
+		return db.NullEmploymentStatus{EmploymentStatus: db.EmploymentStatus(*s), Valid: true}, nil
+	default:
+		return db.NullEmploymentStatus{}, fmt.Errorf("invalid employment status: %s", *s)
+	}
 }

@@ -76,6 +76,7 @@ func (s *DocumentService) UploadFromURL(
 	if !strings.HasSuffix(u.Host, ".tally.so") && u.Host != "tally.so" {
 		return db.Document{}, fmt.Errorf("only Tally URLs are supported")
 	}
+
 	client := http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
 	if err != nil {

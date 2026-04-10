@@ -72,6 +72,16 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid date_of_birth, expected YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
+	source, err := nullClientsSource(req.Source)
+	if err != nil {
+		http.Error(w, "invalid source", http.StatusBadRequest)
+		return
+	}
+	employmentStatus, err := nullEmploymentStatus(req.EmploymentStatus)
+	if err != nil {
+		http.Error(w, "invalid employment_status", http.StatusBadRequest)
+		return
+	}
 
 	client, err := h.client.Create(r.Context(), service.CreateClientInput{
 		FirstName:             req.FirstName,
@@ -79,7 +89,7 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Phone:                 req.Phone,
 		Email:                 req.Email,
 		Status:                db.ClientStatus(req.Status),
-		Source:                nullClientsSource(req.Source),
+		Source:                source,
 		Notes:                 nullString(req.Notes),
 		DateOfBirth:           dob,
 		Address:               nullString(req.Address),
@@ -97,7 +107,7 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		EmployerZip:           nullString(req.EmployerZip),
 		Occupation:            nullString(req.Occupation),
 		EmployerPhone:         nullString(req.EmployerPhone),
-		EmploymentStatus:      nullEmploymentStatus(req.EmploymentStatus),
+		EmploymentStatus:      employmentStatus,
 		EmploymentDuration:    nullString(req.EmploymentDuration),
 		GrossMonthlyIncome:    nullString(req.GrossMonthlyIncome),
 		OtherMonthlyIncome:    nullString(req.OtherMonthlyIncome),
@@ -174,6 +184,17 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	source, err := nullClientsSource(req.Source)
+	if err != nil {
+		http.Error(w, "invalid source", http.StatusBadRequest)
+		return
+	}
+	employmentStatus, err := nullEmploymentStatus(req.EmploymentStatus)
+	if err != nil {
+		http.Error(w, "invalid employment_status", http.StatusBadRequest)
+		return
+	}
+
 	client, err := h.client.Update(r.Context(), service.UpdateClientInput{
 		ID:                    id,
 		FirstName:             req.FirstName,
@@ -181,7 +202,7 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Phone:                 req.Phone,
 		Email:                 req.Email,
 		Status:                db.ClientStatus(req.Status),
-		Source:                nullClientsSource(req.Source),
+		Source:                source,
 		Notes:                 nullString(req.Notes),
 		DateOfBirth:           dob,
 		Address:               nullString(req.Address),
@@ -199,7 +220,7 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		EmployerZip:           nullString(req.EmployerZip),
 		Occupation:            nullString(req.Occupation),
 		EmployerPhone:         nullString(req.EmployerPhone),
-		EmploymentStatus:      nullEmploymentStatus(req.EmploymentStatus),
+		EmploymentStatus:      employmentStatus,
 		EmploymentDuration:    nullString(req.EmploymentDuration),
 		GrossMonthlyIncome:    nullString(req.GrossMonthlyIncome),
 		OtherMonthlyIncome:    nullString(req.OtherMonthlyIncome),
