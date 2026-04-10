@@ -238,7 +238,7 @@ type PaymentStatus string
 
 const (
 	PaymentStatusPaid    PaymentStatus = "paid"
-	PaymentStatusNotPaid PaymentStatus = "not_paid"
+	PaymentStatusPending PaymentStatus = "pending"
 )
 
 func (e *PaymentStatus) Scan(src interface{}) error {
@@ -281,7 +281,7 @@ type ReferralStatus string
 const (
 	ReferralStatusNone    ReferralStatus = "none"
 	ReferralStatusPaid    ReferralStatus = "paid"
-	ReferralStatusNotPaid ReferralStatus = "not_paid"
+	ReferralStatusPending ReferralStatus = "pending"
 )
 
 func (e *ReferralStatus) Scan(src interface{}) error {
