@@ -37,6 +37,10 @@ func (s *DocumentService) Upload(
 ) (db.Document, error) {
 	key := buildKey(clientID, dealID, filename)
 
+	if err := s.s3.Upload(ctx, key, r, size, contentType); err != nil {
+		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
+	}
+
 	doc, err := s.q.CreateDocument(ctx, db.CreateDocumentParams{
 		ClientID:      clientID,
 		DealID:        dealID,
@@ -47,11 +51,6 @@ func (s *DocumentService) Upload(
 	})
 	if err != nil {
 		return db.Document{}, fmt.Errorf("create document record: %w", err)
-	}
-
-	if err := s.s3.Upload(ctx, key, r, size, contentType); err != nil {
-		s.q.DeleteDocument(ctx, doc.ID)
-		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
 	}
 
 	return doc, nil
@@ -83,6 +82,10 @@ func (s *DocumentService) UploadFromURL(
 
 	key := buildKey(clientID, dealID, filename)
 
+	if err := s.s3.Upload(ctx, key, resp.Body, resp.ContentLength, contentType); err != nil {
+		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
+	}
+
 	doc, err := s.q.CreateDocument(ctx, db.CreateDocumentParams{
 		ClientID:      clientID,
 		DealID:        dealID,
@@ -93,11 +96,6 @@ func (s *DocumentService) UploadFromURL(
 	})
 	if err != nil {
 		return db.Document{}, fmt.Errorf("create document record: %w", err)
-	}
-
-	if err := s.s3.Upload(ctx, key, resp.Body, resp.ContentLength, contentType); err != nil {
-		s.q.DeleteDocument(ctx, doc.ID)
-		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
 	}
 
 	return doc, nil
