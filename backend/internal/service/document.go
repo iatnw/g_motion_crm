@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -65,24 +66,30 @@ func (s *DocumentService) UploadFromURL(
 	dealID uuid.NullUUID,
 	docType db.DocumentType,
 ) (db.Document, error) {
-	resp, err := http.Get(fileURL) //nolint:noctx
+	u, err := url.Parse(fileURL)
+	if err != nil {
+		return db.Document{}, fmt.Errorf("parse file URL: %w", err)
+	}
+	if u.Scheme != "https" {
+		return db.Document{}, fmt.Errorf("only https URLs are supported")
+	}
+	if !strings.HasSuffix(u.Host, ".tally.so") && u.Host != "tally.so" {
+		return db.Document{}, fmt.Errorf("only Tally URLs are supported")
+	}
+	client := http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return db.Document{}, fmt.Errorf("create request: %w", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return db.Document{}, fmt.Errorf("download file: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return db.Document{}, fmt.Errorf("download file: status %d", resp.StatusCode)
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
 	key := buildKey(clientID, dealID, filename)
-
-	if err := s.s3.Upload(ctx, key, resp.Body, resp.ContentLength, contentType); err != nil {
+	if err := s.s3.Upload(ctx, key, resp.Body, resp.ContentLength, resp.Header.Get("Content-Type")); err != nil {
 		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
 	}
 
@@ -95,7 +102,7 @@ func (s *DocumentService) UploadFromURL(
 		DocumentType:  docType,
 	})
 	if err != nil {
-		return db.Document{}, fmt.Errorf("create document record: %w", err)
+		return db.Document{}, fmt.Errorf("create document: %w", err)
 	}
 
 	return doc, nil
