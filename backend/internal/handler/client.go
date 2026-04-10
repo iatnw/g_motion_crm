@@ -135,13 +135,19 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
-	clients, err := h.client.List(r.Context())
+	limit, offset := parsePagination(r)
+	clients, err := h.client.List(r.Context(), limit, offset)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toClientResponses(clients))
+	json.NewEncoder(w).Encode(map[string]any{
+		"data":     toClientResponses(clients),
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": len(clients) == int(limit),
+	})
 }
 
 func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {

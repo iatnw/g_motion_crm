@@ -212,6 +212,7 @@ func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	limit, offset := parsePagination(r)
 
 	if clientIDStr := r.URL.Query().Get("client_id"); clientIDStr != "" {
 		clientID, err := uuid.Parse(clientIDStr)
@@ -224,16 +225,26 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(toDealResponses(deals))
+		json.NewEncoder(w).Encode(map[string]any{
+			"data":     toDealResponses(deals),
+			"limit":    limit,
+			"offset":   offset,
+			"has_more": false,
+		})
 		return
 	}
 
-	deals, err := h.deal.List(r.Context())
+	deals, err := h.deal.List(r.Context(), limit, offset)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(toDealResponses(deals))
+	json.NewEncoder(w).Encode(map[string]any{
+		"data":     toDealResponses(deals),
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": len(deals) == int(limit),
+	})
 }
 
 func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Request) {

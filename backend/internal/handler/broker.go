@@ -57,13 +57,19 @@ func (h *BrokerHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BrokerHandler) List(w http.ResponseWriter, r *http.Request) {
-	brokers, err := h.broker.List(r.Context())
+	limit, offset := parsePagination(r)
+	brokers, err := h.broker.List(r.Context(), limit, offset)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toBrokerResponses(brokers))
+	json.NewEncoder(w).Encode(map[string]any{
+		"data":     toBrokerResponses(brokers),
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": len(brokers) == int(limit),
+	})
 }
 
 func (h *BrokerHandler) Get(w http.ResponseWriter, r *http.Request) {

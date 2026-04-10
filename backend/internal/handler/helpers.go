@@ -2,11 +2,38 @@ package handler
 
 import (
 	"database/sql"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
+
+const (
+	defaultLimit = 50
+	maxLimit     = 200
+)
+
+func parsePagination(r *http.Request) (limit, offset int32) {
+	limit = defaultLimit
+	offset = 0
+
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			if n > maxLimit {
+				n = maxLimit
+			}
+			limit = int32(n)
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = int32(n)
+		}
+	}
+	return limit, offset
+}
 
 func nullString(s *string) sql.NullString {
 	if s == nil {
