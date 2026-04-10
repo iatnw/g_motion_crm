@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
@@ -114,6 +115,10 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		OtherIncomeSource:     nullString(req.OtherIncomeSource),
 	})
 	if err != nil {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+			http.Error(w, "client with this phone or email already exists", http.StatusConflict)
+			return
+		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -227,8 +232,8 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		OtherIncomeSource:     nullString(req.OtherIncomeSource),
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+			http.Error(w, "client with this phone or email already exists", http.StatusConflict)
 			return
 		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)
