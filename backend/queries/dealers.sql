@@ -13,7 +13,8 @@ WHERE id = $1;
 
 -- name: ListDealers :many
 SELECT * FROM dealers
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
 
 -- name: UpdateDealer :one
 UPDATE dealers

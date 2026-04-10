@@ -169,10 +169,16 @@ func (q *Queries) GetDeal(ctx context.Context, id uuid.UUID) (Deal, error) {
 const listDeals = `-- name: ListDeals :many
 SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at FROM deals
 ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
 `
 
-func (q *Queries) ListDeals(ctx context.Context) ([]Deal, error) {
-	rows, err := q.db.QueryContext(ctx, listDeals)
+type ListDealsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, error) {
+	rows, err := q.db.QueryContext(ctx, listDeals, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

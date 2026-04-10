@@ -13,7 +13,8 @@ WHERE id = $1;
 
 -- name: ListBrokers :many
 SELECT * FROM brokers
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
 
 -- name: UpdateBroker :one
 UPDATE brokers

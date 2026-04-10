@@ -34,7 +34,8 @@ WHERE id = $1;
 
 -- name: ListDeals :many
 SELECT * FROM deals
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
 
 -- name: UpdateDeal :one
 UPDATE deals

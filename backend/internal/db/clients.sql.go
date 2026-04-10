@@ -284,10 +284,16 @@ func (q *Queries) GetClientByPhone(ctx context.Context, phone string) (Client, e
 const listClients = `-- name: ListClients :many
 SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source FROM clients
 ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
 `
 
-func (q *Queries) ListClients(ctx context.Context) ([]Client, error) {
-	rows, err := q.db.QueryContext(ctx, listClients)
+type ListClientsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListClients(ctx context.Context, arg ListClientsParams) ([]Client, error) {
+	rows, err := q.db.QueryContext(ctx, listClients, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

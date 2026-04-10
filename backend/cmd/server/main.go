@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -21,38 +24,49 @@ import (
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		slog.Error("failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	pool, err := pgxpool.New(context.Background(), cfg.Database.DatabaseURL)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	sqlDB := stdlib.OpenDBFromPool(pool)
 
 	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("failed to set goose dialect: %v", err)
+		slog.Error("failed to set goose dialect", "error", err)
+		os.Exit(1)
 	}
 	if err := goose.Up(sqlDB, "migrations"); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
 	}
 	queries := db.New(sqlDB)
 
 	encryptionKey, err := hex.DecodeString(cfg.App.EncryptionKey)
 	if err != nil {
-		log.Fatalf("invalid ENCRYPTION_KEY: must be a hex-encoded 32-byte key: %v", err)
+		slog.Error("invalid ENCRYPTION_KEY: must be a hex-encoded 32-byte key", "error", err)
+		os.Exit(1)
 	}
 	if len(encryptionKey) != 32 {
-		log.Fatalf("invalid ENCRYPTION_KEY: must decode to exactly 32 bytes, got %d", len(encryptionKey))
+		slog.Error("invalid ENCRYPTION_KEY: must decode to exactly 32 bytes", "got", len(encryptionKey))
+		os.Exit(1)
 	}
 
 	s3Client, err := storage.NewS3Client(cfg.AWS)
 	if err != nil {
-		log.Fatalf("failed to init S3 client: %v", err)
+		slog.Error("failed to init S3 client", "error", err)
+		os.Exit(1)
 	}
 
 	authService := service.NewAuth(queries, cfg.Auth)
@@ -61,7 +75,7 @@ func main() {
 	clientService := service.NewClient(queries, encryptionKey)
 	dealerService := service.NewDealer(queries)
 	documentService := service.NewDocument(queries, s3Client)
-	tallyService := service.NewTally(clientService, documentService, dealService, queries)
+	tallyService := service.NewTally(clientService, documentService, dealService, queries, sqlDB)
 
 	authHandler := handler.NewAuthHandler(authService)
 	brokerHandler := handler.NewBrokerHandler(brokerService)
@@ -75,9 +89,13 @@ func main() {
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 
+	frontendURL := cfg.App.FrontendURL
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Origin", frontendURL)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			if r.Method == http.MethodOptions {
@@ -92,16 +110,20 @@ func main() {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("ok")); err != nil {
-			log.Printf("failed to write health response: %v", err)
+			slog.Error("failed to write health response", "error", err)
 		}
 	})
 
 	// Public webhook — Tally sends to this without auth token
 	r.Post("/webhooks/tally", tallyHandler.Webhook)
 
-	r.Post("/auth/login", authHandler.Login)
+	r.Group(func(r chi.Router) {
+		r.Use(httprate.LimitByIP(10, time.Minute))
+		r.Post("/auth/login", authHandler.Login)
+	})
 
 	r.Group(func(r chi.Router) {
+		r.Use(httprate.LimitByIP(10, time.Minute))
 		r.Use(middleware.Auth(authService.ParseToken, "totp_pending"))
 		r.Post("/auth/totp/verify", authHandler.VerifyTOTP)
 	})
@@ -151,8 +173,9 @@ func main() {
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.App.Port)
-	log.Printf("server starting on %s", addr)
+	slog.Info("server starting", "addr", addr)
 	if err := http.ListenAndServe(addr, r); err != nil {
-		log.Fatalf("sever failed %v", err)
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }

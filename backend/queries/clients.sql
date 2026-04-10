@@ -39,9 +39,10 @@ WHERE phone = $1
 LIMIT 1;
 
 -- name: GetClientByEmail :one
-SELECT * FROM clients
-WHERE email = $1
-LIMIT 1;
+SELECT *
+FROM clients
+WHERE email = $1::text
+LIMIT 1;;
 
 -- name: GetClient :one
 SELECT * FROM clients
@@ -49,7 +50,8 @@ WHERE id = $1;
 
 -- name: ListClients :many
 SELECT * FROM clients
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
 
 -- name: UpdateClient :one
 UPDATE clients
