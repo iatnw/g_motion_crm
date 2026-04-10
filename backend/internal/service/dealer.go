@@ -38,8 +38,8 @@ func (s *DealerService) Get(ctx context.Context, id uuid.UUID) (db.Dealer, error
 	return s.q.GetDealer(ctx, id)
 }
 
-func (s *DealerService) List(ctx context.Context) ([]db.Dealer, error) {
-	return s.q.ListDealers(ctx)
+func (s *DealerService) List(ctx context.Context, limit, offset int32) ([]db.Dealer, error) {
+	return s.q.ListDealers(ctx, db.ListDealersParams{Limit: limit, Offset: offset})
 }
 
 type UpdateDealerInput struct {

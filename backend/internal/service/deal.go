@@ -8,6 +8,10 @@ import (
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
+func (s *DealService) WithTx(tx *sql.Tx) *DealService {
+	return &DealService{q: s.q.WithTx(tx)}
+}
+
 type DealService struct {
 	q *db.Queries
 }
@@ -68,8 +72,8 @@ func (s *DealService) Get(ctx context.Context, id uuid.UUID) (db.Deal, error) {
 	return s.q.GetDeal(ctx, id)
 }
 
-func (s *DealService) List(ctx context.Context) ([]db.Deal, error) {
-	return s.q.ListDeals(ctx)
+func (s *DealService) List(ctx context.Context, limit, offset int32) ([]db.Deal, error) {
+	return s.q.ListDeals(ctx, db.ListDealsParams{Limit: limit, Offset: offset})
 }
 
 func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID) ([]db.Deal, error) {

@@ -8,6 +8,10 @@ import (
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
+func (s *ClientService) WithTx(tx *sql.Tx) *ClientService {
+	return &ClientService{q: s.q.WithTx(tx), encryptionKey: s.encryptionKey}
+}
+
 type ClientService struct {
 	q             *db.Queries
 	encryptionKey []byte
@@ -102,8 +106,8 @@ func (s *ClientService) Get(ctx context.Context, id uuid.UUID) (db.Client, error
 	return s.decryptSSN(client)
 }
 
-func (s *ClientService) List(ctx context.Context) ([]db.Client, error) {
-	clients, err := s.q.ListClients(ctx)
+func (s *ClientService) List(ctx context.Context, limit, offset int32) ([]db.Client, error) {
+	clients, err := s.q.ListClients(ctx, db.ListClientsParams{Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, err
 	}

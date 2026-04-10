@@ -38,8 +38,8 @@ func (s *BrokerService) Get(ctx context.Context, id uuid.UUID) (db.Broker, error
 	return s.q.GetBroker(ctx, id)
 }
 
-func (s *BrokerService) List(ctx context.Context) ([]db.Broker, error) {
-	return s.q.ListBrokers(ctx)
+func (s *BrokerService) List(ctx context.Context, limit, offset int32) ([]db.Broker, error) {
+	return s.q.ListBrokers(ctx, db.ListBrokersParams{Limit: limit, Offset: offset})
 }
 
 type UpdateBrokerInput struct {

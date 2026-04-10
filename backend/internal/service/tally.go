@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -299,7 +299,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 			}
 			_, err := s.document.UploadFromURL(ctx, f.URL, f.Name, clientNullUUID, dealNullUUID, docType)
 			if err != nil {
-				log.Printf("tally: failed to upload %s for client %s: %v", f.Name, clientID, err)
+				slog.Error("tally: failed to upload document", "file", f.Name, "client_id", clientID, "error", err)
 			}
 		}
 	}
