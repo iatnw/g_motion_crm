@@ -20,6 +20,7 @@ type AppConfig struct {
 	Env           string
 	Port          string
 	BaseURL       string
+	FrontendURL   string
 	EncryptionKey string
 }
 
@@ -103,6 +104,7 @@ func Load() (*Config, error) {
 			Env:           os.Getenv("APP_ENV"),
 			Port:          port,
 			BaseURL:       os.Getenv("APP_BASE_URL"),
+			FrontendURL:   os.Getenv("FRONTEND_URL"),
 			EncryptionKey: encryptionKey,
 		},
 		Database: DatabaseConfig{
