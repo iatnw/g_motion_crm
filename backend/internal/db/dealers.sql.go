@@ -52,6 +52,28 @@ func (q *Queries) CreateDealer(ctx context.Context, arg CreateDealerParams) (Dea
 	return i, err
 }
 
+const deleteDealer = `-- name: DeleteDealer :one
+DELETE FROM dealers
+WHERE id = $1
+RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at
+`
+
+func (q *Queries) DeleteDealer(ctx context.Context, id uuid.UUID) (Dealer, error) {
+	row := q.db.QueryRowContext(ctx, deleteDealer, id)
+	var i Dealer
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ContactPerson,
+		&i.Phone,
+		&i.Address,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getDealer = `-- name: GetDealer :one
 SELECT id, name, contact_person, phone, address, notes, created_at, updated_at FROM dealers
 WHERE id = $1

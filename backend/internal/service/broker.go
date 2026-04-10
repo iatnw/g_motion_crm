@@ -61,3 +61,11 @@ func (s *BrokerService) Update(ctx context.Context, in UpdateBrokerInput) (db.Br
 		Notes:     in.Notes,
 	})
 }
+
+func (s *BrokerService) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := s.q.DeleteBroker(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}

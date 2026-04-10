@@ -52,6 +52,28 @@ func (q *Queries) CreateBroker(ctx context.Context, arg CreateBrokerParams) (Bro
 	return i, err
 }
 
+const deleteBroker = `-- name: DeleteBroker :one
+DELETE FROM brokers
+WHERE id = $1
+RETURNING id, first_name, last_name, phone, email, notes, created_at, updated_at
+`
+
+func (q *Queries) DeleteBroker(ctx context.Context, id uuid.UUID) (Broker, error) {
+	row := q.db.QueryRowContext(ctx, deleteBroker, id)
+	var i Broker
+	err := row.Scan(
+		&i.ID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Phone,
+		&i.Email,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getBroker = `-- name: GetBroker :one
 SELECT id, first_name, last_name, phone, email, notes, created_at, updated_at FROM brokers
 WHERE id = $1

@@ -27,3 +27,8 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: DeleteDealer :one
+DELETE FROM dealers
+WHERE id = $1
+RETURNING *;

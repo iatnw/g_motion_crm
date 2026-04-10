@@ -192,13 +192,14 @@ func (q *Queries) GetClient(ctx context.Context, id uuid.UUID) (Client, error) {
 }
 
 const getClientByEmail = `-- name: GetClientByEmail :one
-SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source FROM clients
-WHERE email = $1
+SELECT id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source
+FROM clients
+WHERE email = $1::text
 LIMIT 1
 `
 
-func (q *Queries) GetClientByEmail(ctx context.Context, email string) (Client, error) {
-	row := q.db.QueryRowContext(ctx, getClientByEmail, email)
+func (q *Queries) GetClientByEmail(ctx context.Context, dollar_1 string) (Client, error) {
+	row := q.db.QueryRowContext(ctx, getClientByEmail, dollar_1)
 	var i Client
 	err := row.Scan(
 		&i.ID,

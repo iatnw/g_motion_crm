@@ -61,3 +61,11 @@ func (s *DealerService) Update(ctx context.Context, in UpdateDealerInput) (db.De
 		Notes:         in.Notes,
 	})
 }
+
+func (s *DealerService) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := s.q.DeleteDealer(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}

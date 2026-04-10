@@ -149,12 +149,14 @@ func main() {
 		r.Post("/brokers", brokerHandler.Create)
 		r.Get("/brokers/{id}", brokerHandler.Get)
 		r.Put("/brokers/{id}", brokerHandler.Update)
+		r.Delete("/brokers/{id}", brokerHandler.Delete)
 
 		// Dealers
 		r.Get("/dealers", dealerHandler.List)
 		r.Post("/dealers", dealerHandler.Create)
 		r.Get("/dealers/{id}", dealerHandler.Get)
 		r.Put("/dealers/{id}", dealerHandler.Update)
+		r.Delete("/dealers/{id}", dealerHandler.Delete)
 
 		// Deals
 		r.Get("/deals", dealHandler.List)
