@@ -44,10 +44,10 @@ type TallyData struct {
 }
 
 type TallyField struct {
-	Key   string      `json:"key"`
-	Label string      `json:"label"`
-	Type  string      `json:"type"`
-	Value interface{} `json:"value"`
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Type  string `json:"type"`
+	Value any    `json:"value"`
 }
 
 type TallyFile struct {
@@ -120,7 +120,7 @@ func (p *fieldParser) nullEmployment(label string) db.NullEmploymentStatus {
 	return db.NullEmploymentStatus{}
 }
 
-func fieldString(value interface{}) string {
+func fieldString(value any) string {
 	switch v := value.(type) {
 	case string:
 		return strings.TrimSpace(v)
@@ -136,13 +136,20 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	p := newParser(payload.Data.Fields)
 
 	fullName := p.str("Full legal name")
-	firstName, lastName := splitName(fullName)
+	firstName, lastName, err := splitName(fullName)
+	if err != nil {
+		return fmt.Errorf("missing required field: full legal name")
+	}
 	if firstName == "" {
 		return fmt.Errorf("missing required field: full legal name")
 	}
 
 	phone := p.str("Phone Number")
 	email := p.str("Email")
+
+	if phone == "" && email == "" {
+		return fmt.Errorf("submission missing both phone and email")
+	}
 
 	// Contact info section (first city/state/zip occurrence)
 	dob := p.nullDate("Date of Birth")
@@ -323,15 +330,15 @@ func (s *TallyService) findExistingClient(ctx context.Context, phone, email stri
 	return db.Client{}, fmt.Errorf("not found")
 }
 
-func splitName(full string) (string, string) {
+func splitName(full string) (string, string, error) {
 	parts := strings.Fields(full)
 	if len(parts) == 0 {
-		return "", ""
+		return "", "", fmt.Errorf("firstname and lastname required fields")
 	}
 	if len(parts) == 1 {
-		return parts[0], ""
+		return parts[0], "", fmt.Errorf("lastname is a required field")
 	}
-	return parts[0], strings.Join(parts[1:], " ")
+	return parts[0], strings.Join(parts[1:], " "), nil
 }
 
 // splitVehicle splits "Toyota Camry" → ("Toyota", "Camry"),
@@ -369,17 +376,17 @@ func splitVehicle(s string) (vehicleMake, vehicleModel string) {
 	return vehicleMake, vehicleModel
 }
 
-func parseFiles(value interface{}) []TallyFile {
+func parseFiles(value any) []TallyFile {
 	if value == nil {
 		return nil
 	}
-	arr, ok := value.([]interface{})
+	arr, ok := value.([]any)
 	if !ok {
 		return nil
 	}
 	var files []TallyFile
 	for _, item := range arr {
-		m, ok := item.(map[string]interface{})
+		m, ok := item.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -394,7 +401,7 @@ func parseFiles(value interface{}) []TallyFile {
 	return files
 }
 
-func stringFromMap(m map[string]interface{}, key string) string {
+func stringFromMap(m map[string]any, key string) string {
 	v, ok := m[key]
 	if !ok {
 		return ""
