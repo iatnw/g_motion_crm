@@ -70,7 +70,8 @@ RETURNING *;
 -- name: ListDealsByClient :many
 SELECT * FROM deals
 WHERE deals.client_id = $1
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
 
 -- name: UpdateDealBrokerFeeStatus :one
 UPDATE deals

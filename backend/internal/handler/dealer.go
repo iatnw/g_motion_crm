@@ -58,17 +58,18 @@ func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *DealerHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
-	dealers, err := h.dealer.List(r.Context(), limit, offset)
+	dealers, err := h.dealer.List(r.Context(), limit+1, offset)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	dealers, hasMore := paginate(dealers, limit)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"data":     toDealerResponses(dealers),
 		"limit":    limit,
 		"offset":   offset,
-		"has_more": len(dealers) == int(limit),
+		"has_more": hasMore,
 	})
 }
 

@@ -16,6 +16,13 @@ const (
 	maxLimit     = 200
 )
 
+func paginate[T any](items []T, limit int32) ([]T, bool) {
+	if len(items) > int(limit) {
+		return items[:limit], true
+	}
+	return items, false
+}
+
 func parsePagination(r *http.Request) (limit, offset int32) {
 	limit = defaultLimit
 	offset = 0

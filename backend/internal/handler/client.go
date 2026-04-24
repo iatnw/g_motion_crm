@@ -151,17 +151,18 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
-	clients, err := h.client.List(r.Context(), limit, offset)
+	clients, err := h.client.List(r.Context(), limit+1, offset)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	clients, hasMore := paginate(clients, limit)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"data":     toClientResponses(clients),
 		"limit":    limit,
 		"offset":   offset,
-		"has_more": len(clients) == int(limit),
+		"has_more": hasMore,
 	})
 }
 

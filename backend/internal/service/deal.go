@@ -76,8 +76,8 @@ func (s *DealService) List(ctx context.Context, limit, offset int32) ([]db.Deal,
 	return s.q.ListDeals(ctx, db.ListDealsParams{Limit: limit, Offset: offset})
 }
 
-func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID) ([]db.Deal, error) {
-	return s.q.ListDealsByClient(ctx, id)
+func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID, limit, offset int32) ([]db.Deal, error) {
+	return s.q.ListDealsByClient(ctx, db.ListDealsByClientParams{ClientID: id, Limit: limit, Offset: offset})
 }
 
 type UpdateDealInput struct {

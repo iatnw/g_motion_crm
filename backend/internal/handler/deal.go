@@ -261,30 +261,32 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid client id", http.StatusBadRequest)
 			return
 		}
-		deals, err := h.deal.ListByClient(r.Context(), clientID)
+		deals, err := h.deal.ListByClient(r.Context(), clientID, limit+1, offset)
 		if err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		deals, hasMore := paginate(deals, limit)
 		json.NewEncoder(w).Encode(map[string]any{
 			"data":     toDealResponses(deals),
 			"limit":    limit,
 			"offset":   offset,
-			"has_more": false,
+			"has_more": hasMore,
 		})
 		return
 	}
 
-	deals, err := h.deal.List(r.Context(), limit, offset)
+	deals, err := h.deal.List(r.Context(), limit+1, offset)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	deals, hasMore := paginate(deals, limit)
 	json.NewEncoder(w).Encode(map[string]any{
 		"data":     toDealResponses(deals),
 		"limit":    limit,
 		"offset":   offset,
-		"has_more": len(deals) == int(limit),
+		"has_more": hasMore,
 	})
 }
 
