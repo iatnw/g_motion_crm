@@ -88,6 +88,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(chimiddleware.RequestSize(1 << 20)) // 1 MB limit on all non-tally endpoints
 
 	frontendURL := cfg.App.FrontendURL
 	if frontendURL == "" {

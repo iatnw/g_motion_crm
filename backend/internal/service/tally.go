@@ -151,9 +151,6 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	if err != nil {
 		return fmt.Errorf("missing required field: full legal name")
 	}
-	if firstName == "" {
-		return fmt.Errorf("missing required field: full legal name")
-	}
 
 	phone := p.str("Phone Number")
 	email := p.str("Email")
@@ -341,10 +338,10 @@ func (s *TallyService) findExistingClient(ctx context.Context, phone, email stri
 func splitName(full string) (string, string, error) {
 	parts := strings.Fields(full)
 	if len(parts) == 0 {
-		return "", "", fmt.Errorf("firstname and lastname required fields")
+		return "", "", fmt.Errorf("full legal name is required")
 	}
 	if len(parts) == 1 {
-		return parts[0], "", fmt.Errorf("lastname is a required field")
+		return parts[0], parts[0], nil
 	}
 	return parts[0], strings.Join(parts[1:], " "), nil
 }
