@@ -2,13 +2,14 @@ package service
 
 import (
 	"context"
-	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
-func (s *ClientService) WithTx(tx *sql.Tx) *ClientService {
+func (s *ClientService) WithTx(tx pgx.Tx) *ClientService {
 	return &ClientService{q: s.q.WithTx(tx), encryptionKey: s.encryptionKey}
 }
 
@@ -28,37 +29,37 @@ type CreateClientInput struct {
 	Email                 string
 	Source                db.NullClientsSource
 	Status                db.ClientStatus
-	Notes                 sql.NullString
-	DateOfBirth           sql.NullTime
-	Address               sql.NullString
-	City                  sql.NullString
-	State                 sql.NullString
-	Zip                   sql.NullString
-	Ssn                   sql.NullString
-	HousingStatus         sql.NullString
-	HousingDuration       sql.NullString
-	HousingMonthlyPayment sql.NullString
-	EmployerName          sql.NullString
-	EmployerAddress       sql.NullString
-	EmployerCity          sql.NullString
-	EmployerState         sql.NullString
-	EmployerZip           sql.NullString
-	Occupation            sql.NullString
-	EmployerPhone         sql.NullString
+	Notes                 *string
+	DateOfBirth           *time.Time
+	Address               *string
+	City                  *string
+	State                 *string
+	Zip                   *string
+	Ssn                   *string
+	HousingStatus         *string
+	HousingDuration       *string
+	HousingMonthlyPayment *float64
+	EmployerName          *string
+	EmployerAddress       *string
+	EmployerCity          *string
+	EmployerState         *string
+	EmployerZip           *string
+	Occupation            *string
+	EmployerPhone         *string
 	EmploymentStatus      db.NullEmploymentStatus
-	EmploymentDuration    sql.NullString
-	GrossMonthlyIncome    sql.NullString
-	OtherMonthlyIncome    sql.NullString
-	OtherIncomeSource     sql.NullString
+	EmploymentDuration    *string
+	GrossMonthlyIncome    *float64
+	OtherMonthlyIncome    *float64
+	OtherIncomeSource     *string
 }
 
 func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Client, error) {
-	if in.Ssn.Valid {
-		enc, err := encrypt(s.encryptionKey, in.Ssn.String)
+	if in.Ssn != nil {
+		enc, err := encrypt(s.encryptionKey, *in.Ssn)
 		if err != nil {
 			return db.Client{}, err
 		}
-		in.Ssn.String = enc
+		in.Ssn = &enc
 	}
 
 	client, err := s.q.CreateClient(ctx, db.CreateClientParams{
@@ -68,28 +69,28 @@ func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Cl
 		Email:                 in.Email,
 		Source:                in.Source,
 		Status:                in.Status,
-		Notes:                 in.Notes,
-		DateOfBirth:           in.DateOfBirth,
-		Address:               in.Address,
-		City:                  in.City,
-		State:                 in.State,
-		Zip:                   in.Zip,
-		Ssn:                   in.Ssn,
-		HousingStatus:         in.HousingStatus,
-		HousingDuration:       in.HousingDuration,
-		HousingMonthlyPayment: in.HousingMonthlyPayment,
-		EmployerName:          in.EmployerName,
-		EmployerAddress:       in.EmployerAddress,
-		EmployerCity:          in.EmployerCity,
-		EmployerState:         in.EmployerState,
-		EmployerZip:           in.EmployerZip,
-		Occupation:            in.Occupation,
-		EmployerPhone:         in.EmployerPhone,
+		Notes:                 toText(in.Notes),
+		DateOfBirth:           toDate(in.DateOfBirth),
+		Address:               toText(in.Address),
+		City:                  toText(in.City),
+		State:                 toText(in.State),
+		Zip:                   toText(in.Zip),
+		Ssn:                   toText(in.Ssn),
+		HousingStatus:         toText(in.HousingStatus),
+		HousingDuration:       toText(in.HousingDuration),
+		HousingMonthlyPayment: toNumeric(in.HousingMonthlyPayment),
+		EmployerName:          toText(in.EmployerName),
+		EmployerAddress:       toText(in.EmployerAddress),
+		EmployerCity:          toText(in.EmployerCity),
+		EmployerState:         toText(in.EmployerState),
+		EmployerZip:           toText(in.EmployerZip),
+		Occupation:            toText(in.Occupation),
+		EmployerPhone:         toText(in.EmployerPhone),
 		EmploymentStatus:      in.EmploymentStatus,
-		EmploymentDuration:    in.EmploymentDuration,
-		GrossMonthlyIncome:    in.GrossMonthlyIncome,
-		OtherMonthlyIncome:    in.OtherMonthlyIncome,
-		OtherIncomeSource:     in.OtherIncomeSource,
+		EmploymentDuration:    toText(in.EmploymentDuration),
+		GrossMonthlyIncome:    toNumeric(in.GrossMonthlyIncome),
+		OtherMonthlyIncome:    toNumeric(in.OtherMonthlyIncome),
+		OtherIncomeSource:     toText(in.OtherIncomeSource),
 	})
 	if err != nil {
 		return db.Client{}, err
@@ -99,7 +100,7 @@ func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Cl
 }
 
 func (s *ClientService) Get(ctx context.Context, id uuid.UUID) (db.Client, error) {
-	client, err := s.q.GetClient(ctx, id)
+	client, err := s.q.GetClient(ctx, toUUID(id))
 	if err != nil {
 		return db.Client{}, err
 	}
@@ -130,69 +131,69 @@ type UpdateClientInput struct {
 	Email                 string
 	Source                db.NullClientsSource
 	Status                db.ClientStatus
-	Notes                 sql.NullString
-	DateOfBirth           sql.NullTime
-	Address               sql.NullString
-	City                  sql.NullString
-	State                 sql.NullString
-	Zip                   sql.NullString
-	Ssn                   sql.NullString
-	HousingStatus         sql.NullString
-	HousingDuration       sql.NullString
-	HousingMonthlyPayment sql.NullString
-	EmployerName          sql.NullString
-	EmployerAddress       sql.NullString
-	EmployerCity          sql.NullString
-	EmployerState         sql.NullString
-	EmployerZip           sql.NullString
-	Occupation            sql.NullString
-	EmployerPhone         sql.NullString
+	Notes                 *string
+	DateOfBirth           *time.Time
+	Address               *string
+	City                  *string
+	State                 *string
+	Zip                   *string
+	Ssn                   *string
+	HousingStatus         *string
+	HousingDuration       *string
+	HousingMonthlyPayment *float64
+	EmployerName          *string
+	EmployerAddress       *string
+	EmployerCity          *string
+	EmployerState         *string
+	EmployerZip           *string
+	Occupation            *string
+	EmployerPhone         *string
 	EmploymentStatus      db.NullEmploymentStatus
-	EmploymentDuration    sql.NullString
-	GrossMonthlyIncome    sql.NullString
-	OtherMonthlyIncome    sql.NullString
-	OtherIncomeSource     sql.NullString
+	EmploymentDuration    *string
+	GrossMonthlyIncome    *float64
+	OtherMonthlyIncome    *float64
+	OtherIncomeSource     *string
 }
 
 func (s *ClientService) Update(ctx context.Context, in UpdateClientInput) (db.Client, error) {
-	if in.Ssn.Valid {
-		enc, err := encrypt(s.encryptionKey, in.Ssn.String)
+	if in.Ssn != nil {
+		enc, err := encrypt(s.encryptionKey, *in.Ssn)
 		if err != nil {
 			return db.Client{}, err
 		}
-		in.Ssn.String = enc
+		in.Ssn = &enc
 	}
 
 	client, err := s.q.UpdateClient(ctx, db.UpdateClientParams{
-		ID:                    in.ID,
+		ID:                    toUUID(in.ID),
 		FirstName:             in.FirstName,
 		LastName:              in.LastName,
 		Phone:                 in.Phone,
 		Email:                 in.Email,
 		Source:                in.Source,
 		Status:                in.Status,
-		Notes:                 in.Notes,
-		DateOfBirth:           in.DateOfBirth,
-		Address:               in.Address,
-		City:                  in.City,
-		State:                 in.State,
-		Zip:                   in.Zip,
-		Ssn:                   in.Ssn,
-		HousingStatus:         in.HousingStatus,
-		HousingDuration:       in.HousingDuration,
-		HousingMonthlyPayment: in.HousingMonthlyPayment,
-		EmployerName:          in.EmployerName,
-		EmployerAddress:       in.EmployerAddress,
-		EmployerCity:          in.EmployerCity,
-		EmployerState:         in.EmployerState,
-		EmployerZip:           in.EmployerZip,
-		Occupation:            in.Occupation,
-		EmployerPhone:         in.EmployerPhone,
+		Notes:                 toText(in.Notes),
+		DateOfBirth:           toDate(in.DateOfBirth),
+		Address:               toText(in.Address),
+		City:                  toText(in.City),
+		State:                 toText(in.State),
+		Zip:                   toText(in.Zip),
+		Ssn:                   toText(in.Ssn),
+		HousingStatus:         toText(in.HousingStatus),
+		HousingDuration:       toText(in.HousingDuration),
+		HousingMonthlyPayment: toNumeric(in.HousingMonthlyPayment),
+		EmployerName:          toText(in.EmployerName),
+		EmployerAddress:       toText(in.EmployerAddress),
+		EmployerCity:          toText(in.EmployerCity),
+		EmployerState:         toText(in.EmployerState),
+		EmployerZip:           toText(in.EmployerZip),
+		Occupation:            toText(in.Occupation),
+		EmployerPhone:         toText(in.EmployerPhone),
 		EmploymentStatus:      in.EmploymentStatus,
-		EmploymentDuration:    in.EmploymentDuration,
-		GrossMonthlyIncome:    in.GrossMonthlyIncome,
-		OtherMonthlyIncome:    in.OtherMonthlyIncome,
-		OtherIncomeSource:     in.OtherIncomeSource,
+		EmploymentDuration:    toText(in.EmploymentDuration),
+		GrossMonthlyIncome:    toNumeric(in.GrossMonthlyIncome),
+		OtherMonthlyIncome:    toNumeric(in.OtherMonthlyIncome),
+		OtherIncomeSource:     toText(in.OtherIncomeSource),
 	})
 	if err != nil {
 		return db.Client{}, err

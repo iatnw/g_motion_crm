@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -41,10 +41,10 @@ func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	dealer, err := h.dealer.Create(r.Context(), service.CreateDealerInput{
 		Name:          req.Name,
-		ContactPerson: nullString(req.ContactPerson),
-		Phone:         nullString(req.Phone),
-		Address:       nullString(req.Address),
-		Notes:         nullString(req.Notes),
+		ContactPerson: req.ContactPerson,
+		Phone:         req.Phone,
+		Address:       req.Address,
+		Notes:         req.Notes,
 	})
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -82,7 +82,7 @@ func (h *DealerHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	dealer, err := h.dealer.Get(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -102,7 +102,7 @@ func (h *DealerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.dealer.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -134,13 +134,13 @@ func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
 	dealer, err := h.dealer.Update(r.Context(), service.UpdateDealerInput{
 		ID:            id,
 		Name:          req.Name,
-		ContactPerson: nullString(req.ContactPerson),
-		Phone:         nullString(req.Phone),
-		Address:       nullString(req.Address),
-		Notes:         nullString(req.Notes),
+		ContactPerson: req.ContactPerson,
+		Phone:         req.Phone,
+		Address:       req.Address,
+		Notes:         req.Notes,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

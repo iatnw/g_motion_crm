@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -43,35 +42,28 @@ func parsePagination(r *http.Request) (limit, offset int32) {
 	return limit, offset
 }
 
-func nullString(s *string) sql.NullString {
+func nullUUID(s *string) (*uuid.UUID, error) {
 	if s == nil {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: *s, Valid: true}
-}
-
-func nullUUID(s *string) (uuid.NullUUID, error) {
-	if s == nil {
-		return uuid.NullUUID{}, nil
+		return nil, nil
 	}
 	id, err := uuid.Parse(*s)
 	if err != nil {
-		return uuid.NullUUID{}, err
+		return nil, err
 	}
-	return uuid.NullUUID{UUID: id, Valid: true}, nil
+	return &id, nil
 }
 
 const dateLayout = "2006-01-02"
 
-func nullTime(s *string) (sql.NullTime, error) {
+func nullTime(s *string) (*time.Time, error) {
 	if s == nil {
-		return sql.NullTime{}, nil
+		return nil, nil
 	}
 	t, err := time.Parse(dateLayout, *s)
 	if err != nil {
-		return sql.NullTime{}, err
+		return nil, err
 	}
-	return sql.NullTime{Time: t, Valid: true}, nil
+	return &t, nil
 }
 
 func nullDownPaymentMethod(s *string) (db.NullDownPaymentMethod, error) {

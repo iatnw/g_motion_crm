@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -96,7 +96,7 @@ func (h *DocumentHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := h.doc.PresignedURL(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -156,7 +156,7 @@ func (h *DocumentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.doc.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

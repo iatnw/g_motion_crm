@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -30,17 +30,17 @@ type dealRequest struct {
 	Make                   *string `json:"make"`
 	Model                  *string `json:"model"`
 	TrimLevel              *string `json:"trim_level"`
-	DownPayment            *string `json:"down_payment"`
-	DownPaymentMethod      *string `json:"down_payment_method"`
-	MonthlyPayment         *string `json:"monthly_payment"`
-	BrokerFee              *string `json:"broker_fee"`
-	BrokerPercent          *string `json:"broker_percent"`
-	BrokerCommission       *string `json:"broker_commission"`
-	BrokerCommissionStatus *string `json:"broker_commission_status"`
-	ReferralAmount         *string `json:"referral_amount"`
-	YourNet                *string `json:"your_net"`
-	BrokerFeeStatus        *string `json:"broker_fee_status"`
-	ReferralStatus         *string `json:"referral_status"`
+	DownPayment            *float64 `json:"down_payment"`
+	DownPaymentMethod      *string  `json:"down_payment_method"`
+	MonthlyPayment         *float64 `json:"monthly_payment"`
+	BrokerFee              *float64 `json:"broker_fee"`
+	BrokerPercent          *float64 `json:"broker_percent"`
+	BrokerCommission       *float64 `json:"broker_commission"`
+	BrokerCommissionStatus *string  `json:"broker_commission_status"`
+	ReferralAmount         *float64 `json:"referral_amount"`
+	YourNet                *float64 `json:"your_net"`
+	BrokerFeeStatus        *string  `json:"broker_fee_status"`
+	ReferralStatus         *string  `json:"referral_status"`
 }
 
 func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -105,20 +105,20 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		BrokerID:               brokerID,
 		DealerID:               dealerID,
 		DealDate:               dealDate,
-		DealNumber:             nullString(req.DealNumber),
-		Vin:                    nullString(req.Vin),
-		Make:                   nullString(req.Make),
-		Model:                  nullString(req.Model),
-		TrimLevel:              nullString(req.TrimLevel),
-		DownPayment:            nullString(req.DownPayment),
+		DealNumber:             req.DealNumber,
+		Vin:                    req.Vin,
+		Make:                   req.Make,
+		Model:                  req.Model,
+		TrimLevel:              req.TrimLevel,
+		DownPayment:            req.DownPayment,
 		DownPaymentMethod:      downPaymentMethod,
-		MonthlyPayment:         nullString(req.MonthlyPayment),
-		BrokerFee:              nullString(req.BrokerFee),
-		BrokerPercent:          nullString(req.BrokerPercent),
-		BrokerCommission:       nullString(req.BrokerCommission),
+		MonthlyPayment:         req.MonthlyPayment,
+		BrokerFee:              req.BrokerFee,
+		BrokerPercent:          req.BrokerPercent,
+		BrokerCommission:       req.BrokerCommission,
 		BrokerCommissionStatus: brokerCommissionStatus,
-		ReferralAmount:         nullString(req.ReferralAmount),
-		YourNet:                nullString(req.YourNet),
+		ReferralAmount:         req.ReferralAmount,
+		YourNet:                req.YourNet,
 		BrokerFeeStatus:        brokerFeeStatus,
 		ReferralStatus:         referralStatus,
 	})
@@ -201,25 +201,25 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		BrokerID:               brokerID,
 		DealerID:               dealerID,
 		DealDate:               dealDate,
-		DealNumber:             nullString(req.DealNumber),
-		Vin:                    nullString(req.Vin),
-		Make:                   nullString(req.Make),
-		Model:                  nullString(req.Model),
-		TrimLevel:              nullString(req.TrimLevel),
-		DownPayment:            nullString(req.DownPayment),
+		DealNumber:             req.DealNumber,
+		Vin:                    req.Vin,
+		Make:                   req.Make,
+		Model:                  req.Model,
+		TrimLevel:              req.TrimLevel,
+		DownPayment:            req.DownPayment,
 		DownPaymentMethod:      downPaymentMethod,
-		MonthlyPayment:         nullString(req.MonthlyPayment),
-		BrokerFee:              nullString(req.BrokerFee),
-		BrokerPercent:          nullString(req.BrokerPercent),
-		BrokerCommission:       nullString(req.BrokerCommission),
+		MonthlyPayment:         req.MonthlyPayment,
+		BrokerFee:              req.BrokerFee,
+		BrokerPercent:          req.BrokerPercent,
+		BrokerCommission:       req.BrokerCommission,
 		BrokerCommissionStatus: brokerCommissionStatus,
-		ReferralAmount:         nullString(req.ReferralAmount),
-		YourNet:                nullString(req.YourNet),
+		ReferralAmount:         req.ReferralAmount,
+		YourNet:                req.YourNet,
 		BrokerFeeStatus:        brokerFeeStatus,
 		ReferralStatus:         referralStatus,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -240,7 +240,7 @@ func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	deal, err := h.deal.Get(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -313,7 +313,7 @@ func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Reque
 
 	deal, err := h.deal.UpdateBrokerFeeStatus(r.Context(), id, db.PaymentStatus(req.Status))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -348,7 +348,7 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 
 	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, db.PaymentStatus(req.Status))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -383,7 +383,7 @@ func (h *DealHandler) UpdateReferralStatus(w http.ResponseWriter, r *http.Reques
 
 	deal, err := h.deal.UpdateReferralStatus(r.Context(), id, db.ReferralStatus(req.Status))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

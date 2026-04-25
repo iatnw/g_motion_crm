@@ -7,7 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createSetting = `-- name: CreateSetting :one
@@ -18,12 +19,12 @@ INSERT INTO settings (
 `
 
 type CreateSettingParams struct {
-	OwnerPasswordHash string         `json:"owner_password_hash"`
-	OwnerTotpSecret   sql.NullString `json:"owner_totp_secret"`
+	OwnerPasswordHash string      `json:"owner_password_hash"`
+	OwnerTotpSecret   pgtype.Text `json:"owner_totp_secret"`
 }
 
 func (q *Queries) CreateSetting(ctx context.Context, arg CreateSettingParams) (Setting, error) {
-	row := q.db.QueryRowContext(ctx, createSetting, arg.OwnerPasswordHash, arg.OwnerTotpSecret)
+	row := q.db.QueryRow(ctx, createSetting, arg.OwnerPasswordHash, arg.OwnerTotpSecret)
 	var i Setting
 	err := row.Scan(
 		&i.ID,
@@ -41,7 +42,7 @@ WHERE id = 1
 `
 
 func (q *Queries) GetSetting(ctx context.Context) (Setting, error) {
-	row := q.db.QueryRowContext(ctx, getSetting)
+	row := q.db.QueryRow(ctx, getSetting)
 	var i Setting
 	err := row.Scan(
 		&i.ID,
@@ -63,7 +64,7 @@ RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at
 `
 
 func (q *Queries) UpdateOwnerPassword(ctx context.Context, ownerPasswordHash string) (Setting, error) {
-	row := q.db.QueryRowContext(ctx, updateOwnerPassword, ownerPasswordHash)
+	row := q.db.QueryRow(ctx, updateOwnerPassword, ownerPasswordHash)
 	var i Setting
 	err := row.Scan(
 		&i.ID,
@@ -84,8 +85,8 @@ WHERE id = 1
 RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at
 `
 
-func (q *Queries) UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret sql.NullString) (Setting, error) {
-	row := q.db.QueryRowContext(ctx, updateOwnerTOTP, ownerTotpSecret)
+func (q *Queries) UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (Setting, error) {
+	row := q.db.QueryRow(ctx, updateOwnerTOTP, ownerTotpSecret)
 	var i Setting
 	err := row.Scan(
 		&i.ID,

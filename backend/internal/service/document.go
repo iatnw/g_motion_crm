@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 	"github.com/umbrllacrp/g_motion_crm/internal/storage"
 )
@@ -43,11 +43,11 @@ func (s *DocumentService) Upload(
 	}
 
 	doc, err := s.q.CreateDocument(ctx, db.CreateDocumentParams{
-		ClientID:      clientID,
-		DealID:        dealID,
+		ClientID:      nullUUIDToPg(clientID),
+		DealID:        nullUUIDToPg(dealID),
 		S3Key:         key,
 		FileName:      filename,
-		FileSizeBytes: nullInt32(size),
+		FileSizeBytes: int64ToInt4(size),
 		DocumentType:  docType,
 	})
 	if err != nil {
@@ -95,11 +95,11 @@ func (s *DocumentService) UploadFromURL(
 	}
 
 	doc, err := s.q.CreateDocument(ctx, db.CreateDocumentParams{
-		ClientID:      clientID,
-		DealID:        dealID,
+		ClientID:      nullUUIDToPg(clientID),
+		DealID:        nullUUIDToPg(dealID),
 		S3Key:         key,
 		FileName:      filename,
-		FileSizeBytes: nullInt32(resp.ContentLength),
+		FileSizeBytes: int64ToInt4(resp.ContentLength),
 		DocumentType:  docType,
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func (s *DocumentService) UploadFromURL(
 
 // PresignedURL returns a time-limited download URL for a document.
 func (s *DocumentService) PresignedURL(ctx context.Context, id uuid.UUID) (string, error) {
-	doc, err := s.q.GetDocument(ctx, id)
+	doc, err := s.q.GetDocument(ctx, toUUID(id))
 	if err != nil {
 		return "", err
 	}
@@ -119,15 +119,15 @@ func (s *DocumentService) PresignedURL(ctx context.Context, id uuid.UUID) (strin
 }
 
 func (s *DocumentService) ListByClient(ctx context.Context, clientID uuid.UUID) ([]db.Document, error) {
-	return s.q.ListDocumentsByClient(ctx, uuid.NullUUID{UUID: clientID, Valid: true})
+	return s.q.ListDocumentsByClient(ctx, toUUID(clientID))
 }
 
 func (s *DocumentService) ListByDeal(ctx context.Context, dealID uuid.UUID) ([]db.Document, error) {
-	return s.q.ListDocumentsByDeal(ctx, uuid.NullUUID{UUID: dealID, Valid: true})
+	return s.q.ListDocumentsByDeal(ctx, toUUID(dealID))
 }
 
 func (s *DocumentService) Delete(ctx context.Context, id uuid.UUID) error {
-	doc, err := s.q.DeleteDocument(ctx, id)
+	doc, err := s.q.DeleteDocument(ctx, toUUID(id))
 	if err != nil {
 		return err
 	}
@@ -150,9 +150,13 @@ func buildKey(clientID uuid.NullUUID, dealID uuid.NullUUID, filename string) str
 	return fmt.Sprintf("documents/%s", name)
 }
 
-func nullInt32(n int64) sql.NullInt32 {
+func nullUUIDToPg(id uuid.NullUUID) pgtype.UUID {
+	return pgtype.UUID{Bytes: id.UUID, Valid: id.Valid}
+}
+
+func int64ToInt4(n int64) pgtype.Int4 {
 	if n <= 0 || n > 2147483647 {
-		return sql.NullInt32{}
+		return pgtype.Int4{}
 	}
-	return sql.NullInt32{Int32: int32(n), Valid: true}
+	return pgtype.Int4{Int32: int32(n), Valid: true}
 }

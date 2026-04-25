@@ -7,9 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createDealer = `-- name: CreateDealer :one
@@ -23,15 +22,15 @@ INSERT INTO dealers (
 `
 
 type CreateDealerParams struct {
-	Name          string         `json:"name"`
-	ContactPerson sql.NullString `json:"contact_person"`
-	Phone         sql.NullString `json:"phone"`
-	Address       sql.NullString `json:"address"`
-	Notes         sql.NullString `json:"notes"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	Notes         pgtype.Text `json:"notes"`
 }
 
 func (q *Queries) CreateDealer(ctx context.Context, arg CreateDealerParams) (Dealer, error) {
-	row := q.db.QueryRowContext(ctx, createDealer,
+	row := q.db.QueryRow(ctx, createDealer,
 		arg.Name,
 		arg.ContactPerson,
 		arg.Phone,
@@ -58,8 +57,8 @@ WHERE id = $1
 RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at
 `
 
-func (q *Queries) DeleteDealer(ctx context.Context, id uuid.UUID) (Dealer, error) {
-	row := q.db.QueryRowContext(ctx, deleteDealer, id)
+func (q *Queries) DeleteDealer(ctx context.Context, id pgtype.UUID) (Dealer, error) {
+	row := q.db.QueryRow(ctx, deleteDealer, id)
 	var i Dealer
 	err := row.Scan(
 		&i.ID,
@@ -79,8 +78,8 @@ SELECT id, name, contact_person, phone, address, notes, created_at, updated_at F
 WHERE id = $1
 `
 
-func (q *Queries) GetDealer(ctx context.Context, id uuid.UUID) (Dealer, error) {
-	row := q.db.QueryRowContext(ctx, getDealer, id)
+func (q *Queries) GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error) {
+	row := q.db.QueryRow(ctx, getDealer, id)
 	var i Dealer
 	err := row.Scan(
 		&i.ID,
@@ -107,7 +106,7 @@ type ListDealersParams struct {
 }
 
 func (q *Queries) ListDealers(ctx context.Context, arg ListDealersParams) ([]Dealer, error) {
-	rows, err := q.db.QueryContext(ctx, listDealers, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listDealers, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +128,6 @@ func (q *Queries) ListDealers(ctx context.Context, arg ListDealersParams) ([]Dea
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -152,16 +148,16 @@ RETURNING id, name, contact_person, phone, address, notes, created_at, updated_a
 `
 
 type UpdateDealerParams struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	ContactPerson sql.NullString `json:"contact_person"`
-	Phone         sql.NullString `json:"phone"`
-	Address       sql.NullString `json:"address"`
-	Notes         sql.NullString `json:"notes"`
+	ID            pgtype.UUID `json:"id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	Notes         pgtype.Text `json:"notes"`
 }
 
 func (q *Queries) UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dealer, error) {
-	row := q.db.QueryRowContext(ctx, updateDealer,
+	row := q.db.QueryRow(ctx, updateDealer,
 		arg.ID,
 		arg.Name,
 		arg.ContactPerson,

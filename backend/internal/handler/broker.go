@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -42,9 +42,9 @@ func (h *BrokerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	broker, err := h.broker.Create(r.Context(), service.CreateBrokerInput{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
-		Phone:     nullString(req.Phone),
-		Email:     nullString(req.Email),
-		Notes:     nullString(req.Notes),
+		Phone: req.Phone,
+		Email: req.Email,
+		Notes: req.Notes,
 	})
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -82,7 +82,7 @@ func (h *BrokerHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	broker, err := h.broker.Get(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -102,7 +102,7 @@ func (h *BrokerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.broker.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -135,12 +135,12 @@ func (h *BrokerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		ID:        id,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
-		Phone:     nullString(req.Phone),
-		Email:     nullString(req.Email),
-		Notes:     nullString(req.Notes),
+		Phone: req.Phone,
+		Email: req.Email,
+		Notes: req.Notes,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

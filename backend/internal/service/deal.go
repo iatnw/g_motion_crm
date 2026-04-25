@@ -2,13 +2,14 @@ package service
 
 import (
 	"context"
-	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
-func (s *DealService) WithTx(tx *sql.Tx) *DealService {
+func (s *DealService) WithTx(tx pgx.Tx) *DealService {
 	return &DealService{q: s.q.WithTx(tx)}
 }
 
@@ -22,54 +23,54 @@ func NewDeal(q *db.Queries) *DealService {
 
 type CreateDealInput struct {
 	ClientID               uuid.UUID
-	BrokerID               uuid.NullUUID
-	DealerID               uuid.NullUUID
-	DealDate               sql.NullTime
-	DealNumber             sql.NullString
-	Vin                    sql.NullString
-	Make                   sql.NullString
-	Model                  sql.NullString
-	TrimLevel              sql.NullString
-	DownPayment            sql.NullString
+	BrokerID               *uuid.UUID
+	DealerID               *uuid.UUID
+	DealDate               *time.Time
+	DealNumber             *string
+	Vin                    *string
+	Make                   *string
+	Model                  *string
+	TrimLevel              *string
+	DownPayment            *float64
 	DownPaymentMethod      db.NullDownPaymentMethod
-	MonthlyPayment         sql.NullString
-	BrokerFee              sql.NullString
-	BrokerPercent          sql.NullString
-	BrokerCommission       sql.NullString
+	MonthlyPayment         *float64
+	BrokerFee              *float64
+	BrokerPercent          *float64
+	BrokerCommission       *float64
 	BrokerCommissionStatus db.NullPaymentStatus
-	ReferralAmount         sql.NullString
-	YourNet                sql.NullString
+	ReferralAmount         *float64
+	YourNet                *float64
 	BrokerFeeStatus        db.NullPaymentStatus
 	ReferralStatus         db.NullReferralStatus
 }
 
 func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, error) {
 	return s.q.CreateDeal(ctx, db.CreateDealParams{
-		ClientID:               in.ClientID,
-		BrokerID:               in.BrokerID,
-		DealerID:               in.DealerID,
-		DealDate:               in.DealDate,
-		DealNumber:             in.DealNumber,
-		Vin:                    in.Vin,
-		Make:                   in.Make,
-		Model:                  in.Model,
-		TrimLevel:              in.TrimLevel,
-		DownPayment:            in.DownPayment,
+		ClientID:               toUUID(in.ClientID),
+		BrokerID:               toNullUUID(in.BrokerID),
+		DealerID:               toNullUUID(in.DealerID),
+		DealDate:               toDate(in.DealDate),
+		DealNumber:             toText(in.DealNumber),
+		Vin:                    toText(in.Vin),
+		Make:                   toText(in.Make),
+		Model:                  toText(in.Model),
+		TrimLevel:              toText(in.TrimLevel),
+		DownPayment:            toNumeric(in.DownPayment),
 		DownPaymentMethod:      in.DownPaymentMethod,
-		MonthlyPayment:         in.MonthlyPayment,
-		BrokerFee:              in.BrokerFee,
-		BrokerPercent:          in.BrokerPercent,
-		BrokerCommission:       in.BrokerCommission,
+		MonthlyPayment:         toNumeric(in.MonthlyPayment),
+		BrokerFee:              toNumeric(in.BrokerFee),
+		BrokerPercent:          toNumeric(in.BrokerPercent),
+		BrokerCommission:       toNumeric(in.BrokerCommission),
 		BrokerCommissionStatus: in.BrokerCommissionStatus,
-		ReferralAmount:         in.ReferralAmount,
-		YourNet:                in.YourNet,
+		ReferralAmount:         toNumeric(in.ReferralAmount),
+		YourNet:                toNumeric(in.YourNet),
 		BrokerFeeStatus:        in.BrokerFeeStatus,
 		ReferralStatus:         in.ReferralStatus,
 	})
 }
 
 func (s *DealService) Get(ctx context.Context, id uuid.UUID) (db.Deal, error) {
-	return s.q.GetDeal(ctx, id)
+	return s.q.GetDeal(ctx, toUUID(id))
 }
 
 func (s *DealService) List(ctx context.Context, limit, offset int32) ([]db.Deal, error) {
@@ -77,54 +78,58 @@ func (s *DealService) List(ctx context.Context, limit, offset int32) ([]db.Deal,
 }
 
 func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID, limit, offset int32) ([]db.Deal, error) {
-	return s.q.ListDealsByClient(ctx, db.ListDealsByClientParams{ClientID: id, Limit: limit, Offset: offset})
+	return s.q.ListDealsByClient(ctx, db.ListDealsByClientParams{
+		ClientID: toUUID(id),
+		Limit:    limit,
+		Offset:   offset,
+	})
 }
 
 type UpdateDealInput struct {
 	ID                     uuid.UUID
 	ClientID               uuid.UUID
-	BrokerID               uuid.NullUUID
-	DealerID               uuid.NullUUID
-	DealDate               sql.NullTime
-	DealNumber             sql.NullString
-	Vin                    sql.NullString
-	Make                   sql.NullString
-	Model                  sql.NullString
-	TrimLevel              sql.NullString
-	DownPayment            sql.NullString
+	BrokerID               *uuid.UUID
+	DealerID               *uuid.UUID
+	DealDate               *time.Time
+	DealNumber             *string
+	Vin                    *string
+	Make                   *string
+	Model                  *string
+	TrimLevel              *string
+	DownPayment            *float64
 	DownPaymentMethod      db.NullDownPaymentMethod
-	MonthlyPayment         sql.NullString
-	BrokerFee              sql.NullString
-	BrokerPercent          sql.NullString
-	BrokerCommission       sql.NullString
+	MonthlyPayment         *float64
+	BrokerFee              *float64
+	BrokerPercent          *float64
+	BrokerCommission       *float64
 	BrokerCommissionStatus db.NullPaymentStatus
-	ReferralAmount         sql.NullString
-	YourNet                sql.NullString
+	ReferralAmount         *float64
+	YourNet                *float64
 	BrokerFeeStatus        db.NullPaymentStatus
 	ReferralStatus         db.NullReferralStatus
 }
 
 func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, error) {
 	return s.q.UpdateDeal(ctx, db.UpdateDealParams{
-		ID:                     in.ID,
-		ClientID:               in.ClientID,
-		BrokerID:               in.BrokerID,
-		DealerID:               in.DealerID,
-		DealDate:               in.DealDate,
-		DealNumber:             in.DealNumber,
-		Vin:                    in.Vin,
-		Make:                   in.Make,
-		Model:                  in.Model,
-		TrimLevel:              in.TrimLevel,
-		DownPayment:            in.DownPayment,
+		ID:                     toUUID(in.ID),
+		ClientID:               toUUID(in.ClientID),
+		BrokerID:               toNullUUID(in.BrokerID),
+		DealerID:               toNullUUID(in.DealerID),
+		DealDate:               toDate(in.DealDate),
+		DealNumber:             toText(in.DealNumber),
+		Vin:                    toText(in.Vin),
+		Make:                   toText(in.Make),
+		Model:                  toText(in.Model),
+		TrimLevel:              toText(in.TrimLevel),
+		DownPayment:            toNumeric(in.DownPayment),
 		DownPaymentMethod:      in.DownPaymentMethod,
-		MonthlyPayment:         in.MonthlyPayment,
-		BrokerFee:              in.BrokerFee,
-		BrokerPercent:          in.BrokerPercent,
-		BrokerCommission:       in.BrokerCommission,
+		MonthlyPayment:         toNumeric(in.MonthlyPayment),
+		BrokerFee:              toNumeric(in.BrokerFee),
+		BrokerPercent:          toNumeric(in.BrokerPercent),
+		BrokerCommission:       toNumeric(in.BrokerCommission),
 		BrokerCommissionStatus: in.BrokerCommissionStatus,
-		ReferralAmount:         in.ReferralAmount,
-		YourNet:                in.YourNet,
+		ReferralAmount:         toNumeric(in.ReferralAmount),
+		YourNet:                toNumeric(in.YourNet),
 		BrokerFeeStatus:        in.BrokerFeeStatus,
 		ReferralStatus:         in.ReferralStatus,
 	})
@@ -132,21 +137,21 @@ func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, 
 
 func (s *DealService) UpdateBrokerFeeStatus(ctx context.Context, id uuid.UUID, status db.PaymentStatus) (db.Deal, error) {
 	return s.q.UpdateDealBrokerFeeStatus(ctx, db.UpdateDealBrokerFeeStatusParams{
-		ID:              id,
+		ID:              toUUID(id),
 		BrokerFeeStatus: db.NullPaymentStatus{PaymentStatus: status, Valid: true},
 	})
 }
 
 func (s *DealService) UpdateBrokerCommissionStatus(ctx context.Context, id uuid.UUID, status db.PaymentStatus) (db.Deal, error) {
 	return s.q.UpdateDealBrokerCommissionStatus(ctx, db.UpdateDealBrokerCommissionStatusParams{
-		ID:                     id,
+		ID:                     toUUID(id),
 		BrokerCommissionStatus: db.NullPaymentStatus{PaymentStatus: status, Valid: true},
 	})
 }
 
 func (s *DealService) UpdateReferralStatus(ctx context.Context, id uuid.UUID, status db.ReferralStatus) (db.Deal, error) {
 	return s.q.UpdateDealReferralStatus(ctx, db.UpdateDealReferralStatusParams{
-		ID:             id,
+		ID:             toUUID(id),
 		ReferralStatus: db.NullReferralStatus{ReferralStatus: status, Valid: true},
 	})
 }

@@ -6,9 +6,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -19,16 +18,16 @@ type Querier interface {
 	CreateDealer(ctx context.Context, arg CreateDealerParams) (Dealer, error)
 	CreateDocument(ctx context.Context, arg CreateDocumentParams) (Document, error)
 	CreateSetting(ctx context.Context, arg CreateSettingParams) (Setting, error)
-	DeleteBroker(ctx context.Context, id uuid.UUID) (Broker, error)
-	DeleteDealer(ctx context.Context, id uuid.UUID) (Dealer, error)
-	DeleteDocument(ctx context.Context, id uuid.UUID) (Document, error)
-	GetBroker(ctx context.Context, id uuid.UUID) (Broker, error)
-	GetClient(ctx context.Context, id uuid.UUID) (Client, error)
+	DeleteBroker(ctx context.Context, id pgtype.UUID) (Broker, error)
+	DeleteDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
+	DeleteDocument(ctx context.Context, id pgtype.UUID) (Document, error)
+	GetBroker(ctx context.Context, id pgtype.UUID) (Broker, error)
+	GetClient(ctx context.Context, id pgtype.UUID) (Client, error)
 	GetClientByEmail(ctx context.Context, dollar_1 string) (Client, error)
 	GetClientByPhone(ctx context.Context, phone string) (Client, error)
-	GetDeal(ctx context.Context, id uuid.UUID) (Deal, error)
-	GetDealer(ctx context.Context, id uuid.UUID) (Dealer, error)
-	GetDocument(ctx context.Context, id uuid.UUID) (Document, error)
+	GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error)
+	GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
+	GetDocument(ctx context.Context, id pgtype.UUID) (Document, error)
 	GetSetting(ctx context.Context) (Setting, error)
 	ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error)
 	ListBrokers(ctx context.Context, arg ListBrokersParams) ([]Broker, error)
@@ -36,8 +35,8 @@ type Querier interface {
 	ListDealers(ctx context.Context, arg ListDealersParams) ([]Dealer, error)
 	ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, error)
 	ListDealsByClient(ctx context.Context, arg ListDealsByClientParams) ([]Deal, error)
-	ListDocumentsByClient(ctx context.Context, clientID uuid.NullUUID) ([]Document, error)
-	ListDocumentsByDeal(ctx context.Context, dealID uuid.NullUUID) ([]Document, error)
+	ListDocumentsByClient(ctx context.Context, clientID pgtype.UUID) ([]Document, error)
+	ListDocumentsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Document, error)
 	UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error)
 	UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error)
 	UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error)
@@ -46,7 +45,7 @@ type Querier interface {
 	UpdateDealReferralStatus(ctx context.Context, arg UpdateDealReferralStatusParams) (Deal, error)
 	UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dealer, error)
 	UpdateOwnerPassword(ctx context.Context, ownerPasswordHash string) (Setting, error)
-	UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret sql.NullString) (Setting, error)
+	UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (Setting, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -7,9 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createDeal = `-- name: CreateDeal :one
@@ -44,33 +43,33 @@ INSERT INTO deals (
 `
 
 type CreateDealParams struct {
-	ClientID                 uuid.UUID             `json:"client_id"`
-	BrokerID                 uuid.NullUUID         `json:"broker_id"`
-	DealerID                 uuid.NullUUID         `json:"dealer_id"`
-	DealDate                 sql.NullTime          `json:"deal_date"`
-	DealNumber               sql.NullString        `json:"deal_number"`
-	Vin                      sql.NullString        `json:"vin"`
-	Make                     sql.NullString        `json:"make"`
-	Model                    sql.NullString        `json:"model"`
-	TrimLevel                sql.NullString        `json:"trim_level"`
-	DownPayment              sql.NullString        `json:"down_payment"`
+	ClientID                 pgtype.UUID           `json:"client_id"`
+	BrokerID                 pgtype.UUID           `json:"broker_id"`
+	DealerID                 pgtype.UUID           `json:"dealer_id"`
+	DealDate                 pgtype.Date           `json:"deal_date"`
+	DealNumber               pgtype.Text           `json:"deal_number"`
+	Vin                      pgtype.Text           `json:"vin"`
+	Make                     pgtype.Text           `json:"make"`
+	Model                    pgtype.Text           `json:"model"`
+	TrimLevel                pgtype.Text           `json:"trim_level"`
+	DownPayment              pgtype.Numeric        `json:"down_payment"`
 	DownPaymentMethod        NullDownPaymentMethod `json:"down_payment_method"`
-	MonthlyPayment           sql.NullString        `json:"monthly_payment"`
-	BrokerFee                sql.NullString        `json:"broker_fee"`
-	BrokerPercent            sql.NullString        `json:"broker_percent"`
-	BrokerCommission         sql.NullString        `json:"broker_commission"`
+	MonthlyPayment           pgtype.Numeric        `json:"monthly_payment"`
+	BrokerFee                pgtype.Numeric        `json:"broker_fee"`
+	BrokerPercent            pgtype.Numeric        `json:"broker_percent"`
+	BrokerCommission         pgtype.Numeric        `json:"broker_commission"`
 	BrokerCommissionStatus   NullPaymentStatus     `json:"broker_commission_status"`
-	BrokerCommissionPaidDate sql.NullTime          `json:"broker_commission_paid_date"`
-	ReferralAmount           sql.NullString        `json:"referral_amount"`
-	YourNet                  sql.NullString        `json:"your_net"`
+	BrokerCommissionPaidDate pgtype.Date           `json:"broker_commission_paid_date"`
+	ReferralAmount           pgtype.Numeric        `json:"referral_amount"`
+	YourNet                  pgtype.Numeric        `json:"your_net"`
 	BrokerFeeStatus          NullPaymentStatus     `json:"broker_fee_status"`
-	BrokerFeePaidDate        sql.NullTime          `json:"broker_fee_paid_date"`
+	BrokerFeePaidDate        pgtype.Date           `json:"broker_fee_paid_date"`
 	ReferralStatus           NullReferralStatus    `json:"referral_status"`
-	ReferralPaidDate         sql.NullTime          `json:"referral_paid_date"`
+	ReferralPaidDate         pgtype.Date           `json:"referral_paid_date"`
 }
 
 func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, error) {
-	row := q.db.QueryRowContext(ctx, createDeal,
+	row := q.db.QueryRow(ctx, createDeal,
 		arg.ClientID,
 		arg.BrokerID,
 		arg.DealerID,
@@ -132,8 +131,8 @@ SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, m
 WHERE id = $1
 `
 
-func (q *Queries) GetDeal(ctx context.Context, id uuid.UUID) (Deal, error) {
-	row := q.db.QueryRowContext(ctx, getDeal, id)
+func (q *Queries) GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error) {
+	row := q.db.QueryRow(ctx, getDeal, id)
 	var i Deal
 	err := row.Scan(
 		&i.ID,
@@ -178,7 +177,7 @@ type ListDealsParams struct {
 }
 
 func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, error) {
-	rows, err := q.db.QueryContext(ctx, listDeals, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listDeals, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -217,9 +216,6 @@ func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, e
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -235,13 +231,13 @@ LIMIT $2 OFFSET $3
 `
 
 type ListDealsByClientParams struct {
-	ClientID uuid.UUID `json:"client_id"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
+	ClientID pgtype.UUID `json:"client_id"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
 }
 
 func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientParams) ([]Deal, error) {
-	rows, err := q.db.QueryContext(ctx, listDealsByClient, arg.ClientID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listDealsByClient, arg.ClientID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -280,9 +276,6 @@ func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientPa
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -322,34 +315,34 @@ RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make
 `
 
 type UpdateDealParams struct {
-	ID                       uuid.UUID             `json:"id"`
-	ClientID                 uuid.UUID             `json:"client_id"`
-	BrokerID                 uuid.NullUUID         `json:"broker_id"`
-	DealerID                 uuid.NullUUID         `json:"dealer_id"`
-	DealDate                 sql.NullTime          `json:"deal_date"`
-	DealNumber               sql.NullString        `json:"deal_number"`
-	Vin                      sql.NullString        `json:"vin"`
-	Make                     sql.NullString        `json:"make"`
-	Model                    sql.NullString        `json:"model"`
-	TrimLevel                sql.NullString        `json:"trim_level"`
-	DownPayment              sql.NullString        `json:"down_payment"`
+	ID                       pgtype.UUID           `json:"id"`
+	ClientID                 pgtype.UUID           `json:"client_id"`
+	BrokerID                 pgtype.UUID           `json:"broker_id"`
+	DealerID                 pgtype.UUID           `json:"dealer_id"`
+	DealDate                 pgtype.Date           `json:"deal_date"`
+	DealNumber               pgtype.Text           `json:"deal_number"`
+	Vin                      pgtype.Text           `json:"vin"`
+	Make                     pgtype.Text           `json:"make"`
+	Model                    pgtype.Text           `json:"model"`
+	TrimLevel                pgtype.Text           `json:"trim_level"`
+	DownPayment              pgtype.Numeric        `json:"down_payment"`
 	DownPaymentMethod        NullDownPaymentMethod `json:"down_payment_method"`
-	MonthlyPayment           sql.NullString        `json:"monthly_payment"`
-	BrokerFee                sql.NullString        `json:"broker_fee"`
-	BrokerPercent            sql.NullString        `json:"broker_percent"`
-	BrokerCommission         sql.NullString        `json:"broker_commission"`
+	MonthlyPayment           pgtype.Numeric        `json:"monthly_payment"`
+	BrokerFee                pgtype.Numeric        `json:"broker_fee"`
+	BrokerPercent            pgtype.Numeric        `json:"broker_percent"`
+	BrokerCommission         pgtype.Numeric        `json:"broker_commission"`
 	BrokerCommissionStatus   NullPaymentStatus     `json:"broker_commission_status"`
-	BrokerCommissionPaidDate sql.NullTime          `json:"broker_commission_paid_date"`
-	ReferralAmount           sql.NullString        `json:"referral_amount"`
-	YourNet                  sql.NullString        `json:"your_net"`
+	BrokerCommissionPaidDate pgtype.Date           `json:"broker_commission_paid_date"`
+	ReferralAmount           pgtype.Numeric        `json:"referral_amount"`
+	YourNet                  pgtype.Numeric        `json:"your_net"`
 	BrokerFeeStatus          NullPaymentStatus     `json:"broker_fee_status"`
-	BrokerFeePaidDate        sql.NullTime          `json:"broker_fee_paid_date"`
+	BrokerFeePaidDate        pgtype.Date           `json:"broker_fee_paid_date"`
 	ReferralStatus           NullReferralStatus    `json:"referral_status"`
-	ReferralPaidDate         sql.NullTime          `json:"referral_paid_date"`
+	ReferralPaidDate         pgtype.Date           `json:"referral_paid_date"`
 }
 
 func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error) {
-	row := q.db.QueryRowContext(ctx, updateDeal,
+	row := q.db.QueryRow(ctx, updateDeal,
 		arg.ID,
 		arg.ClientID,
 		arg.BrokerID,
@@ -419,12 +412,12 @@ RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make
 `
 
 type UpdateDealBrokerCommissionStatusParams struct {
-	ID                     uuid.UUID         `json:"id"`
+	ID                     pgtype.UUID       `json:"id"`
 	BrokerCommissionStatus NullPaymentStatus `json:"broker_commission_status"`
 }
 
 func (q *Queries) UpdateDealBrokerCommissionStatus(ctx context.Context, arg UpdateDealBrokerCommissionStatusParams) (Deal, error) {
-	row := q.db.QueryRowContext(ctx, updateDealBrokerCommissionStatus, arg.ID, arg.BrokerCommissionStatus)
+	row := q.db.QueryRow(ctx, updateDealBrokerCommissionStatus, arg.ID, arg.BrokerCommissionStatus)
 	var i Deal
 	err := row.Scan(
 		&i.ID,
@@ -469,12 +462,12 @@ RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make
 `
 
 type UpdateDealBrokerFeeStatusParams struct {
-	ID              uuid.UUID         `json:"id"`
+	ID              pgtype.UUID       `json:"id"`
 	BrokerFeeStatus NullPaymentStatus `json:"broker_fee_status"`
 }
 
 func (q *Queries) UpdateDealBrokerFeeStatus(ctx context.Context, arg UpdateDealBrokerFeeStatusParams) (Deal, error) {
-	row := q.db.QueryRowContext(ctx, updateDealBrokerFeeStatus, arg.ID, arg.BrokerFeeStatus)
+	row := q.db.QueryRow(ctx, updateDealBrokerFeeStatus, arg.ID, arg.BrokerFeeStatus)
 	var i Deal
 	err := row.Scan(
 		&i.ID,
@@ -519,12 +512,12 @@ RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make
 `
 
 type UpdateDealReferralStatusParams struct {
-	ID             uuid.UUID          `json:"id"`
+	ID             pgtype.UUID        `json:"id"`
 	ReferralStatus NullReferralStatus `json:"referral_status"`
 }
 
 func (q *Queries) UpdateDealReferralStatus(ctx context.Context, arg UpdateDealReferralStatusParams) (Deal, error) {
-	row := q.db.QueryRowContext(ctx, updateDealReferralStatus, arg.ID, arg.ReferralStatus)
+	row := q.db.QueryRow(ctx, updateDealReferralStatus, arg.ID, arg.ReferralStatus)
 	var i Deal
 	err := row.Scan(
 		&i.ID,

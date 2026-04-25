@@ -7,9 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createClient = `-- name: CreateClient :one
@@ -55,32 +54,32 @@ type CreateClientParams struct {
 	Email                 string               `json:"email"`
 	Source                NullClientsSource    `json:"source"`
 	Status                ClientStatus         `json:"status"`
-	Notes                 sql.NullString       `json:"notes"`
-	DateOfBirth           sql.NullTime         `json:"date_of_birth"`
-	Address               sql.NullString       `json:"address"`
-	City                  sql.NullString       `json:"city"`
-	State                 sql.NullString       `json:"state"`
-	Zip                   sql.NullString       `json:"zip"`
-	Ssn                   sql.NullString       `json:"ssn"`
-	HousingStatus         sql.NullString       `json:"housing_status"`
-	HousingDuration       sql.NullString       `json:"housing_duration"`
-	HousingMonthlyPayment sql.NullString       `json:"housing_monthly_payment"`
-	EmployerName          sql.NullString       `json:"employer_name"`
-	EmployerAddress       sql.NullString       `json:"employer_address"`
-	EmployerCity          sql.NullString       `json:"employer_city"`
-	EmployerState         sql.NullString       `json:"employer_state"`
-	EmployerZip           sql.NullString       `json:"employer_zip"`
-	Occupation            sql.NullString       `json:"occupation"`
-	EmployerPhone         sql.NullString       `json:"employer_phone"`
+	Notes                 pgtype.Text          `json:"notes"`
+	DateOfBirth           pgtype.Date          `json:"date_of_birth"`
+	Address               pgtype.Text          `json:"address"`
+	City                  pgtype.Text          `json:"city"`
+	State                 pgtype.Text          `json:"state"`
+	Zip                   pgtype.Text          `json:"zip"`
+	Ssn                   pgtype.Text          `json:"ssn"`
+	HousingStatus         pgtype.Text          `json:"housing_status"`
+	HousingDuration       pgtype.Text          `json:"housing_duration"`
+	HousingMonthlyPayment pgtype.Numeric       `json:"housing_monthly_payment"`
+	EmployerName          pgtype.Text          `json:"employer_name"`
+	EmployerAddress       pgtype.Text          `json:"employer_address"`
+	EmployerCity          pgtype.Text          `json:"employer_city"`
+	EmployerState         pgtype.Text          `json:"employer_state"`
+	EmployerZip           pgtype.Text          `json:"employer_zip"`
+	Occupation            pgtype.Text          `json:"occupation"`
+	EmployerPhone         pgtype.Text          `json:"employer_phone"`
 	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
-	EmploymentDuration    sql.NullString       `json:"employment_duration"`
-	GrossMonthlyIncome    sql.NullString       `json:"gross_monthly_income"`
-	OtherMonthlyIncome    sql.NullString       `json:"other_monthly_income"`
-	OtherIncomeSource     sql.NullString       `json:"other_income_source"`
+	EmploymentDuration    pgtype.Text          `json:"employment_duration"`
+	GrossMonthlyIncome    pgtype.Numeric       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    pgtype.Numeric       `json:"other_monthly_income"`
+	OtherIncomeSource     pgtype.Text          `json:"other_income_source"`
 }
 
 func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Client, error) {
-	row := q.db.QueryRowContext(ctx, createClient,
+	row := q.db.QueryRow(ctx, createClient,
 		arg.FirstName,
 		arg.LastName,
 		arg.Phone,
@@ -152,8 +151,8 @@ SELECT id, first_name, last_name, phone, email, source, status, notes, created_a
 WHERE id = $1
 `
 
-func (q *Queries) GetClient(ctx context.Context, id uuid.UUID) (Client, error) {
-	row := q.db.QueryRowContext(ctx, getClient, id)
+func (q *Queries) GetClient(ctx context.Context, id pgtype.UUID) (Client, error) {
+	row := q.db.QueryRow(ctx, getClient, id)
 	var i Client
 	err := row.Scan(
 		&i.ID,
@@ -199,7 +198,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetClientByEmail(ctx context.Context, dollar_1 string) (Client, error) {
-	row := q.db.QueryRowContext(ctx, getClientByEmail, dollar_1)
+	row := q.db.QueryRow(ctx, getClientByEmail, dollar_1)
 	var i Client
 	err := row.Scan(
 		&i.ID,
@@ -244,7 +243,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetClientByPhone(ctx context.Context, phone string) (Client, error) {
-	row := q.db.QueryRowContext(ctx, getClientByPhone, phone)
+	row := q.db.QueryRow(ctx, getClientByPhone, phone)
 	var i Client
 	err := row.Scan(
 		&i.ID,
@@ -294,7 +293,7 @@ type ListClientsParams struct {
 }
 
 func (q *Queries) ListClients(ctx context.Context, arg ListClientsParams) ([]Client, error) {
-	rows, err := q.db.QueryContext(ctx, listClients, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listClients, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -339,9 +338,6 @@ func (q *Queries) ListClients(ctx context.Context, arg ListClientsParams) ([]Cli
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -385,39 +381,39 @@ RETURNING id, first_name, last_name, phone, email, source, status, notes, create
 `
 
 type UpdateClientParams struct {
-	ID                    uuid.UUID            `json:"id"`
+	ID                    pgtype.UUID          `json:"id"`
 	FirstName             string               `json:"first_name"`
 	LastName              string               `json:"last_name"`
 	Phone                 string               `json:"phone"`
 	Email                 string               `json:"email"`
 	Source                NullClientsSource    `json:"source"`
 	Status                ClientStatus         `json:"status"`
-	Notes                 sql.NullString       `json:"notes"`
-	DateOfBirth           sql.NullTime         `json:"date_of_birth"`
-	Address               sql.NullString       `json:"address"`
-	City                  sql.NullString       `json:"city"`
-	State                 sql.NullString       `json:"state"`
-	Zip                   sql.NullString       `json:"zip"`
-	Ssn                   sql.NullString       `json:"ssn"`
-	HousingStatus         sql.NullString       `json:"housing_status"`
-	HousingDuration       sql.NullString       `json:"housing_duration"`
-	HousingMonthlyPayment sql.NullString       `json:"housing_monthly_payment"`
-	EmployerName          sql.NullString       `json:"employer_name"`
-	EmployerAddress       sql.NullString       `json:"employer_address"`
-	EmployerCity          sql.NullString       `json:"employer_city"`
-	EmployerState         sql.NullString       `json:"employer_state"`
-	EmployerZip           sql.NullString       `json:"employer_zip"`
-	Occupation            sql.NullString       `json:"occupation"`
-	EmployerPhone         sql.NullString       `json:"employer_phone"`
+	Notes                 pgtype.Text          `json:"notes"`
+	DateOfBirth           pgtype.Date          `json:"date_of_birth"`
+	Address               pgtype.Text          `json:"address"`
+	City                  pgtype.Text          `json:"city"`
+	State                 pgtype.Text          `json:"state"`
+	Zip                   pgtype.Text          `json:"zip"`
+	Ssn                   pgtype.Text          `json:"ssn"`
+	HousingStatus         pgtype.Text          `json:"housing_status"`
+	HousingDuration       pgtype.Text          `json:"housing_duration"`
+	HousingMonthlyPayment pgtype.Numeric       `json:"housing_monthly_payment"`
+	EmployerName          pgtype.Text          `json:"employer_name"`
+	EmployerAddress       pgtype.Text          `json:"employer_address"`
+	EmployerCity          pgtype.Text          `json:"employer_city"`
+	EmployerState         pgtype.Text          `json:"employer_state"`
+	EmployerZip           pgtype.Text          `json:"employer_zip"`
+	Occupation            pgtype.Text          `json:"occupation"`
+	EmployerPhone         pgtype.Text          `json:"employer_phone"`
 	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
-	EmploymentDuration    sql.NullString       `json:"employment_duration"`
-	GrossMonthlyIncome    sql.NullString       `json:"gross_monthly_income"`
-	OtherMonthlyIncome    sql.NullString       `json:"other_monthly_income"`
-	OtherIncomeSource     sql.NullString       `json:"other_income_source"`
+	EmploymentDuration    pgtype.Text          `json:"employment_duration"`
+	GrossMonthlyIncome    pgtype.Numeric       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    pgtype.Numeric       `json:"other_monthly_income"`
+	OtherIncomeSource     pgtype.Text          `json:"other_income_source"`
 }
 
 func (q *Queries) UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error) {
-	row := q.db.QueryRowContext(ctx, updateClient,
+	row := q.db.QueryRow(ctx, updateClient,
 		arg.ID,
 		arg.FirstName,
 		arg.LastName,

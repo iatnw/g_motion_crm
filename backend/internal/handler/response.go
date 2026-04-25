@@ -1,93 +1,89 @@
 package handler
 
 import (
-	"database/sql"
+	"math"
+	"math/big"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
-
-func ns(n sql.NullString) *string {
-	if !n.Valid {
-		return nil
-	}
-	return &n.String
-}
 
 // --- Client ---
 
 type ClientResponse struct {
-	ID                    string  `json:"id"`
-	FirstName             string  `json:"first_name"`
-	LastName              string  `json:"last_name"`
-	Phone                 string  `json:"phone"`
-	Email                 string  `json:"email"`
-	Source                *string `json:"source"`
-	Status                string  `json:"status"`
-	Notes                 *string `json:"notes"`
-	CreatedAt             string  `json:"created_at"`
-	UpdatedAt             string  `json:"updated_at"`
-	DateOfBirth           *string `json:"date_of_birth"`
-	Address               *string `json:"address"`
-	City                  *string `json:"city"`
-	State                 *string `json:"state"`
-	Zip                   *string `json:"zip"`
-	Ssn                   *string `json:"ssn"`
-	HousingStatus         *string `json:"housing_status"`
-	HousingDuration       *string `json:"housing_duration"`
-	HousingMonthlyPayment *string `json:"housing_monthly_payment"`
-	EmployerName          *string `json:"employer_name"`
-	EmployerAddress       *string `json:"employer_address"`
-	EmployerCity          *string `json:"employer_city"`
-	EmployerState         *string `json:"employer_state"`
-	EmployerZip           *string `json:"employer_zip"`
-	Occupation            *string `json:"occupation"`
-	EmployerPhone         *string `json:"employer_phone"`
-	EmploymentStatus      *string `json:"employment_status"`
-	EmploymentDuration    *string `json:"employment_duration"`
-	GrossMonthlyIncome    *string `json:"gross_monthly_income"`
-	OtherMonthlyIncome    *string `json:"other_monthly_income"`
-	OtherIncomeSource     *string `json:"other_income_source"`
+	ID                    string   `json:"id"`
+	FirstName             string   `json:"first_name"`
+	LastName              string   `json:"last_name"`
+	Phone                 string   `json:"phone"`
+	Email                 string   `json:"email"`
+	Source                *string  `json:"source"`
+	Status                string   `json:"status"`
+	Notes                 *string  `json:"notes"`
+	CreatedAt             string   `json:"created_at"`
+	UpdatedAt             string   `json:"updated_at"`
+	DateOfBirth           *string  `json:"date_of_birth"`
+	Address               *string  `json:"address"`
+	City                  *string  `json:"city"`
+	State                 *string  `json:"state"`
+	Zip                   *string  `json:"zip"`
+	Ssn                   *string  `json:"ssn"`
+	HousingStatus         *string  `json:"housing_status"`
+	HousingDuration       *string  `json:"housing_duration"`
+	HousingMonthlyPayment *float64 `json:"housing_monthly_payment"`
+	EmployerName          *string  `json:"employer_name"`
+	EmployerAddress       *string  `json:"employer_address"`
+	EmployerCity          *string  `json:"employer_city"`
+	EmployerState         *string  `json:"employer_state"`
+	EmployerZip           *string  `json:"employer_zip"`
+	Occupation            *string  `json:"occupation"`
+	EmployerPhone         *string  `json:"employer_phone"`
+	EmploymentStatus      *string  `json:"employment_status"`
+	EmploymentDuration    *string  `json:"employment_duration"`
+	GrossMonthlyIncome    *float64 `json:"gross_monthly_income"`
+	OtherMonthlyIncome    *float64 `json:"other_monthly_income"`
+	OtherIncomeSource     *string  `json:"other_income_source"`
 }
 
 func toClientResponse(c db.Client) ClientResponse {
 	r := ClientResponse{
-		ID:                    c.ID.String(),
+		ID:                    pgUUID(c.ID),
 		FirstName:             c.FirstName,
 		LastName:              c.LastName,
 		Phone:                 c.Phone,
 		Email:                 c.Email,
 		Status:                string(c.Status),
-		Notes:                 ns(c.Notes),
-		CreatedAt:             c.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:             c.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		Address:               ns(c.Address),
-		City:                  ns(c.City),
-		State:                 ns(c.State),
-		Zip:                   ns(c.Zip),
-		Ssn:                   ns(c.Ssn),
-		HousingStatus:         ns(c.HousingStatus),
-		HousingDuration:       ns(c.HousingDuration),
-		HousingMonthlyPayment: ns(c.HousingMonthlyPayment),
-		EmployerName:          ns(c.EmployerName),
-		EmployerAddress:       ns(c.EmployerAddress),
-		EmployerCity:          ns(c.EmployerCity),
-		EmployerState:         ns(c.EmployerState),
-		EmployerZip:           ns(c.EmployerZip),
-		Occupation:            ns(c.Occupation),
-		EmployerPhone:         ns(c.EmployerPhone),
-		EmploymentDuration:    ns(c.EmploymentDuration),
-		GrossMonthlyIncome:    ns(c.GrossMonthlyIncome),
-		OtherMonthlyIncome:    ns(c.OtherMonthlyIncome),
-		OtherIncomeSource:     ns(c.OtherIncomeSource),
+		Notes:                 pgText(c.Notes),
+		CreatedAt:             pgTimestamp(c.CreatedAt),
+		UpdatedAt:             pgTimestamp(c.UpdatedAt),
+		DateOfBirth:           pgDate(c.DateOfBirth),
+		Address:               pgText(c.Address),
+		City:                  pgText(c.City),
+		State:                 pgText(c.State),
+		Zip:                   pgText(c.Zip),
+		Ssn:                   pgText(c.Ssn),
+		HousingStatus:         pgText(c.HousingStatus),
+		HousingDuration:       pgText(c.HousingDuration),
+		HousingMonthlyPayment: pgNumeric(c.HousingMonthlyPayment),
+		EmployerName:          pgText(c.EmployerName),
+		EmployerAddress:       pgText(c.EmployerAddress),
+		EmployerCity:          pgText(c.EmployerCity),
+		EmployerState:         pgText(c.EmployerState),
+		EmployerZip:           pgText(c.EmployerZip),
+		Occupation:            pgText(c.Occupation),
+		EmployerPhone:         pgText(c.EmployerPhone),
+		EmploymentDuration:    pgText(c.EmploymentDuration),
+		GrossMonthlyIncome:    pgNumeric(c.GrossMonthlyIncome),
+		OtherMonthlyIncome:    pgNumeric(c.OtherMonthlyIncome),
+		OtherIncomeSource:     pgText(c.OtherIncomeSource),
 	}
 	if c.Source.Valid {
-		r.Source = new(string(c.Source.ClientsSource))
-	}
-	if c.DateOfBirth.Valid {
-		r.DateOfBirth = new(string(c.DateOfBirth.Time.Format("2006-01-02")))
+		s := string(c.Source.ClientsSource)
+		r.Source = &s
 	}
 	if c.EmploymentStatus.Valid {
-		r.EmploymentStatus = new(string(c.EmploymentStatus.EmploymentStatus))
+		s := string(c.EmploymentStatus.EmploymentStatus)
+		r.EmploymentStatus = &s
 	}
 	return r
 }
@@ -109,82 +105,74 @@ func toClientResponses(cs []db.Client) []ClientResponse {
 // --- Deal ---
 
 type DealResponse struct {
-	ID                       string  `json:"id"`
-	ClientID                 string  `json:"client_id"`
-	BrokerID                 *string `json:"broker_id"`
-	DealerID                 *string `json:"dealer_id"`
-	DealDate                 *string `json:"deal_date"`
-	DealNumber               *string `json:"deal_number"`
-	Vin                      *string `json:"vin"`
-	Make                     *string `json:"make"`
-	Model                    *string `json:"model"`
-	TrimLevel                *string `json:"trim_level"`
-	DownPayment              *string `json:"down_payment"`
-	DownPaymentMethod        *string `json:"down_payment_method"`
-	MonthlyPayment           *string `json:"monthly_payment"`
-	BrokerFee                *string `json:"broker_fee"`
-	BrokerPercent            *string `json:"broker_percent"`
-	BrokerCommission         *string `json:"broker_commission"`
-	BrokerCommissionStatus   *string `json:"broker_commission_status"`
-	BrokerCommissionPaidDate *string `json:"broker_commission_paid_date"`
-	ReferralAmount           *string `json:"referral_amount"`
-	YourNet                  *string `json:"your_net"`
-	BrokerFeeStatus          *string `json:"broker_fee_status"`
-	BrokerFeePaidDate        *string `json:"broker_fee_paid_date"`
-	ReferralStatus           *string `json:"referral_status"`
-	ReferralPaidDate         *string `json:"referral_paid_date"`
-	CreatedAt                string  `json:"created_at"`
-	UpdatedAt                string  `json:"updated_at"`
+	ID                       string   `json:"id"`
+	ClientID                 string   `json:"client_id"`
+	BrokerID                 *string  `json:"broker_id"`
+	DealerID                 *string  `json:"dealer_id"`
+	DealDate                 *string  `json:"deal_date"`
+	DealNumber               *string  `json:"deal_number"`
+	Vin                      *string  `json:"vin"`
+	Make                     *string  `json:"make"`
+	Model                    *string  `json:"model"`
+	TrimLevel                *string  `json:"trim_level"`
+	DownPayment              *float64 `json:"down_payment"`
+	DownPaymentMethod        *string  `json:"down_payment_method"`
+	MonthlyPayment           *float64 `json:"monthly_payment"`
+	BrokerFee                *float64 `json:"broker_fee"`
+	BrokerPercent            *float64 `json:"broker_percent"`
+	BrokerCommission         *float64 `json:"broker_commission"`
+	BrokerCommissionStatus   *string  `json:"broker_commission_status"`
+	BrokerCommissionPaidDate *string  `json:"broker_commission_paid_date"`
+	ReferralAmount           *float64 `json:"referral_amount"`
+	YourNet                  *float64 `json:"your_net"`
+	BrokerFeeStatus          *string  `json:"broker_fee_status"`
+	BrokerFeePaidDate        *string  `json:"broker_fee_paid_date"`
+	ReferralStatus           *string  `json:"referral_status"`
+	ReferralPaidDate         *string  `json:"referral_paid_date"`
+	CreatedAt                string   `json:"created_at"`
+	UpdatedAt                string   `json:"updated_at"`
 }
 
 func toDealResponse(d db.Deal) DealResponse {
 	r := DealResponse{
-		ID:               d.ID.String(),
-		ClientID:         d.ClientID.String(),
-		DealNumber:       ns(d.DealNumber),
-		Vin:              ns(d.Vin),
-		Make:             ns(d.Make),
-		Model:            ns(d.Model),
-		TrimLevel:        ns(d.TrimLevel),
-		DownPayment:      ns(d.DownPayment),
-		MonthlyPayment:   ns(d.MonthlyPayment),
-		BrokerFee:        ns(d.BrokerFee),
-		BrokerPercent:    ns(d.BrokerPercent),
-		BrokerCommission: ns(d.BrokerCommission),
-		ReferralAmount:   ns(d.ReferralAmount),
-		YourNet:          ns(d.YourNet),
-		CreatedAt:        d.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:        d.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-	}
-	if d.BrokerID.Valid {
-		r.BrokerID = new(d.BrokerID.UUID.String())
-	}
-	if d.DealerID.Valid {
-		r.DealerID = new(d.DealerID.UUID.String())
-	}
-	if d.DealDate.Valid {
-		r.DealDate = new(d.DealDate.Time.Format("2006-01-02"))
+		ID:                       pgUUID(d.ID),
+		ClientID:                 pgUUID(d.ClientID),
+		BrokerID:                 pgNullUUID(d.BrokerID),
+		DealerID:                 pgNullUUID(d.DealerID),
+		DealDate:                 pgDate(d.DealDate),
+		DealNumber:               pgText(d.DealNumber),
+		Vin:                      pgText(d.Vin),
+		Make:                     pgText(d.Make),
+		Model:                    pgText(d.Model),
+		TrimLevel:                pgText(d.TrimLevel),
+		DownPayment:              pgNumeric(d.DownPayment),
+		MonthlyPayment:           pgNumeric(d.MonthlyPayment),
+		BrokerFee:                pgNumeric(d.BrokerFee),
+		BrokerPercent:            pgNumeric(d.BrokerPercent),
+		BrokerCommission:         pgNumeric(d.BrokerCommission),
+		BrokerCommissionPaidDate: pgDate(d.BrokerCommissionPaidDate),
+		ReferralAmount:           pgNumeric(d.ReferralAmount),
+		YourNet:                  pgNumeric(d.YourNet),
+		BrokerFeePaidDate:        pgDate(d.BrokerFeePaidDate),
+		ReferralPaidDate:         pgDate(d.ReferralPaidDate),
+		CreatedAt:                pgTimestamp(d.CreatedAt),
+		UpdatedAt:                pgTimestamp(d.UpdatedAt),
 	}
 	if d.DownPaymentMethod.Valid {
-		r.DownPaymentMethod = new(string(d.DownPaymentMethod.DownPaymentMethod))
+		s := string(d.DownPaymentMethod.DownPaymentMethod)
+		r.DownPaymentMethod = &s
 	}
 	if d.BrokerCommissionStatus.Valid {
-		r.BrokerCommissionStatus = new(string(d.BrokerCommissionStatus.PaymentStatus))
-	}
-	if d.BrokerCommissionPaidDate.Valid {
-		r.BrokerCommissionPaidDate = new(d.BrokerCommissionPaidDate.Time.Format("2006-01-02"))
+		s := string(d.BrokerCommissionStatus.PaymentStatus)
+		r.BrokerCommissionStatus = &s
 	}
 	if d.BrokerFeeStatus.Valid {
-		r.BrokerFeeStatus = new(string(d.BrokerFeeStatus.PaymentStatus))
-	}
-	if d.BrokerFeePaidDate.Valid {
-		r.BrokerFeePaidDate = new(d.BrokerFeePaidDate.Time.Format("2006-01-02"))
+		s := string(d.BrokerFeeStatus.PaymentStatus)
+		r.BrokerFeeStatus = &s
 	}
 	if d.ReferralStatus.Valid {
-		r.ReferralStatus = new(string(d.ReferralStatus.ReferralStatus))
-	}
-	if d.ReferralPaidDate.Valid {
-		r.ReferralPaidDate = new(d.ReferralPaidDate.Time.Format("2006-01-02"))
+		s := string(d.ReferralStatus.ReferralStatus)
+		r.ReferralStatus = &s
 	}
 	return r
 }
@@ -212,14 +200,14 @@ type BrokerResponse struct {
 
 func toBrokerResponse(b db.Broker) BrokerResponse {
 	return BrokerResponse{
-		ID:        b.ID.String(),
+		ID:        pgUUID(b.ID),
 		FirstName: b.FirstName,
 		LastName:  b.LastName,
-		Phone:     ns(b.Phone),
-		Email:     ns(b.Email),
-		Notes:     ns(b.Notes),
-		CreatedAt: b.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: b.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Phone:     pgText(b.Phone),
+		Email:     pgText(b.Email),
+		Notes:     pgText(b.Notes),
+		CreatedAt: pgTimestamp(b.CreatedAt),
+		UpdatedAt: pgTimestamp(b.UpdatedAt),
 	}
 }
 
@@ -246,14 +234,14 @@ type DealerResponse struct {
 
 func toDealerResponse(d db.Dealer) DealerResponse {
 	return DealerResponse{
-		ID:            d.ID.String(),
+		ID:            pgUUID(d.ID),
 		Name:          d.Name,
-		ContactPerson: ns(d.ContactPerson),
-		Phone:         ns(d.Phone),
-		Address:       ns(d.Address),
-		Notes:         ns(d.Notes),
-		CreatedAt:     d.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:     d.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ContactPerson: pgText(d.ContactPerson),
+		Phone:         pgText(d.Phone),
+		Address:       pgText(d.Address),
+		Notes:         pgText(d.Notes),
+		CreatedAt:     pgTimestamp(d.CreatedAt),
+		UpdatedAt:     pgTimestamp(d.UpdatedAt),
 	}
 }
 
@@ -279,23 +267,16 @@ type DocumentResponse struct {
 }
 
 func toDocumentResponse(d db.Document) DocumentResponse {
-	r := DocumentResponse{
-		ID:           d.ID.String(),
-		S3Key:        d.S3Key,
-		FileName:     d.FileName,
-		DocumentType: string(d.DocumentType),
-		UploadedAt:   d.UploadedAt.Format("2006-01-02T15:04:05Z07:00"),
+	return DocumentResponse{
+		ID:            pgUUID(d.ID),
+		DealID:        pgNullUUID(d.DealID),
+		ClientID:      pgNullUUID(d.ClientID),
+		S3Key:         d.S3Key,
+		FileName:      d.FileName,
+		FileSizeBytes: pgInt4(d.FileSizeBytes),
+		DocumentType:  string(d.DocumentType),
+		UploadedAt:    pgTimestamp(d.UploadedAt),
 	}
-	if d.DealID.Valid {
-		r.DealID = new(d.DealID.UUID.String())
-	}
-	if d.ClientID.Valid {
-		r.ClientID = new(d.ClientID.UUID.String())
-	}
-	if d.FileSizeBytes.Valid {
-		r.FileSizeBytes = &d.FileSizeBytes.Int32
-	}
-	return r
 }
 
 func toDocumentResponses(ds []db.Document) []DocumentResponse {
@@ -304,4 +285,55 @@ func toDocumentResponses(ds []db.Document) []DocumentResponse {
 		out[i] = toDocumentResponse(d)
 	}
 	return out
+}
+
+// --- pgtype helpers ---
+
+func pgText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
+}
+
+func pgUUID(u pgtype.UUID) string {
+	return uuid.UUID(u.Bytes).String()
+}
+
+func pgNullUUID(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := uuid.UUID(u.Bytes).String()
+	return &s
+}
+
+func pgTimestamp(t pgtype.Timestamptz) string {
+	return t.Time.Format("2006-01-02T15:04:05Z07:00")
+}
+
+func pgDate(d pgtype.Date) *string {
+	if !d.Valid {
+		return nil
+	}
+	s := d.Time.Format("2006-01-02")
+	return &s
+}
+
+func pgNumeric(n pgtype.Numeric) *float64 {
+	if !n.Valid || n.NaN || n.Int == nil {
+		return nil
+	}
+	f, _ := new(big.Float).SetInt(n.Int).Float64()
+	if n.Exp != 0 {
+		f *= math.Pow10(int(n.Exp))
+	}
+	return &f
+}
+
+func pgInt4(n pgtype.Int4) *int32 {
+	if !n.Valid {
+		return nil
+	}
+	return &n.Int32
 }

@@ -51,7 +51,7 @@ func main() {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
-	queries := db.New(sqlDB)
+	queries := db.New(pool)
 
 	encryptionKey, err := hex.DecodeString(cfg.App.EncryptionKey)
 	if err != nil {
@@ -75,7 +75,7 @@ func main() {
 	clientService := service.NewClient(queries, encryptionKey)
 	dealerService := service.NewDealer(queries)
 	documentService := service.NewDocument(queries, s3Client)
-	tallyService := service.NewTally(clientService, documentService, dealService, queries, sqlDB)
+	tallyService := service.NewTally(clientService, documentService, dealService, queries, pool)
 
 	authHandler := handler.NewAuthHandler(authService)
 	brokerHandler := handler.NewBrokerHandler(brokerService)

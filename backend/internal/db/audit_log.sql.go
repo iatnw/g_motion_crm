@@ -7,10 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAuditLog = `-- name: CreateAuditLog :one
@@ -25,16 +23,16 @@ INSERT INTO audit_logs (
 `
 
 type CreateAuditLogParams struct {
-	EntityType    string                `json:"entity_type"`
-	EntityID      uuid.UUID             `json:"entity_id"`
-	Action        string                `json:"action"`
-	ChangedFields pqtype.NullRawMessage `json:"changed_fields"`
-	IpAddress     sql.NullString        `json:"ip_address"`
-	UserAgent     sql.NullString        `json:"user_agent"`
+	EntityType    string      `json:"entity_type"`
+	EntityID      pgtype.UUID `json:"entity_id"`
+	Action        string      `json:"action"`
+	ChangedFields []byte      `json:"changed_fields"`
+	IpAddress     pgtype.Text `json:"ip_address"`
+	UserAgent     pgtype.Text `json:"user_agent"`
 }
 
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error) {
-	row := q.db.QueryRowContext(ctx, createAuditLog,
+	row := q.db.QueryRow(ctx, createAuditLog,
 		arg.EntityType,
 		arg.EntityID,
 		arg.Action,
@@ -63,12 +61,12 @@ ORDER BY created_at DESC
 `
 
 type ListAuditLogsByEntityParams struct {
-	EntityID   uuid.UUID `json:"entity_id"`
-	EntityType string    `json:"entity_type"`
+	EntityID   pgtype.UUID `json:"entity_id"`
+	EntityType string      `json:"entity_type"`
 }
 
 func (q *Queries) ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error) {
-	rows, err := q.db.QueryContext(ctx, listAuditLogsByEntity, arg.EntityID, arg.EntityType)
+	rows, err := q.db.Query(ctx, listAuditLogsByEntity, arg.EntityID, arg.EntityType)
 	if err != nil {
 		return nil, err
 	}
@@ -89,9 +87,6 @@ func (q *Queries) ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsBy
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

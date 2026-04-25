@@ -7,9 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createBroker = `-- name: CreateBroker :one
@@ -23,15 +22,15 @@ INSERT INTO brokers (
 `
 
 type CreateBrokerParams struct {
-	FirstName string         `json:"first_name"`
-	LastName  string         `json:"last_name"`
-	Phone     sql.NullString `json:"phone"`
-	Email     sql.NullString `json:"email"`
-	Notes     sql.NullString `json:"notes"`
+	FirstName string      `json:"first_name"`
+	LastName  string      `json:"last_name"`
+	Phone     pgtype.Text `json:"phone"`
+	Email     pgtype.Text `json:"email"`
+	Notes     pgtype.Text `json:"notes"`
 }
 
 func (q *Queries) CreateBroker(ctx context.Context, arg CreateBrokerParams) (Broker, error) {
-	row := q.db.QueryRowContext(ctx, createBroker,
+	row := q.db.QueryRow(ctx, createBroker,
 		arg.FirstName,
 		arg.LastName,
 		arg.Phone,
@@ -58,8 +57,8 @@ WHERE id = $1
 RETURNING id, first_name, last_name, phone, email, notes, created_at, updated_at
 `
 
-func (q *Queries) DeleteBroker(ctx context.Context, id uuid.UUID) (Broker, error) {
-	row := q.db.QueryRowContext(ctx, deleteBroker, id)
+func (q *Queries) DeleteBroker(ctx context.Context, id pgtype.UUID) (Broker, error) {
+	row := q.db.QueryRow(ctx, deleteBroker, id)
 	var i Broker
 	err := row.Scan(
 		&i.ID,
@@ -79,8 +78,8 @@ SELECT id, first_name, last_name, phone, email, notes, created_at, updated_at FR
 WHERE id = $1
 `
 
-func (q *Queries) GetBroker(ctx context.Context, id uuid.UUID) (Broker, error) {
-	row := q.db.QueryRowContext(ctx, getBroker, id)
+func (q *Queries) GetBroker(ctx context.Context, id pgtype.UUID) (Broker, error) {
+	row := q.db.QueryRow(ctx, getBroker, id)
 	var i Broker
 	err := row.Scan(
 		&i.ID,
@@ -107,7 +106,7 @@ type ListBrokersParams struct {
 }
 
 func (q *Queries) ListBrokers(ctx context.Context, arg ListBrokersParams) ([]Broker, error) {
-	rows, err := q.db.QueryContext(ctx, listBrokers, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listBrokers, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +128,6 @@ func (q *Queries) ListBrokers(ctx context.Context, arg ListBrokersParams) ([]Bro
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -152,16 +148,16 @@ RETURNING id, first_name, last_name, phone, email, notes, created_at, updated_at
 `
 
 type UpdateBrokerParams struct {
-	ID        uuid.UUID      `json:"id"`
-	FirstName string         `json:"first_name"`
-	LastName  string         `json:"last_name"`
-	Phone     sql.NullString `json:"phone"`
-	Email     sql.NullString `json:"email"`
-	Notes     sql.NullString `json:"notes"`
+	ID        pgtype.UUID `json:"id"`
+	FirstName string      `json:"first_name"`
+	LastName  string      `json:"last_name"`
+	Phone     pgtype.Text `json:"phone"`
+	Email     pgtype.Text `json:"email"`
+	Notes     pgtype.Text `json:"notes"`
 }
 
 func (q *Queries) UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error) {
-	row := q.db.QueryRowContext(ctx, updateBroker,
+	row := q.db.QueryRow(ctx, updateBroker,
 		arg.ID,
 		arg.FirstName,
 		arg.LastName,

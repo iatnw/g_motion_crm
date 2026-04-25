@@ -7,9 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createDocument = `-- name: CreateDocument :one
@@ -24,16 +23,16 @@ INSERT INTO documents (
 `
 
 type CreateDocumentParams struct {
-	DealID        uuid.NullUUID `json:"deal_id"`
-	ClientID      uuid.NullUUID `json:"client_id"`
-	S3Key         string        `json:"s3_key"`
-	FileName      string        `json:"file_name"`
-	FileSizeBytes sql.NullInt32 `json:"file_size_bytes"`
-	DocumentType  DocumentType  `json:"document_type"`
+	DealID        pgtype.UUID  `json:"deal_id"`
+	ClientID      pgtype.UUID  `json:"client_id"`
+	S3Key         string       `json:"s3_key"`
+	FileName      string       `json:"file_name"`
+	FileSizeBytes pgtype.Int4  `json:"file_size_bytes"`
+	DocumentType  DocumentType `json:"document_type"`
 }
 
 func (q *Queries) CreateDocument(ctx context.Context, arg CreateDocumentParams) (Document, error) {
-	row := q.db.QueryRowContext(ctx, createDocument,
+	row := q.db.QueryRow(ctx, createDocument,
 		arg.DealID,
 		arg.ClientID,
 		arg.S3Key,
@@ -61,8 +60,8 @@ WHERE id = $1
 RETURNING id, deal_id, client_id, s3_key, file_name, file_size_bytes, document_type, uploaded_at
 `
 
-func (q *Queries) DeleteDocument(ctx context.Context, id uuid.UUID) (Document, error) {
-	row := q.db.QueryRowContext(ctx, deleteDocument, id)
+func (q *Queries) DeleteDocument(ctx context.Context, id pgtype.UUID) (Document, error) {
+	row := q.db.QueryRow(ctx, deleteDocument, id)
 	var i Document
 	err := row.Scan(
 		&i.ID,
@@ -82,8 +81,8 @@ SELECT id, deal_id, client_id, s3_key, file_name, file_size_bytes, document_type
 WHERE id = $1
 `
 
-func (q *Queries) GetDocument(ctx context.Context, id uuid.UUID) (Document, error) {
-	row := q.db.QueryRowContext(ctx, getDocument, id)
+func (q *Queries) GetDocument(ctx context.Context, id pgtype.UUID) (Document, error) {
+	row := q.db.QueryRow(ctx, getDocument, id)
 	var i Document
 	err := row.Scan(
 		&i.ID,
@@ -103,8 +102,8 @@ SELECT id, deal_id, client_id, s3_key, file_name, file_size_bytes, document_type
 WHERE documents.client_id = $1
 `
 
-func (q *Queries) ListDocumentsByClient(ctx context.Context, clientID uuid.NullUUID) ([]Document, error) {
-	rows, err := q.db.QueryContext(ctx, listDocumentsByClient, clientID)
+func (q *Queries) ListDocumentsByClient(ctx context.Context, clientID pgtype.UUID) ([]Document, error) {
+	rows, err := q.db.Query(ctx, listDocumentsByClient, clientID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +124,6 @@ func (q *Queries) ListDocumentsByClient(ctx context.Context, clientID uuid.NullU
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -140,8 +136,8 @@ SELECT id, deal_id, client_id, s3_key, file_name, file_size_bytes, document_type
 WHERE documents.deal_id = $1
 `
 
-func (q *Queries) ListDocumentsByDeal(ctx context.Context, dealID uuid.NullUUID) ([]Document, error) {
-	rows, err := q.db.QueryContext(ctx, listDocumentsByDeal, dealID)
+func (q *Queries) ListDocumentsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Document, error) {
+	rows, err := q.db.Query(ctx, listDocumentsByDeal, dealID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,9 +158,6 @@ func (q *Queries) ListDocumentsByDeal(ctx context.Context, dealID uuid.NullUUID)
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

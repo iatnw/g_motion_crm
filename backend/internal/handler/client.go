@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -37,19 +37,19 @@ type clientRequest struct {
 	Ssn                   *string `json:"ssn"`
 	HousingStatus         *string `json:"housing_status"`
 	HousingDuration       *string `json:"housing_duration"`
-	HousingMonthlyPayment *string `json:"housing_monthly_payment"`
-	EmployerName          *string `json:"employer_name"`
-	EmployerAddress       *string `json:"employer_address"`
-	EmployerCity          *string `json:"employer_city"`
-	EmployerState         *string `json:"employer_state"`
-	EmployerZip           *string `json:"employer_zip"`
-	Occupation            *string `json:"occupation"`
-	EmployerPhone         *string `json:"employer_phone"`
-	EmploymentStatus      *string `json:"employment_status"`
-	EmploymentDuration    *string `json:"employment_duration"`
-	GrossMonthlyIncome    *string `json:"gross_monthly_income"`
-	OtherMonthlyIncome    *string `json:"other_monthly_income"`
-	OtherIncomeSource     *string `json:"other_income_source"`
+	HousingMonthlyPayment *float64 `json:"housing_monthly_payment"`
+	EmployerName          *string  `json:"employer_name"`
+	EmployerAddress       *string  `json:"employer_address"`
+	EmployerCity          *string  `json:"employer_city"`
+	EmployerState         *string  `json:"employer_state"`
+	EmployerZip           *string  `json:"employer_zip"`
+	Occupation            *string  `json:"occupation"`
+	EmployerPhone         *string  `json:"employer_phone"`
+	EmploymentStatus      *string  `json:"employment_status"`
+	EmploymentDuration    *string  `json:"employment_duration"`
+	GrossMonthlyIncome    *float64 `json:"gross_monthly_income"`
+	OtherMonthlyIncome    *float64 `json:"other_monthly_income"`
+	OtherIncomeSource     *string  `json:"other_income_source"`
 }
 
 func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -91,28 +91,28 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Email:                 req.Email,
 		Status:                db.ClientStatus(req.Status),
 		Source:                source,
-		Notes:                 nullString(req.Notes),
+		Notes:                 req.Notes,
 		DateOfBirth:           dob,
-		Address:               nullString(req.Address),
-		City:                  nullString(req.City),
-		State:                 nullString(req.State),
-		Zip:                   nullString(req.Zip),
-		Ssn:                   nullString(req.Ssn),
-		HousingStatus:         nullString(req.HousingStatus),
-		HousingDuration:       nullString(req.HousingDuration),
-		HousingMonthlyPayment: nullString(req.HousingMonthlyPayment),
-		EmployerName:          nullString(req.EmployerName),
-		EmployerAddress:       nullString(req.EmployerAddress),
-		EmployerCity:          nullString(req.EmployerCity),
-		EmployerState:         nullString(req.EmployerState),
-		EmployerZip:           nullString(req.EmployerZip),
-		Occupation:            nullString(req.Occupation),
-		EmployerPhone:         nullString(req.EmployerPhone),
+		Address:               req.Address,
+		City:                  req.City,
+		State:                 req.State,
+		Zip:                   req.Zip,
+		Ssn:                   req.Ssn,
+		HousingStatus:         req.HousingStatus,
+		HousingDuration:       req.HousingDuration,
+		HousingMonthlyPayment: req.HousingMonthlyPayment,
+		EmployerName:          req.EmployerName,
+		EmployerAddress:       req.EmployerAddress,
+		EmployerCity:          req.EmployerCity,
+		EmployerState:         req.EmployerState,
+		EmployerZip:           req.EmployerZip,
+		Occupation:            req.Occupation,
+		EmployerPhone:         req.EmployerPhone,
 		EmploymentStatus:      employmentStatus,
-		EmploymentDuration:    nullString(req.EmploymentDuration),
-		GrossMonthlyIncome:    nullString(req.GrossMonthlyIncome),
-		OtherMonthlyIncome:    nullString(req.OtherMonthlyIncome),
-		OtherIncomeSource:     nullString(req.OtherIncomeSource),
+		EmploymentDuration:    req.EmploymentDuration,
+		GrossMonthlyIncome:    req.GrossMonthlyIncome,
+		OtherMonthlyIncome:    req.OtherMonthlyIncome,
+		OtherIncomeSource:     req.OtherIncomeSource,
 	})
 	if err != nil {
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
@@ -137,7 +137,7 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.client.Get(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -209,28 +209,28 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Email:                 req.Email,
 		Status:                db.ClientStatus(req.Status),
 		Source:                source,
-		Notes:                 nullString(req.Notes),
+		Notes:                 req.Notes,
 		DateOfBirth:           dob,
-		Address:               nullString(req.Address),
-		City:                  nullString(req.City),
-		State:                 nullString(req.State),
-		Zip:                   nullString(req.Zip),
-		Ssn:                   nullString(req.Ssn),
-		HousingStatus:         nullString(req.HousingStatus),
-		HousingDuration:       nullString(req.HousingDuration),
-		HousingMonthlyPayment: nullString(req.HousingMonthlyPayment),
-		EmployerName:          nullString(req.EmployerName),
-		EmployerAddress:       nullString(req.EmployerAddress),
-		EmployerCity:          nullString(req.EmployerCity),
-		EmployerState:         nullString(req.EmployerState),
-		EmployerZip:           nullString(req.EmployerZip),
-		Occupation:            nullString(req.Occupation),
-		EmployerPhone:         nullString(req.EmployerPhone),
+		Address:               req.Address,
+		City:                  req.City,
+		State:                 req.State,
+		Zip:                   req.Zip,
+		Ssn:                   req.Ssn,
+		HousingStatus:         req.HousingStatus,
+		HousingDuration:       req.HousingDuration,
+		HousingMonthlyPayment: req.HousingMonthlyPayment,
+		EmployerName:          req.EmployerName,
+		EmployerAddress:       req.EmployerAddress,
+		EmployerCity:          req.EmployerCity,
+		EmployerState:         req.EmployerState,
+		EmployerZip:           req.EmployerZip,
+		Occupation:            req.Occupation,
+		EmployerPhone:         req.EmployerPhone,
 		EmploymentStatus:      employmentStatus,
-		EmploymentDuration:    nullString(req.EmploymentDuration),
-		GrossMonthlyIncome:    nullString(req.GrossMonthlyIncome),
-		OtherMonthlyIncome:    nullString(req.OtherMonthlyIncome),
-		OtherIncomeSource:     nullString(req.OtherIncomeSource),
+		EmploymentDuration:    req.EmploymentDuration,
+		GrossMonthlyIncome:    req.GrossMonthlyIncome,
+		OtherMonthlyIncome:    req.OtherMonthlyIncome,
+		OtherIncomeSource:     req.OtherIncomeSource,
 	})
 	if err != nil {
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {

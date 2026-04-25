@@ -5,13 +5,10 @@
 package db
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"time"
 
-	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ClientStatus string
@@ -320,116 +317,116 @@ func (ns NullReferralStatus) Value() (driver.Value, error) {
 }
 
 type AuditLog struct {
-	ID            int64                 `json:"id"`
-	EntityType    string                `json:"entity_type"`
-	EntityID      uuid.UUID             `json:"entity_id"`
-	Action        string                `json:"action"`
-	ChangedFields pqtype.NullRawMessage `json:"changed_fields"`
-	IpAddress     sql.NullString        `json:"ip_address"`
-	UserAgent     sql.NullString        `json:"user_agent"`
-	CreatedAt     time.Time             `json:"created_at"`
+	ID            int64              `json:"id"`
+	EntityType    string             `json:"entity_type"`
+	EntityID      pgtype.UUID        `json:"entity_id"`
+	Action        string             `json:"action"`
+	ChangedFields []byte             `json:"changed_fields"`
+	IpAddress     pgtype.Text        `json:"ip_address"`
+	UserAgent     pgtype.Text        `json:"user_agent"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type Broker struct {
-	ID        uuid.UUID      `json:"id"`
-	FirstName string         `json:"first_name"`
-	LastName  string         `json:"last_name"`
-	Phone     sql.NullString `json:"phone"`
-	Email     sql.NullString `json:"email"`
-	Notes     sql.NullString `json:"notes"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID        pgtype.UUID        `json:"id"`
+	FirstName string             `json:"first_name"`
+	LastName  string             `json:"last_name"`
+	Phone     pgtype.Text        `json:"phone"`
+	Email     pgtype.Text        `json:"email"`
+	Notes     pgtype.Text        `json:"notes"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Client struct {
-	ID                    uuid.UUID            `json:"id"`
+	ID                    pgtype.UUID          `json:"id"`
 	FirstName             string               `json:"first_name"`
 	LastName              string               `json:"last_name"`
 	Phone                 string               `json:"phone"`
 	Email                 string               `json:"email"`
 	Source                NullClientsSource    `json:"source"`
 	Status                ClientStatus         `json:"status"`
-	Notes                 sql.NullString       `json:"notes"`
-	CreatedAt             time.Time            `json:"created_at"`
-	UpdatedAt             time.Time            `json:"updated_at"`
-	DateOfBirth           sql.NullTime         `json:"date_of_birth"`
-	Address               sql.NullString       `json:"address"`
-	City                  sql.NullString       `json:"city"`
-	State                 sql.NullString       `json:"state"`
-	Zip                   sql.NullString       `json:"zip"`
-	Ssn                   sql.NullString       `json:"ssn"`
-	HousingStatus         sql.NullString       `json:"housing_status"`
-	HousingDuration       sql.NullString       `json:"housing_duration"`
-	HousingMonthlyPayment sql.NullString       `json:"housing_monthly_payment"`
-	EmployerName          sql.NullString       `json:"employer_name"`
-	EmployerAddress       sql.NullString       `json:"employer_address"`
-	EmployerCity          sql.NullString       `json:"employer_city"`
-	EmployerState         sql.NullString       `json:"employer_state"`
-	EmployerZip           sql.NullString       `json:"employer_zip"`
-	Occupation            sql.NullString       `json:"occupation"`
-	EmployerPhone         sql.NullString       `json:"employer_phone"`
+	Notes                 pgtype.Text          `json:"notes"`
+	CreatedAt             pgtype.Timestamptz   `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz   `json:"updated_at"`
+	DateOfBirth           pgtype.Date          `json:"date_of_birth"`
+	Address               pgtype.Text          `json:"address"`
+	City                  pgtype.Text          `json:"city"`
+	State                 pgtype.Text          `json:"state"`
+	Zip                   pgtype.Text          `json:"zip"`
+	Ssn                   pgtype.Text          `json:"ssn"`
+	HousingStatus         pgtype.Text          `json:"housing_status"`
+	HousingDuration       pgtype.Text          `json:"housing_duration"`
+	HousingMonthlyPayment pgtype.Numeric       `json:"housing_monthly_payment"`
+	EmployerName          pgtype.Text          `json:"employer_name"`
+	EmployerAddress       pgtype.Text          `json:"employer_address"`
+	EmployerCity          pgtype.Text          `json:"employer_city"`
+	EmployerState         pgtype.Text          `json:"employer_state"`
+	EmployerZip           pgtype.Text          `json:"employer_zip"`
+	Occupation            pgtype.Text          `json:"occupation"`
+	EmployerPhone         pgtype.Text          `json:"employer_phone"`
 	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
-	EmploymentDuration    sql.NullString       `json:"employment_duration"`
-	GrossMonthlyIncome    sql.NullString       `json:"gross_monthly_income"`
-	OtherMonthlyIncome    sql.NullString       `json:"other_monthly_income"`
-	OtherIncomeSource     sql.NullString       `json:"other_income_source"`
+	EmploymentDuration    pgtype.Text          `json:"employment_duration"`
+	GrossMonthlyIncome    pgtype.Numeric       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    pgtype.Numeric       `json:"other_monthly_income"`
+	OtherIncomeSource     pgtype.Text          `json:"other_income_source"`
 }
 
 type Deal struct {
-	ID                       uuid.UUID             `json:"id"`
-	ClientID                 uuid.UUID             `json:"client_id"`
-	BrokerID                 uuid.NullUUID         `json:"broker_id"`
-	DealerID                 uuid.NullUUID         `json:"dealer_id"`
-	DealDate                 sql.NullTime          `json:"deal_date"`
-	DealNumber               sql.NullString        `json:"deal_number"`
-	Vin                      sql.NullString        `json:"vin"`
-	Make                     sql.NullString        `json:"make"`
-	Model                    sql.NullString        `json:"model"`
-	TrimLevel                sql.NullString        `json:"trim_level"`
-	DownPayment              sql.NullString        `json:"down_payment"`
+	ID                       pgtype.UUID           `json:"id"`
+	ClientID                 pgtype.UUID           `json:"client_id"`
+	BrokerID                 pgtype.UUID           `json:"broker_id"`
+	DealerID                 pgtype.UUID           `json:"dealer_id"`
+	DealDate                 pgtype.Date           `json:"deal_date"`
+	DealNumber               pgtype.Text           `json:"deal_number"`
+	Vin                      pgtype.Text           `json:"vin"`
+	Make                     pgtype.Text           `json:"make"`
+	Model                    pgtype.Text           `json:"model"`
+	TrimLevel                pgtype.Text           `json:"trim_level"`
+	DownPayment              pgtype.Numeric        `json:"down_payment"`
 	DownPaymentMethod        NullDownPaymentMethod `json:"down_payment_method"`
-	MonthlyPayment           sql.NullString        `json:"monthly_payment"`
-	BrokerFee                sql.NullString        `json:"broker_fee"`
-	BrokerPercent            sql.NullString        `json:"broker_percent"`
-	BrokerCommission         sql.NullString        `json:"broker_commission"`
+	MonthlyPayment           pgtype.Numeric        `json:"monthly_payment"`
+	BrokerFee                pgtype.Numeric        `json:"broker_fee"`
+	BrokerPercent            pgtype.Numeric        `json:"broker_percent"`
+	BrokerCommission         pgtype.Numeric        `json:"broker_commission"`
 	BrokerCommissionStatus   NullPaymentStatus     `json:"broker_commission_status"`
-	BrokerCommissionPaidDate sql.NullTime          `json:"broker_commission_paid_date"`
-	ReferralAmount           sql.NullString        `json:"referral_amount"`
-	YourNet                  sql.NullString        `json:"your_net"`
+	BrokerCommissionPaidDate pgtype.Date           `json:"broker_commission_paid_date"`
+	ReferralAmount           pgtype.Numeric        `json:"referral_amount"`
+	YourNet                  pgtype.Numeric        `json:"your_net"`
 	BrokerFeeStatus          NullPaymentStatus     `json:"broker_fee_status"`
-	BrokerFeePaidDate        sql.NullTime          `json:"broker_fee_paid_date"`
+	BrokerFeePaidDate        pgtype.Date           `json:"broker_fee_paid_date"`
 	ReferralStatus           NullReferralStatus    `json:"referral_status"`
-	ReferralPaidDate         sql.NullTime          `json:"referral_paid_date"`
-	CreatedAt                time.Time             `json:"created_at"`
-	UpdatedAt                time.Time             `json:"updated_at"`
+	ReferralPaidDate         pgtype.Date           `json:"referral_paid_date"`
+	CreatedAt                pgtype.Timestamptz    `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz    `json:"updated_at"`
 }
 
 type Dealer struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	ContactPerson sql.NullString `json:"contact_person"`
-	Phone         sql.NullString `json:"phone"`
-	Address       sql.NullString `json:"address"`
-	Notes         sql.NullString `json:"notes"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID            pgtype.UUID        `json:"id"`
+	Name          string             `json:"name"`
+	ContactPerson pgtype.Text        `json:"contact_person"`
+	Phone         pgtype.Text        `json:"phone"`
+	Address       pgtype.Text        `json:"address"`
+	Notes         pgtype.Text        `json:"notes"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Document struct {
-	ID            uuid.UUID     `json:"id"`
-	DealID        uuid.NullUUID `json:"deal_id"`
-	ClientID      uuid.NullUUID `json:"client_id"`
-	S3Key         string        `json:"s3_key"`
-	FileName      string        `json:"file_name"`
-	FileSizeBytes sql.NullInt32 `json:"file_size_bytes"`
-	DocumentType  DocumentType  `json:"document_type"`
-	UploadedAt    time.Time     `json:"uploaded_at"`
+	ID            pgtype.UUID        `json:"id"`
+	DealID        pgtype.UUID        `json:"deal_id"`
+	ClientID      pgtype.UUID        `json:"client_id"`
+	S3Key         string             `json:"s3_key"`
+	FileName      string             `json:"file_name"`
+	FileSizeBytes pgtype.Int4        `json:"file_size_bytes"`
+	DocumentType  DocumentType       `json:"document_type"`
+	UploadedAt    pgtype.Timestamptz `json:"uploaded_at"`
 }
 
 type Setting struct {
-	ID                int32          `json:"id"`
-	OwnerPasswordHash string         `json:"owner_password_hash"`
-	OwnerTotpSecret   sql.NullString `json:"owner_totp_secret"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
+	ID                int32              `json:"id"`
+	OwnerPasswordHash string             `json:"owner_password_hash"`
+	OwnerTotpSecret   pgtype.Text        `json:"owner_totp_secret"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 }

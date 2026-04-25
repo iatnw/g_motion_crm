@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
@@ -112,12 +111,12 @@ func (s *AuthService) EnableTOTP(ctx context.Context, secret, code string) error
 		return ErrInvalidTOTP
 	}
 
-	_, err := s.q.UpdateOwnerTOTP(ctx, sql.NullString{String: secret, Valid: true})
+	_, err := s.q.UpdateOwnerTOTP(ctx, toText(&secret))
 	return err
 }
 
 func (s *AuthService) DisableTOTP(ctx context.Context) error {
-	_, err := s.q.UpdateOwnerTOTP(ctx, sql.NullString{})
+	_, err := s.q.UpdateOwnerTOTP(ctx, toText(nil))
 	return err
 }
 

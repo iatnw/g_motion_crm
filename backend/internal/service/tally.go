@@ -2,13 +2,14 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
@@ -18,11 +19,11 @@ type TallyService struct {
 	document *DocumentService
 	deal     *DealService
 	q        *db.Queries
-	db       *sql.DB
+	pool     *pgxpool.Pool
 }
 
-func NewTally(client *ClientService, document *DocumentService, deal *DealService, q *db.Queries, db *sql.DB) *TallyService {
-	return &TallyService{client: client, document: document, deal: deal, q: q, db: db}
+func NewTally(client *ClientService, document *DocumentService, deal *DealService, q *db.Queries, pool *pgxpool.Pool) *TallyService {
+	return &TallyService{client: client, document: document, deal: deal, q: q, pool: pool}
 }
 
 // --- Tally webhook payload types ---
@@ -61,15 +62,13 @@ type TallyFile struct {
 // fieldParser provides positional-aware field access for forms with duplicate labels.
 type fieldParser struct {
 	fields []TallyField
-	// counts how many times we've seen each normalized label
-	seen map[string]int
+	seen   map[string]int
 }
 
 func newParser(fields []TallyField) *fieldParser {
 	return &fieldParser{fields: fields, seen: make(map[string]int)}
 }
 
-// str returns the value of the nth occurrence (0-based) of a label.
 func (p *fieldParser) str(label string) string {
 	key := strings.ToLower(strings.TrimSpace(label))
 	count := 0
@@ -85,26 +84,38 @@ func (p *fieldParser) str(label string) string {
 	return ""
 }
 
-func (p *fieldParser) nullStr(label string) sql.NullString {
+func (p *fieldParser) nullStr(label string) *string {
 	v := p.str(label)
 	if v == "" {
-		return sql.NullString{}
+		return nil
 	}
-	return sql.NullString{String: v, Valid: true}
+	return &v
 }
 
-func (p *fieldParser) nullDate(label string) sql.NullTime {
+func (p *fieldParser) nullDate(label string) *time.Time {
 	v := p.str(label)
 	if v == "" {
-		return sql.NullTime{}
+		return nil
 	}
 	for _, layout := range []string{"2006-01-02", "01/02/2006", "1/2/2006"} {
 		t, err := time.Parse(layout, v)
 		if err == nil {
-			return sql.NullTime{Time: t, Valid: true}
+			return &t
 		}
 	}
-	return sql.NullTime{}
+	return nil
+}
+
+func (p *fieldParser) nullFloat(label string) *float64 {
+	v := p.str(label)
+	if v == "" {
+		return nil
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return nil
+	}
+	return &f
 }
 
 func (p *fieldParser) nullEmployment(label string) db.NullEmploymentStatus {
@@ -160,7 +171,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	ssn := p.nullStr("Social Security Number")
 	housingStatus := p.nullStr("Housing Status")
 	housingDuration := p.nullStr("How Long?")
-	housingMonthlyPayment := p.nullStr("Monthly Payment")
+	housingMonthlyPayment := p.nullFloat("Monthly Payment")
 
 	// Employment section (second city/state/zip occurrence)
 	employerName := p.nullStr("Employer Name")
@@ -172,26 +183,24 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	employerPhone := p.nullStr("Employer Phone Number")
 	employmentStatus := p.nullEmployment("Employment Status")
 	employmentDuration := p.nullStr("How Long?")
-	grossMonthlyIncome := p.nullStr("Gross Monthly Income")
-	otherMonthlyIncome := p.nullStr("Other Monthly Income")
+	grossMonthlyIncome := p.nullFloat("Gross Monthly Income")
+	otherMonthlyIncome := p.nullFloat("Other Monthly Income")
 	otherIncomeSource := p.nullStr("Other Income Source")
 
 	vehicleOfInterest := p.str("Vehicle of Interest")
 	vehicleMake, vehicleModel := splitVehicle(vehicleOfInterest)
 
-	// All DB writes (client + deal) run inside a single transaction so that
-	// a failure at any step leaves no orphaned records.
 	var clientID uuid.UUID
 	var createdDeal db.Deal
 	var dealCreated bool
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 		}
 	}()
 
@@ -200,7 +209,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 
 	existing, lookupErr := s.findExistingClient(ctx, phone, email)
 	if lookupErr == nil {
-		clientID = existing.ID
+		clientID = uuid.UUID(existing.ID.Bytes)
 		_, err = txClient.Update(ctx, UpdateClientInput{
 			ID:                    clientID,
 			FirstName:             firstName,
@@ -209,7 +218,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 			Email:                 email,
 			Source:                existing.Source,
 			Status:                existing.Status,
-			Notes:                 existing.Notes,
+			Notes:                 fromText(existing.Notes),
 			DateOfBirth:           dob,
 			Address:               address,
 			City:                  city,
@@ -269,29 +278,28 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 		if err != nil {
 			return fmt.Errorf("create client: %w", err)
 		}
-		clientID = created.ID
+		clientID = uuid.UUID(created.ID.Bytes)
 	}
 
 	createdDeal, err = txDeal.Create(ctx, CreateDealInput{
 		ClientID: clientID,
-		Make:     sql.NullString{String: vehicleMake, Valid: vehicleMake != ""},
-		Model:    sql.NullString{String: vehicleModel, Valid: vehicleModel != ""},
+		Make:     strPtr(vehicleMake),
+		Model:    strPtr(vehicleModel),
 	})
 	if err != nil {
 		return fmt.Errorf("create deal: %w", err)
 	}
 	dealCreated = true
 
-	if err = tx.Commit(); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	// Document uploads happen after commit — S3 is not transactional.
-	// Failures are logged but do not affect the already-committed client/deal.
 	clientNullUUID := uuid.NullUUID{UUID: clientID, Valid: true}
 	dealNullUUID := uuid.NullUUID{}
 	if dealCreated {
-		dealNullUUID = uuid.NullUUID{UUID: createdDeal.ID, Valid: true}
+		dealNullUUID = uuid.NullUUID{UUID: uuid.UUID(createdDeal.ID.Bytes), Valid: true}
 	}
 
 	for _, field := range payload.Data.Fields {
@@ -341,16 +349,12 @@ func splitName(full string) (string, string, error) {
 	return parts[0], strings.Join(parts[1:], " "), nil
 }
 
-// splitVehicle splits "Toyota Camry" → ("Toyota", "Camry"),
-// "2024 Toyota Camry" → ("Toyota", "2024 Camry"), or "Toyota" → ("Toyota", "").
-// Year prefixes (4-digit numbers) are moved to the model portion.
 func splitVehicle(s string) (vehicleMake, vehicleModel string) {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return "", ""
 	}
 	parts := strings.Fields(s)
-	// If first token looks like a year (4 digits), skip it into model
 	start := 0
 	yearPrefix := ""
 	if len(parts[0]) == 4 {
@@ -406,18 +410,36 @@ func stringFromMap(m map[string]any, key string) string {
 	if !ok {
 		return ""
 	}
-	s, _ := v.(string)
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
 	return s
 }
 
 func labelToDocType(label string) db.DocumentType {
-	lower := strings.ToLower(label)
-	switch {
-	case strings.Contains(lower, "driver") || strings.Contains(lower, "license"):
+	switch strings.ToLower(label) {
+	case "driver's license", "drivers license":
 		return db.DocumentTypeDriverLicense
-	case strings.Contains(lower, "insurance"):
+	case "insurance":
 		return db.DocumentTypeInsurance
+	case "broker agreement":
+		return db.DocumentTypeBrokerAgreement
+	case "dealer docs":
+		return db.DocumentTypeDealerDocs
+	case "check copy":
+		return db.DocumentTypeCheckCopy
+	case "credit app", "credit application":
+		return db.DocumentTypeCreditAppPdf
 	default:
 		return db.DocumentTypeOther
 	}
 }
+
+func strPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
