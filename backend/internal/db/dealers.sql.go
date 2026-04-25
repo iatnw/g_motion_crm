@@ -94,6 +94,52 @@ func (q *Queries) GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 	return i, err
 }
 
+const getDealerStats = `-- name: GetDealerStats :one
+SELECT id, deal_count, total_broker_fee, avg_days_to_payment FROM dealer_stats
+WHERE id = $1
+`
+
+func (q *Queries) GetDealerStats(ctx context.Context, id pgtype.UUID) (DealerStat, error) {
+	row := q.db.QueryRow(ctx, getDealerStats, id)
+	var i DealerStat
+	err := row.Scan(
+		&i.ID,
+		&i.DealCount,
+		&i.TotalBrokerFee,
+		&i.AvgDaysToPayment,
+	)
+	return i, err
+}
+
+const listDealerStats = `-- name: ListDealerStats :many
+SELECT id, deal_count, total_broker_fee, avg_days_to_payment FROM dealer_stats
+`
+
+func (q *Queries) ListDealerStats(ctx context.Context) ([]DealerStat, error) {
+	rows, err := q.db.Query(ctx, listDealerStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DealerStat
+	for rows.Next() {
+		var i DealerStat
+		if err := rows.Scan(
+			&i.ID,
+			&i.DealCount,
+			&i.TotalBrokerFee,
+			&i.AvgDaysToPayment,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDealers = `-- name: ListDealers :many
 SELECT id, name, contact_person, phone, address, notes, created_at, updated_at FROM dealers
 ORDER BY created_at DESC

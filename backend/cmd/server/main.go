@@ -158,6 +158,7 @@ func main() {
 		r.Get("/dealers/{id}", dealerHandler.Get)
 		r.Put("/dealers/{id}", dealerHandler.Update)
 		r.Delete("/dealers/{id}", dealerHandler.Delete)
+		r.Get("/dealers/{id}/stats", dealerHandler.GetStats)
 
 		// Deals
 		r.Get("/deals", dealHandler.List)

@@ -32,3 +32,10 @@ RETURNING *;
 DELETE FROM dealers
 WHERE id = $1
 RETURNING *;
+
+-- name: GetDealerStats :one
+SELECT * FROM dealer_stats
+WHERE id = $1;
+
+-- name: ListDealerStats :many
+SELECT * FROM dealer_stats;

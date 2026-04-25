@@ -253,6 +253,22 @@ func toDealerResponses(ds []db.Dealer) []DealerResponse {
 	return out
 }
 
+type DealerStatResponse struct {
+	ID               string   `json:"id"`
+	DealCount        int64    `json:"deal_count"`
+	TotalBrokerFee   *float64 `json:"total_broker_fee"`
+	AvgDaysToPayment *float64 `json:"avg_days_to_payment"`
+}
+
+func toDealerStatResponse(d db.DealerStat) DealerStatResponse {
+	return DealerStatResponse{
+		ID:               pgUUID(d.ID),
+		DealCount:        d.DealCount,
+		TotalBrokerFee:   pgNumeric(d.TotalBrokerFee),
+		AvgDaysToPayment: pgNumeric(d.AvgDaysToPayment),
+	}
+}
+
 // --- Document ---
 
 type DocumentResponse struct {

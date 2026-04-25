@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
+	"github.com/jackc/pgx/v5"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -150,4 +150,24 @@ func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(toDealerResponse(dealer))
+}
+
+func (h *DealerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+
+	}
+
+	stats, err := h.dealer.GetStats(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toDealerStatResponse(stats))
 }

@@ -65,3 +65,7 @@ func (s *DealerService) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := s.q.DeleteDealer(ctx, toUUID(id))
 	return err
 }
+
+func (s *DealerService) GetStats(ctx context.Context, id uuid.UUID) (db.DealerStat, error) {
+	return s.q.GetDealerStats(ctx, toUUID(id))
+}

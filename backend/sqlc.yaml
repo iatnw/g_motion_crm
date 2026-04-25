@@ -11,3 +11,8 @@ sql:
         emit_json_tags: true
         emit_prepared_queries: false
         sql_package: "pgx/v5"
+        overrides:
+          - column: "dealer_stats.total_broker_fee"
+            go_type: "github.com/jackc/pgx/v5/pgtype.Numeric"
+          - column: "dealer_stats.avg_days_to_payment"
+            go_type: "github.com/jackc/pgx/v5/pgtype.Numeric"
