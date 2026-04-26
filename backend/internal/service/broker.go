@@ -65,3 +65,7 @@ func (s *BrokerService) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := s.q.DeleteBroker(ctx, toUUID(id))
 	return err
 }
+
+func (s *BrokerService) GetStats(ctx context.Context, id uuid.UUID) (db.BrokerStat, error) {
+	return s.q.GetBrokerStats(ctx, toUUID(id))
+}

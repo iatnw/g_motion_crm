@@ -338,6 +338,17 @@ type Broker struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type BrokerStat struct {
+	ID                    pgtype.UUID    `json:"id"`
+	TotalDeals            int64          `json:"total_deals"`
+	CurrentMonthDeals     int64          `json:"current_month_deals"`
+	TotalBrokerCommission pgtype.Numeric `json:"total_broker_commission"`
+	TotalBrokerFee        pgtype.Numeric `json:"total_broker_fee"`
+	BrokerCleanIncome     pgtype.Numeric `json:"broker_clean_income"`
+	AvgBrokerFeePerDeal   pgtype.Numeric `json:"avg_broker_fee_per_deal"`
+	AvgDealsPerMonth      pgtype.Numeric `json:"avg_deals_per_month"`
+}
+
 type Client struct {
 	ID                    pgtype.UUID          `json:"id"`
 	FirstName             string               `json:"first_name"`

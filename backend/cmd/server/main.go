@@ -151,6 +151,7 @@ func main() {
 		r.Get("/brokers/{id}", brokerHandler.Get)
 		r.Put("/brokers/{id}", brokerHandler.Update)
 		r.Delete("/brokers/{id}", brokerHandler.Delete)
+		r.Get("/brokers/{id}/stats", brokerHandler.GetStats)
 
 		// Dealers
 		r.Get("/dealers", dealerHandler.List)

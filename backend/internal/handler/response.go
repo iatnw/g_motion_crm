@@ -219,6 +219,30 @@ func toBrokerResponses(bs []db.Broker) []BrokerResponse {
 	return out
 }
 
+type BrokerStatResponse struct {
+	ID                    string   `json:"id"`
+	TotalDeals            int64    `json:"total_deals"`
+	CurrentMonthDeals     int64    `json:"current_month_deals"`
+	TotalBrokerFee        *float64 `json:"total_broker_fee"`
+	TotalBrokerCommission *float64 `json:"total_broker_commission"`
+	BrokerCleanIncome     *float64 `json:"broker_clean_income"`
+	AvgBrokerFeePerDeal   *float64 `json:"avg_broker_fee_per_deal"`
+	AvgDealsPerMonth      *float64 `json:"avg_deals_per_month"`
+}
+
+func toBrokerStatResponse(b db.BrokerStat) BrokerStatResponse {
+	return BrokerStatResponse{
+		ID:                    pgUUID(b.ID),
+		TotalDeals:            b.TotalDeals,
+		CurrentMonthDeals:     b.CurrentMonthDeals,
+		TotalBrokerFee:        pgNumeric(b.TotalBrokerFee),
+		TotalBrokerCommission: pgNumeric(b.TotalBrokerCommission),
+		BrokerCleanIncome:     pgNumeric(b.BrokerCleanIncome),
+		AvgBrokerFeePerDeal:   pgNumeric(b.AvgBrokerFeePerDeal),
+		AvgDealsPerMonth:      pgNumeric(b.AvgDealsPerMonth),
+	}
+}
+
 // --- Dealer ---
 
 type DealerResponse struct {

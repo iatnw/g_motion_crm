@@ -94,6 +94,60 @@ func (q *Queries) GetBroker(ctx context.Context, id pgtype.UUID) (Broker, error)
 	return i, err
 }
 
+const getBrokerStats = `-- name: GetBrokerStats :one
+SELECT id, total_deals, current_month_deals, total_broker_commission, total_broker_fee, broker_clean_income, avg_broker_fee_per_deal, avg_deals_per_month FROM broker_stats
+WHERE id = $1
+`
+
+func (q *Queries) GetBrokerStats(ctx context.Context, id pgtype.UUID) (BrokerStat, error) {
+	row := q.db.QueryRow(ctx, getBrokerStats, id)
+	var i BrokerStat
+	err := row.Scan(
+		&i.ID,
+		&i.TotalDeals,
+		&i.CurrentMonthDeals,
+		&i.TotalBrokerCommission,
+		&i.TotalBrokerFee,
+		&i.BrokerCleanIncome,
+		&i.AvgBrokerFeePerDeal,
+		&i.AvgDealsPerMonth,
+	)
+	return i, err
+}
+
+const listBrokerStats = `-- name: ListBrokerStats :many
+SELECT id, total_deals, current_month_deals, total_broker_commission, total_broker_fee, broker_clean_income, avg_broker_fee_per_deal, avg_deals_per_month FROM broker_stats
+`
+
+func (q *Queries) ListBrokerStats(ctx context.Context) ([]BrokerStat, error) {
+	rows, err := q.db.Query(ctx, listBrokerStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BrokerStat
+	for rows.Next() {
+		var i BrokerStat
+		if err := rows.Scan(
+			&i.ID,
+			&i.TotalDeals,
+			&i.CurrentMonthDeals,
+			&i.TotalBrokerCommission,
+			&i.TotalBrokerFee,
+			&i.BrokerCleanIncome,
+			&i.AvgBrokerFeePerDeal,
+			&i.AvgDealsPerMonth,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBrokers = `-- name: ListBrokers :many
 SELECT id, first_name, last_name, phone, email, notes, created_at, updated_at FROM brokers
 ORDER BY created_at DESC

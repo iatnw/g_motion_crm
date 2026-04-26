@@ -32,3 +32,10 @@ RETURNING *;
 DELETE FROM brokers
 WHERE id = $1
 RETURNING *;
+
+-- name: GetBrokerStats :one
+SELECT * FROM broker_stats
+WHERE id = $1;
+
+-- name: ListBrokerStats :many
+SELECT * FROM broker_stats;
