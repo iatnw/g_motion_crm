@@ -500,14 +500,15 @@ type Deal struct {
 }
 
 type Dealer struct {
-	ID            pgtype.UUID        `json:"id"`
-	Name          string             `json:"name"`
-	ContactPerson pgtype.Text        `json:"contact_person"`
-	Phone         pgtype.Text        `json:"phone"`
-	Address       pgtype.Text        `json:"address"`
-	Notes         pgtype.Text        `json:"notes"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID                 pgtype.UUID        `json:"id"`
+	Name               string             `json:"name"`
+	ContactPerson      pgtype.Text        `json:"contact_person"`
+	Phone              pgtype.Text        `json:"phone"`
+	Address            pgtype.Text        `json:"address"`
+	Notes              pgtype.Text        `json:"notes"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	ContactPersonEmail pgtype.Text        `json:"contact_person_email"`
 }
 
 type DealerStat struct {

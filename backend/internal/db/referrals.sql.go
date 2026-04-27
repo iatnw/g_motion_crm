@@ -206,7 +206,7 @@ SET
     status = $2,
     paid_date = CASE WHEN $2::referral_status = 'paid'
                 THEN CURRENT_DATE ELSE NULL END,
-    update_at = NOW()
+    updated_at = NOW()
     WHERE id = $1
     RETURNING id, deal_id, first_name, last_name, phone, amount, status, paid_date, notes, created_at, updated_at
 `

@@ -16,20 +16,22 @@ func NewDealer(q *db.Queries) *DealerService {
 }
 
 type CreateDealerInput struct {
-	Name          string
-	ContactPerson *string
-	Phone         *string
-	Address       *string
-	Notes         *string
+	Name               string
+	ContactPerson      *string
+	Phone              *string
+	Address            *string
+	Notes              *string
+	ContactPersonEmail *string
 }
 
 func (s *DealerService) Create(ctx context.Context, in CreateDealerInput) (db.Dealer, error) {
 	return s.q.CreateDealer(ctx, db.CreateDealerParams{
-		Name:          in.Name,
-		ContactPerson: toText(in.ContactPerson),
-		Phone:         toText(in.Phone),
-		Address:       toText(in.Address),
-		Notes:         toText(in.Notes),
+		Name:               in.Name,
+		ContactPerson:      toText(in.ContactPerson),
+		Phone:              toText(in.Phone),
+		Address:            toText(in.Address),
+		Notes:              toText(in.Notes),
+		ContactPersonEmail: toText(in.ContactPersonEmail),
 	})
 }
 
@@ -42,22 +44,24 @@ func (s *DealerService) List(ctx context.Context, limit, offset int32) ([]db.Dea
 }
 
 type UpdateDealerInput struct {
-	ID            uuid.UUID
-	Name          string
-	ContactPerson *string
-	Phone         *string
-	Address       *string
-	Notes         *string
+	ID                 uuid.UUID
+	Name               string
+	ContactPerson      *string
+	Phone              *string
+	Address            *string
+	Notes              *string
+	ContactPersonEmail *string
 }
 
 func (s *DealerService) Update(ctx context.Context, in UpdateDealerInput) (db.Dealer, error) {
 	return s.q.UpdateDealer(ctx, db.UpdateDealerParams{
-		ID:            toUUID(in.ID),
-		Name:          in.Name,
-		ContactPerson: toText(in.ContactPerson),
-		Phone:         toText(in.Phone),
-		Address:       toText(in.Address),
-		Notes:         toText(in.Notes),
+		ID:                 toUUID(in.ID),
+		Name:               in.Name,
+		ContactPerson:      toText(in.ContactPerson),
+		Phone:              toText(in.Phone),
+		Address:            toText(in.Address),
+		Notes:              toText(in.Notes),
+		ContactPersonEmail: toText(in.ContactPersonEmail),
 	})
 }
 

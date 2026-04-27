@@ -20,11 +20,12 @@ func NewDealerHandler(dealer *service.DealerService) *DealerHandler {
 }
 
 type dealerRequest struct {
-	Name          string  `json:"name"`
-	ContactPerson *string `json:"contact_person"`
-	Phone         *string `json:"phone"`
-	Address       *string `json:"address"`
-	Notes         *string `json:"notes"`
+	Name               string  `json:"name"`
+	ContactPerson      *string `json:"contact_person"`
+	Phone              *string `json:"phone"`
+	Address            *string `json:"address"`
+	Notes              *string `json:"notes"`
+	ContactPersonEmail *string `json:"contact_person_email"`
 }
 
 func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -40,11 +41,12 @@ func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dealer, err := h.dealer.Create(r.Context(), service.CreateDealerInput{
-		Name:          req.Name,
-		ContactPerson: req.ContactPerson,
-		Phone:         req.Phone,
-		Address:       req.Address,
-		Notes:         req.Notes,
+		Name:               req.Name,
+		ContactPerson:      req.ContactPerson,
+		Phone:              req.Phone,
+		Address:            req.Address,
+		Notes:              req.Notes,
+		ContactPersonEmail: req.ContactPersonEmail,
 	})
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -132,12 +134,13 @@ func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dealer, err := h.dealer.Update(r.Context(), service.UpdateDealerInput{
-		ID:            id,
-		Name:          req.Name,
-		ContactPerson: req.ContactPerson,
-		Phone:         req.Phone,
-		Address:       req.Address,
-		Notes:         req.Notes,
+		ID:                 id,
+		Name:               req.Name,
+		ContactPerson:      req.ContactPerson,
+		Phone:              req.Phone,
+		Address:            req.Address,
+		Notes:              req.Notes,
+		ContactPersonEmail: req.ContactPersonEmail,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

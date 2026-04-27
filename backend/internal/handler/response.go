@@ -253,26 +253,28 @@ func toBrokerStatResponse(b db.BrokerStat) BrokerStatResponse {
 // --- Dealer ---
 
 type DealerResponse struct {
-	ID            string  `json:"id"`
-	Name          string  `json:"name"`
-	ContactPerson *string `json:"contact_person"`
-	Phone         *string `json:"phone"`
-	Address       *string `json:"address"`
-	Notes         *string `json:"notes"`
-	CreatedAt     string  `json:"created_at"`
-	UpdatedAt     string  `json:"updated_at"`
+	ID                 string  `json:"id"`
+	Name               string  `json:"name"`
+	ContactPerson      *string `json:"contact_person"`
+	Phone              *string `json:"phone"`
+	Address            *string `json:"address"`
+	Notes              *string `json:"notes"`
+	ContactPersonEmail *string `json:"contact_person_email"`
+	CreatedAt          string  `json:"created_at"`
+	UpdatedAt          string  `json:"updated_at"`
 }
 
 func toDealerResponse(d db.Dealer) DealerResponse {
 	return DealerResponse{
-		ID:            pgUUID(d.ID),
-		Name:          d.Name,
-		ContactPerson: pgText(d.ContactPerson),
-		Phone:         pgText(d.Phone),
-		Address:       pgText(d.Address),
-		Notes:         pgText(d.Notes),
-		CreatedAt:     pgTimestamp(d.CreatedAt),
-		UpdatedAt:     pgTimestamp(d.UpdatedAt),
+		ID:                 pgUUID(d.ID),
+		Name:               d.Name,
+		ContactPerson:      pgText(d.ContactPerson),
+		Phone:              pgText(d.Phone),
+		Address:            pgText(d.Address),
+		Notes:              pgText(d.Notes),
+		ContactPersonEmail: pgText(d.ContactPersonEmail),
+		CreatedAt:          pgTimestamp(d.CreatedAt),
+		UpdatedAt:          pgTimestamp(d.UpdatedAt),
 	}
 }
 

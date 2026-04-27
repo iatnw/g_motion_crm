@@ -17,16 +17,18 @@ INSERT INTO dealers (
     contact_person,
     phone,
     address,
-    notes
-) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at
+    notes,
+    contact_person_email
+) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at, contact_person_email
 `
 
 type CreateDealerParams struct {
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	Notes         pgtype.Text `json:"notes"`
+	Name               string      `json:"name"`
+	ContactPerson      pgtype.Text `json:"contact_person"`
+	Phone              pgtype.Text `json:"phone"`
+	Address            pgtype.Text `json:"address"`
+	Notes              pgtype.Text `json:"notes"`
+	ContactPersonEmail pgtype.Text `json:"contact_person_email"`
 }
 
 func (q *Queries) CreateDealer(ctx context.Context, arg CreateDealerParams) (Dealer, error) {
@@ -36,6 +38,7 @@ func (q *Queries) CreateDealer(ctx context.Context, arg CreateDealerParams) (Dea
 		arg.Phone,
 		arg.Address,
 		arg.Notes,
+		arg.ContactPersonEmail,
 	)
 	var i Dealer
 	err := row.Scan(
@@ -47,6 +50,7 @@ func (q *Queries) CreateDealer(ctx context.Context, arg CreateDealerParams) (Dea
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContactPersonEmail,
 	)
 	return i, err
 }
@@ -54,7 +58,7 @@ func (q *Queries) CreateDealer(ctx context.Context, arg CreateDealerParams) (Dea
 const deleteDealer = `-- name: DeleteDealer :one
 DELETE FROM dealers
 WHERE id = $1
-RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at
+RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at, contact_person_email
 `
 
 func (q *Queries) DeleteDealer(ctx context.Context, id pgtype.UUID) (Dealer, error) {
@@ -69,12 +73,13 @@ func (q *Queries) DeleteDealer(ctx context.Context, id pgtype.UUID) (Dealer, err
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContactPersonEmail,
 	)
 	return i, err
 }
 
 const getDealer = `-- name: GetDealer :one
-SELECT id, name, contact_person, phone, address, notes, created_at, updated_at FROM dealers
+SELECT id, name, contact_person, phone, address, notes, created_at, updated_at, contact_person_email FROM dealers
 WHERE id = $1
 `
 
@@ -90,6 +95,7 @@ func (q *Queries) GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContactPersonEmail,
 	)
 	return i, err
 }
@@ -141,7 +147,7 @@ func (q *Queries) ListDealerStats(ctx context.Context) ([]DealerStat, error) {
 }
 
 const listDealers = `-- name: ListDealers :many
-SELECT id, name, contact_person, phone, address, notes, created_at, updated_at FROM dealers
+SELECT id, name, contact_person, phone, address, notes, created_at, updated_at, contact_person_email FROM dealers
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -169,6 +175,7 @@ func (q *Queries) ListDealers(ctx context.Context, arg ListDealersParams) ([]Dea
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ContactPersonEmail,
 		); err != nil {
 			return nil, err
 		}
@@ -188,18 +195,20 @@ SET
     phone = $4,
     address = $5,
     notes = $6,
+    contact_person_email = $7,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at
+RETURNING id, name, contact_person, phone, address, notes, created_at, updated_at, contact_person_email
 `
 
 type UpdateDealerParams struct {
-	ID            pgtype.UUID `json:"id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	Notes         pgtype.Text `json:"notes"`
+	ID                 pgtype.UUID `json:"id"`
+	Name               string      `json:"name"`
+	ContactPerson      pgtype.Text `json:"contact_person"`
+	Phone              pgtype.Text `json:"phone"`
+	Address            pgtype.Text `json:"address"`
+	Notes              pgtype.Text `json:"notes"`
+	ContactPersonEmail pgtype.Text `json:"contact_person_email"`
 }
 
 func (q *Queries) UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dealer, error) {
@@ -210,6 +219,7 @@ func (q *Queries) UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dea
 		arg.Phone,
 		arg.Address,
 		arg.Notes,
+		arg.ContactPersonEmail,
 	)
 	var i Dealer
 	err := row.Scan(
@@ -221,6 +231,7 @@ func (q *Queries) UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dea
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContactPersonEmail,
 	)
 	return i, err
 }

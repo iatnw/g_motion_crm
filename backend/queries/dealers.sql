@@ -4,8 +4,9 @@ INSERT INTO dealers (
     contact_person,
     phone,
     address,
-    notes
-) VALUES ($1, $2, $3, $4, $5) RETURNING *;
+    notes,
+    contact_person_email
+) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
 
 -- name: GetDealer :one
 SELECT * FROM dealers
@@ -24,6 +25,7 @@ SET
     phone = $4,
     address = $5,
     notes = $6,
+    contact_person_email = $7,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
