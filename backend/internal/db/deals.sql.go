@@ -30,42 +30,46 @@ INSERT INTO deals (
     broker_commission,
     broker_commission_status,
     broker_commission_paid_date,
-    referral_amount,
     your_net,
     broker_fee_status,
     broker_fee_paid_date,
-    referral_status,
-    referral_paid_date
+    deal_status,
+    collect_amount,
+    doc_fee,
+    broker_payment_method,
+    notes
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23
-) RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+) RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
 `
 
 type CreateDealParams struct {
-	ClientID                 pgtype.UUID           `json:"client_id"`
-	BrokerID                 pgtype.UUID           `json:"broker_id"`
-	DealerID                 pgtype.UUID           `json:"dealer_id"`
-	DealDate                 pgtype.Date           `json:"deal_date"`
-	DealNumber               pgtype.Text           `json:"deal_number"`
-	Vin                      pgtype.Text           `json:"vin"`
-	Make                     pgtype.Text           `json:"make"`
-	Model                    pgtype.Text           `json:"model"`
-	TrimLevel                pgtype.Text           `json:"trim_level"`
-	DownPayment              pgtype.Numeric        `json:"down_payment"`
-	DownPaymentMethod        NullDownPaymentMethod `json:"down_payment_method"`
-	MonthlyPayment           pgtype.Numeric        `json:"monthly_payment"`
-	BrokerFee                pgtype.Numeric        `json:"broker_fee"`
-	BrokerPercent            pgtype.Numeric        `json:"broker_percent"`
-	BrokerCommission         pgtype.Numeric        `json:"broker_commission"`
-	BrokerCommissionStatus   NullPaymentStatus     `json:"broker_commission_status"`
-	BrokerCommissionPaidDate pgtype.Date           `json:"broker_commission_paid_date"`
-	ReferralAmount           pgtype.Numeric        `json:"referral_amount"`
-	YourNet                  pgtype.Numeric        `json:"your_net"`
-	BrokerFeeStatus          NullPaymentStatus     `json:"broker_fee_status"`
-	BrokerFeePaidDate        pgtype.Date           `json:"broker_fee_paid_date"`
-	ReferralStatus           NullReferralStatus    `json:"referral_status"`
-	ReferralPaidDate         pgtype.Date           `json:"referral_paid_date"`
+	ClientID                 pgtype.UUID             `json:"client_id"`
+	BrokerID                 pgtype.UUID             `json:"broker_id"`
+	DealerID                 pgtype.UUID             `json:"dealer_id"`
+	DealDate                 pgtype.Date             `json:"deal_date"`
+	DealNumber               pgtype.Text             `json:"deal_number"`
+	Vin                      pgtype.Text             `json:"vin"`
+	Make                     pgtype.Text             `json:"make"`
+	Model                    pgtype.Text             `json:"model"`
+	TrimLevel                pgtype.Text             `json:"trim_level"`
+	DownPayment              pgtype.Numeric          `json:"down_payment"`
+	DownPaymentMethod        NullDownPaymentMethod   `json:"down_payment_method"`
+	MonthlyPayment           pgtype.Numeric          `json:"monthly_payment"`
+	BrokerFee                pgtype.Numeric          `json:"broker_fee"`
+	BrokerPercent            pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission         pgtype.Numeric          `json:"broker_commission"`
+	BrokerCommissionStatus   NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerCommissionPaidDate pgtype.Date             `json:"broker_commission_paid_date"`
+	YourNet                  pgtype.Numeric          `json:"your_net"`
+	BrokerFeeStatus          NullPaymentStatus       `json:"broker_fee_status"`
+	BrokerFeePaidDate        pgtype.Date             `json:"broker_fee_paid_date"`
+	DealStatus               NullDealStatus          `json:"deal_status"`
+	CollectAmount            pgtype.Numeric          `json:"collect_amount"`
+	DocFee                   pgtype.Numeric          `json:"doc_fee"`
+	BrokerPaymentMethod      NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                    pgtype.Text             `json:"notes"`
 }
 
 func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, error) {
@@ -87,12 +91,14 @@ func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, e
 		arg.BrokerCommission,
 		arg.BrokerCommissionStatus,
 		arg.BrokerCommissionPaidDate,
-		arg.ReferralAmount,
 		arg.YourNet,
 		arg.BrokerFeeStatus,
 		arg.BrokerFeePaidDate,
-		arg.ReferralStatus,
-		arg.ReferralPaidDate,
+		arg.DealStatus,
+		arg.CollectAmount,
+		arg.DocFee,
+		arg.BrokerPaymentMethod,
+		arg.Notes,
 	)
 	var i Deal
 	err := row.Scan(
@@ -114,20 +120,22 @@ func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, e
 		&i.BrokerCommission,
 		&i.BrokerCommissionStatus,
 		&i.BrokerCommissionPaidDate,
-		&i.ReferralAmount,
 		&i.YourNet,
 		&i.BrokerFeeStatus,
 		&i.BrokerFeePaidDate,
-		&i.ReferralStatus,
-		&i.ReferralPaidDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
 	)
 	return i, err
 }
 
 const getDeal = `-- name: GetDeal :one
-SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at FROM deals
+SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes FROM deals
 WHERE id = $1
 `
 
@@ -153,21 +161,25 @@ func (q *Queries) GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error) {
 		&i.BrokerCommission,
 		&i.BrokerCommissionStatus,
 		&i.BrokerCommissionPaidDate,
-		&i.ReferralAmount,
 		&i.YourNet,
 		&i.BrokerFeeStatus,
 		&i.BrokerFeePaidDate,
-		&i.ReferralStatus,
-		&i.ReferralPaidDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
 	)
 	return i, err
 }
 
 const listDeals = `-- name: ListDeals :many
-SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at FROM deals
-ORDER BY created_at DESC
+SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes FROM deals
+JOIN clients ON clients.id = deals.client_id
+WHERE clients.status != 'no_deal'
+ORDER BY deals.created_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -204,14 +216,16 @@ func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, e
 			&i.BrokerCommission,
 			&i.BrokerCommissionStatus,
 			&i.BrokerCommissionPaidDate,
-			&i.ReferralAmount,
 			&i.YourNet,
 			&i.BrokerFeeStatus,
 			&i.BrokerFeePaidDate,
-			&i.ReferralStatus,
-			&i.ReferralPaidDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DealStatus,
+			&i.CollectAmount,
+			&i.DocFee,
+			&i.BrokerPaymentMethod,
+			&i.Notes,
 		); err != nil {
 			return nil, err
 		}
@@ -224,7 +238,7 @@ func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, e
 }
 
 const listDealsByClient = `-- name: ListDealsByClient :many
-SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at FROM deals
+SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes FROM deals
 WHERE deals.client_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -264,14 +278,16 @@ func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientPa
 			&i.BrokerCommission,
 			&i.BrokerCommissionStatus,
 			&i.BrokerCommissionPaidDate,
-			&i.ReferralAmount,
 			&i.YourNet,
 			&i.BrokerFeeStatus,
 			&i.BrokerFeePaidDate,
-			&i.ReferralStatus,
-			&i.ReferralPaidDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DealStatus,
+			&i.CollectAmount,
+			&i.DocFee,
+			&i.BrokerPaymentMethod,
+			&i.Notes,
 		); err != nil {
 			return nil, err
 		}
@@ -303,42 +319,46 @@ SET
     broker_commission           = $16,
     broker_commission_status    = $17,
     broker_commission_paid_date = $18,
-    referral_amount             = $19,
-    your_net                    = $20,
-    broker_fee_status           = $21,
-    broker_fee_paid_date        = $22,
-    referral_status             = $23,
-    referral_paid_date          = $24,
+    your_net                    = $19,
+    broker_fee_status           = $20,
+    broker_fee_paid_date        = $21,
+    deal_status                 = $22,
+    collect_amount              = $23,
+    doc_fee                     = $24,
+    broker_payment_method       = $25,
+    notes                       = $26,
     updated_at                  = NOW()
 WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
 `
 
 type UpdateDealParams struct {
-	ID                       pgtype.UUID           `json:"id"`
-	ClientID                 pgtype.UUID           `json:"client_id"`
-	BrokerID                 pgtype.UUID           `json:"broker_id"`
-	DealerID                 pgtype.UUID           `json:"dealer_id"`
-	DealDate                 pgtype.Date           `json:"deal_date"`
-	DealNumber               pgtype.Text           `json:"deal_number"`
-	Vin                      pgtype.Text           `json:"vin"`
-	Make                     pgtype.Text           `json:"make"`
-	Model                    pgtype.Text           `json:"model"`
-	TrimLevel                pgtype.Text           `json:"trim_level"`
-	DownPayment              pgtype.Numeric        `json:"down_payment"`
-	DownPaymentMethod        NullDownPaymentMethod `json:"down_payment_method"`
-	MonthlyPayment           pgtype.Numeric        `json:"monthly_payment"`
-	BrokerFee                pgtype.Numeric        `json:"broker_fee"`
-	BrokerPercent            pgtype.Numeric        `json:"broker_percent"`
-	BrokerCommission         pgtype.Numeric        `json:"broker_commission"`
-	BrokerCommissionStatus   NullPaymentStatus     `json:"broker_commission_status"`
-	BrokerCommissionPaidDate pgtype.Date           `json:"broker_commission_paid_date"`
-	ReferralAmount           pgtype.Numeric        `json:"referral_amount"`
-	YourNet                  pgtype.Numeric        `json:"your_net"`
-	BrokerFeeStatus          NullPaymentStatus     `json:"broker_fee_status"`
-	BrokerFeePaidDate        pgtype.Date           `json:"broker_fee_paid_date"`
-	ReferralStatus           NullReferralStatus    `json:"referral_status"`
-	ReferralPaidDate         pgtype.Date           `json:"referral_paid_date"`
+	ID                       pgtype.UUID             `json:"id"`
+	ClientID                 pgtype.UUID             `json:"client_id"`
+	BrokerID                 pgtype.UUID             `json:"broker_id"`
+	DealerID                 pgtype.UUID             `json:"dealer_id"`
+	DealDate                 pgtype.Date             `json:"deal_date"`
+	DealNumber               pgtype.Text             `json:"deal_number"`
+	Vin                      pgtype.Text             `json:"vin"`
+	Make                     pgtype.Text             `json:"make"`
+	Model                    pgtype.Text             `json:"model"`
+	TrimLevel                pgtype.Text             `json:"trim_level"`
+	DownPayment              pgtype.Numeric          `json:"down_payment"`
+	DownPaymentMethod        NullDownPaymentMethod   `json:"down_payment_method"`
+	MonthlyPayment           pgtype.Numeric          `json:"monthly_payment"`
+	BrokerFee                pgtype.Numeric          `json:"broker_fee"`
+	BrokerPercent            pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission         pgtype.Numeric          `json:"broker_commission"`
+	BrokerCommissionStatus   NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerCommissionPaidDate pgtype.Date             `json:"broker_commission_paid_date"`
+	YourNet                  pgtype.Numeric          `json:"your_net"`
+	BrokerFeeStatus          NullPaymentStatus       `json:"broker_fee_status"`
+	BrokerFeePaidDate        pgtype.Date             `json:"broker_fee_paid_date"`
+	DealStatus               NullDealStatus          `json:"deal_status"`
+	CollectAmount            pgtype.Numeric          `json:"collect_amount"`
+	DocFee                   pgtype.Numeric          `json:"doc_fee"`
+	BrokerPaymentMethod      NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                    pgtype.Text             `json:"notes"`
 }
 
 func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error) {
@@ -361,12 +381,14 @@ func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, e
 		arg.BrokerCommission,
 		arg.BrokerCommissionStatus,
 		arg.BrokerCommissionPaidDate,
-		arg.ReferralAmount,
 		arg.YourNet,
 		arg.BrokerFeeStatus,
 		arg.BrokerFeePaidDate,
-		arg.ReferralStatus,
-		arg.ReferralPaidDate,
+		arg.DealStatus,
+		arg.CollectAmount,
+		arg.DocFee,
+		arg.BrokerPaymentMethod,
+		arg.Notes,
 	)
 	var i Deal
 	err := row.Scan(
@@ -388,14 +410,16 @@ func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, e
 		&i.BrokerCommission,
 		&i.BrokerCommissionStatus,
 		&i.BrokerCommissionPaidDate,
-		&i.ReferralAmount,
 		&i.YourNet,
 		&i.BrokerFeeStatus,
 		&i.BrokerFeePaidDate,
-		&i.ReferralStatus,
-		&i.ReferralPaidDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
 	)
 	return i, err
 }
@@ -408,7 +432,7 @@ SET
                                   THEN CURRENT_DATE ELSE NULL END,
     updated_at                  = NOW()
 WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
 `
 
 type UpdateDealBrokerCommissionStatusParams struct {
@@ -438,14 +462,16 @@ func (q *Queries) UpdateDealBrokerCommissionStatus(ctx context.Context, arg Upda
 		&i.BrokerCommission,
 		&i.BrokerCommissionStatus,
 		&i.BrokerCommissionPaidDate,
-		&i.ReferralAmount,
 		&i.YourNet,
 		&i.BrokerFeeStatus,
 		&i.BrokerFeePaidDate,
-		&i.ReferralStatus,
-		&i.ReferralPaidDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
 	)
 	return i, err
 }
@@ -458,7 +484,7 @@ SET
                            THEN CURRENT_DATE ELSE NULL END,
     updated_at           = NOW()
 WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
 `
 
 type UpdateDealBrokerFeeStatusParams struct {
@@ -488,64 +514,16 @@ func (q *Queries) UpdateDealBrokerFeeStatus(ctx context.Context, arg UpdateDealB
 		&i.BrokerCommission,
 		&i.BrokerCommissionStatus,
 		&i.BrokerCommissionPaidDate,
-		&i.ReferralAmount,
 		&i.YourNet,
 		&i.BrokerFeeStatus,
 		&i.BrokerFeePaidDate,
-		&i.ReferralStatus,
-		&i.ReferralPaidDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateDealReferralStatus = `-- name: UpdateDealReferralStatus :one
-UPDATE deals
-SET
-    referral_status    = $2,
-    referral_paid_date = CASE WHEN $2::referral_status = 'paid'
-                         THEN CURRENT_DATE ELSE NULL END,
-    updated_at         = NOW()
-WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, referral_amount, your_net, broker_fee_status, broker_fee_paid_date, referral_status, referral_paid_date, created_at, updated_at
-`
-
-type UpdateDealReferralStatusParams struct {
-	ID             pgtype.UUID        `json:"id"`
-	ReferralStatus NullReferralStatus `json:"referral_status"`
-}
-
-func (q *Queries) UpdateDealReferralStatus(ctx context.Context, arg UpdateDealReferralStatusParams) (Deal, error) {
-	row := q.db.QueryRow(ctx, updateDealReferralStatus, arg.ID, arg.ReferralStatus)
-	var i Deal
-	err := row.Scan(
-		&i.ID,
-		&i.ClientID,
-		&i.BrokerID,
-		&i.DealerID,
-		&i.DealDate,
-		&i.DealNumber,
-		&i.Vin,
-		&i.Make,
-		&i.Model,
-		&i.TrimLevel,
-		&i.DownPayment,
-		&i.DownPaymentMethod,
-		&i.MonthlyPayment,
-		&i.BrokerFee,
-		&i.BrokerPercent,
-		&i.BrokerCommission,
-		&i.BrokerCommissionStatus,
-		&i.BrokerCommissionPaidDate,
-		&i.ReferralAmount,
-		&i.YourNet,
-		&i.BrokerFeeStatus,
-		&i.BrokerFeePaidDate,
-		&i.ReferralStatus,
-		&i.ReferralPaidDate,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
 	)
 	return i, err
 }

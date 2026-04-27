@@ -123,12 +123,14 @@ type DealResponse struct {
 	BrokerCommission         *float64 `json:"broker_commission"`
 	BrokerCommissionStatus   *string  `json:"broker_commission_status"`
 	BrokerCommissionPaidDate *string  `json:"broker_commission_paid_date"`
-	ReferralAmount           *float64 `json:"referral_amount"`
 	YourNet                  *float64 `json:"your_net"`
 	BrokerFeeStatus          *string  `json:"broker_fee_status"`
 	BrokerFeePaidDate        *string  `json:"broker_fee_paid_date"`
-	ReferralStatus           *string  `json:"referral_status"`
-	ReferralPaidDate         *string  `json:"referral_paid_date"`
+	DealStatus               *string  `json:"deal_status"`
+	CollectAmount            *float64 `json:"collect_amount"`
+	DocFee                   *float64 `json:"doc_fee"`
+	BrokerPaymentMethod      *string  `json:"broker_payment_method"`
+	Notes                    *string  `json:"notes"`
 	CreatedAt                string   `json:"created_at"`
 	UpdatedAt                string   `json:"updated_at"`
 }
@@ -151,10 +153,11 @@ func toDealResponse(d db.Deal) DealResponse {
 		BrokerPercent:            pgNumeric(d.BrokerPercent),
 		BrokerCommission:         pgNumeric(d.BrokerCommission),
 		BrokerCommissionPaidDate: pgDate(d.BrokerCommissionPaidDate),
-		ReferralAmount:           pgNumeric(d.ReferralAmount),
 		YourNet:                  pgNumeric(d.YourNet),
 		BrokerFeePaidDate:        pgDate(d.BrokerFeePaidDate),
-		ReferralPaidDate:         pgDate(d.ReferralPaidDate),
+		CollectAmount:            pgNumeric(d.CollectAmount),
+		DocFee:                   pgNumeric(d.DocFee),
+		Notes:                    pgText(d.Notes),
 		CreatedAt:                pgTimestamp(d.CreatedAt),
 		UpdatedAt:                pgTimestamp(d.UpdatedAt),
 	}
@@ -170,9 +173,13 @@ func toDealResponse(d db.Deal) DealResponse {
 		s := string(d.BrokerFeeStatus.PaymentStatus)
 		r.BrokerFeeStatus = &s
 	}
-	if d.ReferralStatus.Valid {
-		s := string(d.ReferralStatus.ReferralStatus)
-		r.ReferralStatus = &s
+	if d.DealStatus.Valid {
+		s := string(d.DealStatus.DealStatus)
+		r.DealStatus = &s
+	}
+	if d.BrokerPaymentMethod.Valid {
+		s := string(d.BrokerPaymentMethod.BrokerPaymentMethod)
+		r.BrokerPaymentMethod = &s
 	}
 	return r
 }

@@ -17,15 +17,17 @@ INSERT INTO deals (
     broker_commission,
     broker_commission_status,
     broker_commission_paid_date,
-    referral_amount,
     your_net,
     broker_fee_status,
     broker_fee_paid_date,
-    referral_status,
-    referral_paid_date
+    deal_status,
+    collect_amount,
+    doc_fee,
+    broker_payment_method,
+    notes
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
 ) RETURNING *;
 
 -- name: GetDeal :one
@@ -33,8 +35,10 @@ SELECT * FROM deals
 WHERE id = $1;
 
 -- name: ListDeals :many
-SELECT * FROM deals
-ORDER BY created_at DESC
+SELECT deals.* FROM deals
+JOIN clients ON clients.id = deals.client_id
+WHERE clients.status != 'no_deal'
+ORDER BY deals.created_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: UpdateDeal :one
@@ -57,12 +61,14 @@ SET
     broker_commission           = $16,
     broker_commission_status    = $17,
     broker_commission_paid_date = $18,
-    referral_amount             = $19,
-    your_net                    = $20,
-    broker_fee_status           = $21,
-    broker_fee_paid_date        = $22,
-    referral_status             = $23,
-    referral_paid_date          = $24,
+    your_net                    = $19,
+    broker_fee_status           = $20,
+    broker_fee_paid_date        = $21,
+    deal_status                 = $22,
+    collect_amount              = $23,
+    doc_fee                     = $24,
+    broker_payment_method       = $25,
+    notes                       = $26,
     updated_at                  = NOW()
 WHERE id = $1
 RETURNING *;
@@ -90,15 +96,5 @@ SET
     broker_commission_paid_date = CASE WHEN $2::payment_status = 'paid'
                                   THEN CURRENT_DATE ELSE NULL END,
     updated_at                  = NOW()
-WHERE id = $1
-RETURNING *;
-
--- name: UpdateDealReferralStatus :one
-UPDATE deals
-SET
-    referral_status    = $2,
-    referral_paid_date = CASE WHEN $2::referral_status = 'paid'
-                         THEN CURRENT_DATE ELSE NULL END,
-    updated_at         = NOW()
 WHERE id = $1
 RETURNING *;

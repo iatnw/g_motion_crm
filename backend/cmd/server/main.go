@@ -168,7 +168,6 @@ func main() {
 		r.Put("/deals/{id}", dealHandler.Update)
 		r.Patch("/deals/{id}/broker-fee-status", dealHandler.UpdateBrokerFeeStatus)
 		r.Patch("/deals/{id}/broker-commission-status", dealHandler.UpdateBrokerCommissionStatus)
-		r.Patch("/deals/{id}/referral-status", dealHandler.UpdateReferralStatus)
 		r.Get("/deals/{id}/documents", documentHandler.ListByDeal)
 		r.Post("/deals/{id}/documents", documentHandler.UploadForDeal)
 

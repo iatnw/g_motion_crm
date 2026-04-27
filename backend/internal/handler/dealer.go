@@ -156,7 +156,7 @@ func (h *DealerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
-
+		return
 	}
 
 	stats, err := h.dealer.GetStats(r.Context(), id)

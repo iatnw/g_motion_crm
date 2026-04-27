@@ -21,15 +21,15 @@ func NewDealHandler(deal *service.DealService) *DealHandler {
 }
 
 type dealRequest struct {
-	ClientID               string  `json:"client_id"`
-	BrokerID               *string `json:"broker_id"`
-	DealerID               *string `json:"dealer_id"`
-	DealDate               *string `json:"deal_date"`
-	DealNumber             *string `json:"deal_number"`
-	Vin                    *string `json:"vin"`
-	Make                   *string `json:"make"`
-	Model                  *string `json:"model"`
-	TrimLevel              *string `json:"trim_level"`
+	ClientID               string   `json:"client_id"`
+	BrokerID               *string  `json:"broker_id"`
+	DealerID               *string  `json:"dealer_id"`
+	DealDate               *string  `json:"deal_date"`
+	DealNumber             *string  `json:"deal_number"`
+	Vin                    *string  `json:"vin"`
+	Make                   *string  `json:"make"`
+	Model                  *string  `json:"model"`
+	TrimLevel              *string  `json:"trim_level"`
 	DownPayment            *float64 `json:"down_payment"`
 	DownPaymentMethod      *string  `json:"down_payment_method"`
 	MonthlyPayment         *float64 `json:"monthly_payment"`
@@ -37,10 +37,13 @@ type dealRequest struct {
 	BrokerPercent          *float64 `json:"broker_percent"`
 	BrokerCommission       *float64 `json:"broker_commission"`
 	BrokerCommissionStatus *string  `json:"broker_commission_status"`
-	ReferralAmount         *float64 `json:"referral_amount"`
 	YourNet                *float64 `json:"your_net"`
 	BrokerFeeStatus        *string  `json:"broker_fee_status"`
-	ReferralStatus         *string  `json:"referral_status"`
+	DealStatus             *string  `json:"deal_status"`
+	CollectAmount          *float64 `json:"collect_amount"`
+	DocFee                 *float64 `json:"doc_fee"`
+	BrokerPaymentMethod    *string  `json:"broker_payment_method"`
+	Notes                  *string  `json:"notes"`
 }
 
 func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -94,9 +97,14 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid broker_fee_status", http.StatusBadRequest)
 		return
 	}
-	referralStatus, err := nullReferralStatus(req.ReferralStatus)
+	dealStatus, err := nullDealStatus(req.DealStatus)
 	if err != nil {
-		http.Error(w, "invalid referral_status", http.StatusBadRequest)
+		http.Error(w, "invalid deal_status", http.StatusBadRequest)
+		return
+	}
+	brokerPaymentMethod, err := nullBrokerPaymentMethod(req.BrokerPaymentMethod)
+	if err != nil {
+		http.Error(w, "invalid broker_payment_method", http.StatusBadRequest)
 		return
 	}
 
@@ -117,10 +125,13 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		BrokerPercent:          req.BrokerPercent,
 		BrokerCommission:       req.BrokerCommission,
 		BrokerCommissionStatus: brokerCommissionStatus,
-		ReferralAmount:         req.ReferralAmount,
 		YourNet:                req.YourNet,
 		BrokerFeeStatus:        brokerFeeStatus,
-		ReferralStatus:         referralStatus,
+		DealStatus:             dealStatus,
+		CollectAmount:          req.CollectAmount,
+		DocFee:                 req.DocFee,
+		BrokerPaymentMethod:    brokerPaymentMethod,
+		Notes:                  req.Notes,
 	})
 
 	if err != nil {
@@ -189,9 +200,14 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid broker_fee_status", http.StatusBadRequest)
 		return
 	}
-	referralStatus, err := nullReferralStatus(req.ReferralStatus)
+	dealStatus, err := nullDealStatus(req.DealStatus)
 	if err != nil {
-		http.Error(w, "invalid referral_status", http.StatusBadRequest)
+		http.Error(w, "invalid deal_status", http.StatusBadRequest)
+		return
+	}
+	brokerPaymentMethod, err := nullBrokerPaymentMethod(req.BrokerPaymentMethod)
+	if err != nil {
+		http.Error(w, "invalid broker_payment_method", http.StatusBadRequest)
 		return
 	}
 
@@ -213,10 +229,13 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		BrokerPercent:          req.BrokerPercent,
 		BrokerCommission:       req.BrokerCommission,
 		BrokerCommissionStatus: brokerCommissionStatus,
-		ReferralAmount:         req.ReferralAmount,
 		YourNet:                req.YourNet,
 		BrokerFeeStatus:        brokerFeeStatus,
-		ReferralStatus:         referralStatus,
+		DealStatus:             dealStatus,
+		CollectAmount:          req.CollectAmount,
+		DocFee:                 req.DocFee,
+		BrokerPaymentMethod:    brokerPaymentMethod,
+		Notes:                  req.Notes,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -360,37 +379,3 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
-func (h *DealHandler) UpdateReferralStatus(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-
-	var req struct {
-		Status string `json:"status"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-
-	if req.Status == "" {
-		http.Error(w, "referral status is required", http.StatusBadRequest)
-		return
-	}
-
-	deal, err := h.deal.UpdateReferralStatus(r.Context(), id, db.ReferralStatus(req.Status))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
-}

@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BrokerPaymentMethod string
+
+const (
+	BrokerPaymentMethodZelleGmotion  BrokerPaymentMethod = "zelle_gmotion"
+	BrokerPaymentMethodZellePersonal BrokerPaymentMethod = "zelle_personal"
+)
+
+func (e *BrokerPaymentMethod) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = BrokerPaymentMethod(s)
+	case string:
+		*e = BrokerPaymentMethod(s)
+	default:
+		return fmt.Errorf("unsupported scan type for BrokerPaymentMethod: %T", src)
+	}
+	return nil
+}
+
+type NullBrokerPaymentMethod struct {
+	BrokerPaymentMethod BrokerPaymentMethod `json:"broker_payment_method"`
+	Valid               bool                `json:"valid"` // Valid is true if BrokerPaymentMethod is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullBrokerPaymentMethod) Scan(value interface{}) error {
+	if value == nil {
+		ns.BrokerPaymentMethod, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.BrokerPaymentMethod.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullBrokerPaymentMethod) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.BrokerPaymentMethod), nil
+}
+
 type ClientStatus string
 
 const (
@@ -97,6 +139,49 @@ func (ns NullClientsSource) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.ClientsSource), nil
+}
+
+type DealStatus string
+
+const (
+	DealStatusPaid      DealStatus = "paid"
+	DealStatusPending   DealStatus = "pending"
+	DealStatusCancelled DealStatus = "cancelled"
+)
+
+func (e *DealStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = DealStatus(s)
+	case string:
+		*e = DealStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for DealStatus: %T", src)
+	}
+	return nil
+}
+
+type NullDealStatus struct {
+	DealStatus DealStatus `json:"deal_status"`
+	Valid      bool       `json:"valid"` // Valid is true if DealStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullDealStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.DealStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.DealStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullDealStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.DealStatus), nil
 }
 
 type DocumentType string
@@ -384,32 +469,34 @@ type Client struct {
 }
 
 type Deal struct {
-	ID                       pgtype.UUID           `json:"id"`
-	ClientID                 pgtype.UUID           `json:"client_id"`
-	BrokerID                 pgtype.UUID           `json:"broker_id"`
-	DealerID                 pgtype.UUID           `json:"dealer_id"`
-	DealDate                 pgtype.Date           `json:"deal_date"`
-	DealNumber               pgtype.Text           `json:"deal_number"`
-	Vin                      pgtype.Text           `json:"vin"`
-	Make                     pgtype.Text           `json:"make"`
-	Model                    pgtype.Text           `json:"model"`
-	TrimLevel                pgtype.Text           `json:"trim_level"`
-	DownPayment              pgtype.Numeric        `json:"down_payment"`
-	DownPaymentMethod        NullDownPaymentMethod `json:"down_payment_method"`
-	MonthlyPayment           pgtype.Numeric        `json:"monthly_payment"`
-	BrokerFee                pgtype.Numeric        `json:"broker_fee"`
-	BrokerPercent            pgtype.Numeric        `json:"broker_percent"`
-	BrokerCommission         pgtype.Numeric        `json:"broker_commission"`
-	BrokerCommissionStatus   NullPaymentStatus     `json:"broker_commission_status"`
-	BrokerCommissionPaidDate pgtype.Date           `json:"broker_commission_paid_date"`
-	ReferralAmount           pgtype.Numeric        `json:"referral_amount"`
-	YourNet                  pgtype.Numeric        `json:"your_net"`
-	BrokerFeeStatus          NullPaymentStatus     `json:"broker_fee_status"`
-	BrokerFeePaidDate        pgtype.Date           `json:"broker_fee_paid_date"`
-	ReferralStatus           NullReferralStatus    `json:"referral_status"`
-	ReferralPaidDate         pgtype.Date           `json:"referral_paid_date"`
-	CreatedAt                pgtype.Timestamptz    `json:"created_at"`
-	UpdatedAt                pgtype.Timestamptz    `json:"updated_at"`
+	ID                       pgtype.UUID             `json:"id"`
+	ClientID                 pgtype.UUID             `json:"client_id"`
+	BrokerID                 pgtype.UUID             `json:"broker_id"`
+	DealerID                 pgtype.UUID             `json:"dealer_id"`
+	DealDate                 pgtype.Date             `json:"deal_date"`
+	DealNumber               pgtype.Text             `json:"deal_number"`
+	Vin                      pgtype.Text             `json:"vin"`
+	Make                     pgtype.Text             `json:"make"`
+	Model                    pgtype.Text             `json:"model"`
+	TrimLevel                pgtype.Text             `json:"trim_level"`
+	DownPayment              pgtype.Numeric          `json:"down_payment"`
+	DownPaymentMethod        NullDownPaymentMethod   `json:"down_payment_method"`
+	MonthlyPayment           pgtype.Numeric          `json:"monthly_payment"`
+	BrokerFee                pgtype.Numeric          `json:"broker_fee"`
+	BrokerPercent            pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission         pgtype.Numeric          `json:"broker_commission"`
+	BrokerCommissionStatus   NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerCommissionPaidDate pgtype.Date             `json:"broker_commission_paid_date"`
+	YourNet                  pgtype.Numeric          `json:"your_net"`
+	BrokerFeeStatus          NullPaymentStatus       `json:"broker_fee_status"`
+	BrokerFeePaidDate        pgtype.Date             `json:"broker_fee_paid_date"`
+	CreatedAt                pgtype.Timestamptz      `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz      `json:"updated_at"`
+	DealStatus               NullDealStatus          `json:"deal_status"`
+	CollectAmount            pgtype.Numeric          `json:"collect_amount"`
+	DocFee                   pgtype.Numeric          `json:"doc_fee"`
+	BrokerPaymentMethod      NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                    pgtype.Text             `json:"notes"`
 }
 
 type Dealer struct {
@@ -439,6 +526,20 @@ type Document struct {
 	FileSizeBytes pgtype.Int4        `json:"file_size_bytes"`
 	DocumentType  DocumentType       `json:"document_type"`
 	UploadedAt    pgtype.Timestamptz `json:"uploaded_at"`
+}
+
+type Referral struct {
+	ID        pgtype.UUID        `json:"id"`
+	DealID    pgtype.UUID        `json:"deal_id"`
+	FirstName string             `json:"first_name"`
+	LastName  string             `json:"last_name"`
+	Phone     pgtype.Text        `json:"phone"`
+	Amount    pgtype.Numeric     `json:"amount"`
+	Status    ReferralStatus     `json:"status"`
+	PaidDate  pgtype.Date        `json:"paid_date"`
+	Notes     pgtype.Text        `json:"notes"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Setting struct {

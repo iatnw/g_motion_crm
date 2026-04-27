@@ -38,10 +38,13 @@ type CreateDealInput struct {
 	BrokerPercent          *float64
 	BrokerCommission       *float64
 	BrokerCommissionStatus db.NullPaymentStatus
-	ReferralAmount         *float64
 	YourNet                *float64
 	BrokerFeeStatus        db.NullPaymentStatus
-	ReferralStatus         db.NullReferralStatus
+	DealStatus             db.NullDealStatus
+	CollectAmount          *float64
+	DocFee                 *float64
+	BrokerPaymentMethod    db.NullBrokerPaymentMethod
+	Notes                  *string
 }
 
 func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, error) {
@@ -62,10 +65,13 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		BrokerPercent:          toNumeric(in.BrokerPercent),
 		BrokerCommission:       toNumeric(in.BrokerCommission),
 		BrokerCommissionStatus: in.BrokerCommissionStatus,
-		ReferralAmount:         toNumeric(in.ReferralAmount),
 		YourNet:                toNumeric(in.YourNet),
 		BrokerFeeStatus:        in.BrokerFeeStatus,
-		ReferralStatus:         in.ReferralStatus,
+		DealStatus:             in.DealStatus,
+		CollectAmount:          toNumeric(in.CollectAmount),
+		DocFee:                 toNumeric(in.DocFee),
+		BrokerPaymentMethod:    in.BrokerPaymentMethod,
+		Notes:                  toText(in.Notes),
 	})
 }
 
@@ -103,10 +109,13 @@ type UpdateDealInput struct {
 	BrokerPercent          *float64
 	BrokerCommission       *float64
 	BrokerCommissionStatus db.NullPaymentStatus
-	ReferralAmount         *float64
 	YourNet                *float64
 	BrokerFeeStatus        db.NullPaymentStatus
-	ReferralStatus         db.NullReferralStatus
+	DealStatus             db.NullDealStatus
+	CollectAmount          *float64
+	DocFee                 *float64
+	BrokerPaymentMethod    db.NullBrokerPaymentMethod
+	Notes                  *string
 }
 
 func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, error) {
@@ -128,10 +137,13 @@ func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, 
 		BrokerPercent:          toNumeric(in.BrokerPercent),
 		BrokerCommission:       toNumeric(in.BrokerCommission),
 		BrokerCommissionStatus: in.BrokerCommissionStatus,
-		ReferralAmount:         toNumeric(in.ReferralAmount),
 		YourNet:                toNumeric(in.YourNet),
 		BrokerFeeStatus:        in.BrokerFeeStatus,
-		ReferralStatus:         in.ReferralStatus,
+		DealStatus:             in.DealStatus,
+		CollectAmount:          toNumeric(in.CollectAmount),
+		DocFee:                 toNumeric(in.DocFee),
+		BrokerPaymentMethod:    in.BrokerPaymentMethod,
+		Notes:                  toText(in.Notes),
 	})
 }
 
@@ -149,9 +161,3 @@ func (s *DealService) UpdateBrokerCommissionStatus(ctx context.Context, id uuid.
 	})
 }
 
-func (s *DealService) UpdateReferralStatus(ctx context.Context, id uuid.UUID, status db.ReferralStatus) (db.Deal, error) {
-	return s.q.UpdateDealReferralStatus(ctx, db.UpdateDealReferralStatusParams{
-		ID:             toUUID(id),
-		ReferralStatus: db.NullReferralStatus{ReferralStatus: status, Valid: true},
-	})
-}

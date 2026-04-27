@@ -115,6 +115,30 @@ func nullClientsSource(s *string) (db.NullClientsSource, error) {
 	}
 }
 
+func nullDealStatus(s *string) (db.NullDealStatus, error) {
+	if s == nil {
+		return db.NullDealStatus{}, nil
+	}
+	switch db.DealStatus(*s) {
+	case db.DealStatusPaid, db.DealStatusPending, db.DealStatusCancelled:
+		return db.NullDealStatus{DealStatus: db.DealStatus(*s), Valid: true}, nil
+	default:
+		return db.NullDealStatus{}, fmt.Errorf("invalid deal status: %s", *s)
+	}
+}
+
+func nullBrokerPaymentMethod(s *string) (db.NullBrokerPaymentMethod, error) {
+	if s == nil {
+		return db.NullBrokerPaymentMethod{}, nil
+	}
+	switch db.BrokerPaymentMethod(*s) {
+	case db.BrokerPaymentMethodZelleGmotion, db.BrokerPaymentMethodZellePersonal:
+		return db.NullBrokerPaymentMethod{BrokerPaymentMethod: db.BrokerPaymentMethod(*s), Valid: true}, nil
+	default:
+		return db.NullBrokerPaymentMethod{}, fmt.Errorf("invalid broker payment method: %s", *s)
+	}
+}
+
 func nullEmploymentStatus(s *string) (db.NullEmploymentStatus, error) {
 	if s == nil {
 		return db.NullEmploymentStatus{}, nil
