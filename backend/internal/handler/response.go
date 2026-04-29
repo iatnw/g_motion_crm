@@ -3,6 +3,7 @@ package handler
 import (
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -127,6 +128,10 @@ type DealResponse struct {
 	BrokerFeeStatus          *string  `json:"broker_fee_status"`
 	BrokerFeePaidDate        *string  `json:"broker_fee_paid_date"`
 	DealStatus               *string  `json:"deal_status"`
+	DealStatusPendingSince   *string  `json:"deal_status_pending_since"`
+	PendingPaymentDays       *int     `json:"pending_payment_days"`
+	PendingPaymentBucket     *string  `json:"pending_payment_bucket"`
+	PaymentReminderEmailSent *string  `json:"payment_reminder_email_sent_at"`
 	CollectAmount            *float64 `json:"collect_amount"`
 	DocFee                   *float64 `json:"doc_fee"`
 	BrokerPaymentMethod      *string  `json:"broker_payment_method"`
@@ -155,6 +160,8 @@ func toDealResponse(d db.Deal) DealResponse {
 		BrokerCommissionPaidDate: pgDate(d.BrokerCommissionPaidDate),
 		YourNet:                  pgNumeric(d.YourNet),
 		BrokerFeePaidDate:        pgDate(d.BrokerFeePaidDate),
+		DealStatusPendingSince:   pgDate(d.DealStatusPendingSince),
+		PaymentReminderEmailSent: pgTimestampPtr(d.PaymentReminderEmailSentAt),
 		CollectAmount:            pgNumeric(d.CollectAmount),
 		DocFee:                   pgNumeric(d.DocFee),
 		Notes:                    pgText(d.Notes),
@@ -176,12 +183,38 @@ func toDealResponse(d db.Deal) DealResponse {
 	if d.DealStatus.Valid {
 		s := string(d.DealStatus.DealStatus)
 		r.DealStatus = &s
+		if d.DealStatus.DealStatus == db.DealStatusPending {
+			r.PendingPaymentDays, r.PendingPaymentBucket = pendingPaymentAge(d.DealStatusPendingSince)
+		}
 	}
 	if d.BrokerPaymentMethod.Valid {
 		s := string(d.BrokerPaymentMethod.BrokerPaymentMethod)
 		r.BrokerPaymentMethod = &s
 	}
 	return r
+}
+
+func pendingPaymentAge(pendingSince pgtype.Date) (*int, *string) {
+	if !pendingSince.Valid {
+		return nil, nil
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	start := pendingSince.Time.UTC().Truncate(24 * time.Hour)
+	days := int(today.Sub(start).Hours() / 24)
+	if days < 0 {
+		days = 0
+	}
+
+	bucket := "green"
+	switch {
+	case days <= 31:
+		bucket = "green"
+	case days <= 40:
+		bucket = "yellow"
+	default:
+		bucket = "red"
+	}
+	return &days, &bucket
 }
 
 func toDealResponses(ds []db.Deal) []DealResponse {
@@ -399,6 +432,14 @@ func pgNullUUID(u pgtype.UUID) *string {
 
 func pgTimestamp(t pgtype.Timestamptz) string {
 	return t.Time.Format("2006-01-02T15:04:05Z07:00")
+}
+
+func pgTimestampPtr(t pgtype.Timestamptz) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := pgTimestamp(t)
+	return &s
 }
 
 func pgDate(d pgtype.Date) *string {

@@ -21,13 +21,16 @@ INSERT INTO deals (
     broker_fee_status,
     broker_fee_paid_date,
     deal_status,
+    deal_status_pending_since,
     collect_amount,
     doc_fee,
     broker_payment_method,
     notes
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+    $16, $17, $18, $19, $20, $21,
+    CASE WHEN $21::deal_status = 'pending' THEN CURRENT_DATE ELSE NULL END,
+    $22, $23, $24, $25
 ) RETURNING *;
 
 -- name: GetDeal :one
@@ -65,6 +68,14 @@ SET
     broker_fee_status           = $20,
     broker_fee_paid_date        = $21,
     deal_status                 = $22,
+    deal_status_pending_since   = CASE
+        WHEN $22::deal_status = 'pending'
+         AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
+        THEN CURRENT_DATE
+        WHEN $22::deal_status IS DISTINCT FROM 'pending'
+        THEN NULL
+        ELSE deal_status_pending_since
+    END,
     collect_amount              = $23,
     doc_fee                     = $24,
     broker_payment_method       = $25,
@@ -73,10 +84,18 @@ SET
 WHERE id = $1
 RETURNING *;
 
+-- name: MarkDealPaymentReminderEmailSent :one
+UPDATE deals
+SET
+    payment_reminder_email_sent_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
 -- name: ListDealsByClient :many
 SELECT * FROM deals
 WHERE deals.client_id = $1
-ORDER BY created_at DESC
+ORDER BY deals.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: UpdateDealBrokerFeeStatus :one

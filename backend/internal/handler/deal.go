@@ -134,6 +134,14 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		if errors.Is(err, service.ErrBrokerFeeRequiredForCommission) {
+			http.Error(w, "broker_fee is required to calculate broker commission or percent", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
+			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -237,6 +245,14 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Notes:                  req.Notes,
 	})
 	if err != nil {
+		if errors.Is(err, service.ErrBrokerFeeRequiredForCommission) {
+			http.Error(w, "broker_fee is required to calculate broker commission or percent", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
+			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -375,6 +391,27 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	}
 
 	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, status.PaymentStatus)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toDealResponse(deal))
+}
+
+func (h *DealHandler) MarkPaymentReminderEmailSent(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.MarkPaymentReminderEmailSent(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)

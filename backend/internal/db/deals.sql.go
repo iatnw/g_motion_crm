@@ -34,14 +34,17 @@ INSERT INTO deals (
     broker_fee_status,
     broker_fee_paid_date,
     deal_status,
+    deal_status_pending_since,
     collect_amount,
     doc_fee,
     broker_payment_method,
     notes
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
-) RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
+    $16, $17, $18, $19, $20, $21,
+    CASE WHEN $21::deal_status = 'pending' THEN CURRENT_DATE ELSE NULL END,
+    $22, $23, $24, $25
+) RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type CreateDealParams struct {
@@ -130,12 +133,14 @@ func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, e
 		&i.DocFee,
 		&i.BrokerPaymentMethod,
 		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
 }
 
 const getDeal = `-- name: GetDeal :one
-SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes FROM deals
+SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at FROM deals
 WHERE id = $1
 `
 
@@ -171,12 +176,14 @@ func (q *Queries) GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error) {
 		&i.DocFee,
 		&i.BrokerPaymentMethod,
 		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
 }
 
 const listDeals = `-- name: ListDeals :many
-SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes FROM deals
+SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at FROM deals
 JOIN clients ON clients.id = deals.client_id
 WHERE clients.status != 'no_deal'
 ORDER BY deals.created_at DESC
@@ -226,6 +233,8 @@ func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, e
 			&i.DocFee,
 			&i.BrokerPaymentMethod,
 			&i.Notes,
+			&i.DealStatusPendingSince,
+			&i.PaymentReminderEmailSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -238,9 +247,9 @@ func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, e
 }
 
 const listDealsByClient = `-- name: ListDealsByClient :many
-SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes FROM deals
+SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at FROM deals
 WHERE deals.client_id = $1
-ORDER BY created_at DESC
+ORDER BY deals.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -288,6 +297,8 @@ func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientPa
 			&i.DocFee,
 			&i.BrokerPaymentMethod,
 			&i.Notes,
+			&i.DealStatusPendingSince,
+			&i.PaymentReminderEmailSentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -297,6 +308,53 @@ func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const markDealPaymentReminderEmailSent = `-- name: MarkDealPaymentReminderEmailSent :one
+UPDATE deals
+SET
+    payment_reminder_email_sent_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
+`
+
+func (q *Queries) MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtype.UUID) (Deal, error) {
+	row := q.db.QueryRow(ctx, markDealPaymentReminderEmailSent, id)
+	var i Deal
+	err := row.Scan(
+		&i.ID,
+		&i.ClientID,
+		&i.BrokerID,
+		&i.DealerID,
+		&i.DealDate,
+		&i.DealNumber,
+		&i.Vin,
+		&i.Make,
+		&i.Model,
+		&i.TrimLevel,
+		&i.DownPayment,
+		&i.DownPaymentMethod,
+		&i.MonthlyPayment,
+		&i.BrokerFee,
+		&i.BrokerPercent,
+		&i.BrokerCommission,
+		&i.BrokerCommissionStatus,
+		&i.BrokerCommissionPaidDate,
+		&i.YourNet,
+		&i.BrokerFeeStatus,
+		&i.BrokerFeePaidDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
+	)
+	return i, err
 }
 
 const updateDeal = `-- name: UpdateDeal :one
@@ -323,13 +381,21 @@ SET
     broker_fee_status           = $20,
     broker_fee_paid_date        = $21,
     deal_status                 = $22,
+    deal_status_pending_since   = CASE
+        WHEN $22::deal_status = 'pending'
+         AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
+        THEN CURRENT_DATE
+        WHEN $22::deal_status IS DISTINCT FROM 'pending'
+        THEN NULL
+        ELSE deal_status_pending_since
+    END,
     collect_amount              = $23,
     doc_fee                     = $24,
     broker_payment_method       = $25,
     notes                       = $26,
     updated_at                  = NOW()
 WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type UpdateDealParams struct {
@@ -420,6 +486,8 @@ func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, e
 		&i.DocFee,
 		&i.BrokerPaymentMethod,
 		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
 }
@@ -432,7 +500,7 @@ SET
                                   THEN CURRENT_DATE ELSE NULL END,
     updated_at                  = NOW()
 WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type UpdateDealBrokerCommissionStatusParams struct {
@@ -472,6 +540,8 @@ func (q *Queries) UpdateDealBrokerCommissionStatus(ctx context.Context, arg Upda
 		&i.DocFee,
 		&i.BrokerPaymentMethod,
 		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
 }
@@ -484,7 +554,7 @@ SET
                            THEN CURRENT_DATE ELSE NULL END,
     updated_at           = NOW()
 WHERE id = $1
-RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type UpdateDealBrokerFeeStatusParams struct {
@@ -524,6 +594,8 @@ func (q *Queries) UpdateDealBrokerFeeStatus(ctx context.Context, arg UpdateDealB
 		&i.DocFee,
 		&i.BrokerPaymentMethod,
 		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
 }
