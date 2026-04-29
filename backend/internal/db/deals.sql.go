@@ -182,6 +182,98 @@ func (q *Queries) GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error) {
 	return i, err
 }
 
+const getDealShow = `-- name: GetDealShow :one
+SELECT
+    d.id,
+    d.deal_date,
+    (c.first_name || ' ' || c.last_name)::text AS client_name,
+    d.make,
+    d.model,
+    d.trim_level,
+    d.vin,
+    dealers.name AS dealer_name,
+    (brokers.first_name || ' ' || brokers.last_name)::text AS broker_name,
+    d.broker_fee,
+    d.collect_amount,
+    d.doc_fee,
+    COALESCE(referral_totals.referral_total, 0::numeric)::numeric AS referral_total,
+    d.broker_percent,
+    d.broker_commission,
+    (
+        COALESCE(d.broker_fee, 0)
+        - COALESCE(d.broker_commission, 0)
+        - COALESCE(d.doc_fee, 0)
+        - COALESCE(referral_totals.referral_total, 0)
+    )::numeric AS company_net,
+    d.broker_fee_status,
+    d.broker_commission_status,
+    d.broker_payment_method,
+    d.notes
+FROM deals d
+JOIN clients c ON c.id = d.client_id
+LEFT JOIN dealers ON dealers.id = d.dealer_id
+LEFT JOIN brokers ON brokers.id = d.broker_id
+LEFT JOIN (
+    SELECT
+        deal_id,
+        SUM(amount)::numeric AS referral_total
+    FROM referrals
+    GROUP BY deal_id
+) referral_totals ON referral_totals.deal_id = d.id
+WHERE d.id = $1
+`
+
+type GetDealShowRow struct {
+	ID                     pgtype.UUID             `json:"id"`
+	DealDate               pgtype.Date             `json:"deal_date"`
+	ClientName             string                  `json:"client_name"`
+	Make                   pgtype.Text             `json:"make"`
+	Model                  pgtype.Text             `json:"model"`
+	TrimLevel              pgtype.Text             `json:"trim_level"`
+	Vin                    pgtype.Text             `json:"vin"`
+	DealerName             pgtype.Text             `json:"dealer_name"`
+	BrokerName             string                  `json:"broker_name"`
+	BrokerFee              pgtype.Numeric          `json:"broker_fee"`
+	CollectAmount          pgtype.Numeric          `json:"collect_amount"`
+	DocFee                 pgtype.Numeric          `json:"doc_fee"`
+	ReferralTotal          pgtype.Numeric          `json:"referral_total"`
+	BrokerPercent          pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission       pgtype.Numeric          `json:"broker_commission"`
+	CompanyNet             pgtype.Numeric          `json:"company_net"`
+	BrokerFeeStatus        NullPaymentStatus       `json:"broker_fee_status"`
+	BrokerCommissionStatus NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerPaymentMethod    NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                  pgtype.Text             `json:"notes"`
+}
+
+func (q *Queries) GetDealShow(ctx context.Context, id pgtype.UUID) (GetDealShowRow, error) {
+	row := q.db.QueryRow(ctx, getDealShow, id)
+	var i GetDealShowRow
+	err := row.Scan(
+		&i.ID,
+		&i.DealDate,
+		&i.ClientName,
+		&i.Make,
+		&i.Model,
+		&i.TrimLevel,
+		&i.Vin,
+		&i.DealerName,
+		&i.BrokerName,
+		&i.BrokerFee,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.ReferralTotal,
+		&i.BrokerPercent,
+		&i.BrokerCommission,
+		&i.CompanyNet,
+		&i.BrokerFeeStatus,
+		&i.BrokerCommissionStatus,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
+	)
+	return i, err
+}
+
 const listDeals = `-- name: ListDeals :many
 SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at FROM deals
 JOIN clients ON clients.id = deals.client_id

@@ -31,6 +31,7 @@ type Querier interface {
 	GetDashboardAging(ctx context.Context, arg GetDashboardAgingParams) (GetDashboardAgingRow, error)
 	GetDashboardTotals(ctx context.Context, arg GetDashboardTotalsParams) (GetDashboardTotalsRow, error)
 	GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error)
+	GetDealShow(ctx context.Context, id pgtype.UUID) (GetDealShowRow, error)
 	GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 	GetDealerStats(ctx context.Context, id pgtype.UUID) (DealerStat, error)
 	GetDocument(ctx context.Context, id pgtype.UUID) (Document, error)

@@ -225,6 +225,64 @@ func toDealResponses(ds []db.Deal) []DealResponse {
 	return out
 }
 
+type DealShowResponse struct {
+	ID                string   `json:"id"`
+	Date              *string  `json:"date"`
+	ClientName        string   `json:"client_name"`
+	Make              *string  `json:"make"`
+	Model             *string  `json:"model"`
+	Trim              *string  `json:"trim"`
+	Vin               *string  `json:"vin"`
+	DealerName        *string  `json:"dealer_name"`
+	BrokerName        string   `json:"broker_name"`
+	BrokerFee         *float64 `json:"broker_fee"`
+	CollectAmount     *float64 `json:"collect_amount"`
+	DocFee            *float64 `json:"doc_fee"`
+	ReferralTotal     *float64 `json:"referral_total"`
+	BrokerPercent     *float64 `json:"broker_percent"`
+	BrokerProfit      *float64 `json:"broker_profit"`
+	CompanyNet        *float64 `json:"company_net"`
+	CheckStatus       *string  `json:"check_status"`
+	BrokerPaidStatus  *string  `json:"broker_paid_status"`
+	BrokerPaymentType *string  `json:"broker_payment_type"`
+	Notes             *string  `json:"notes"`
+}
+
+func toDealShowResponse(d db.GetDealShowRow) DealShowResponse {
+	r := DealShowResponse{
+		ID:            pgUUID(d.ID),
+		Date:          pgDate(d.DealDate),
+		ClientName:    d.ClientName,
+		Make:          pgText(d.Make),
+		Model:         pgText(d.Model),
+		Trim:          pgText(d.TrimLevel),
+		Vin:           pgText(d.Vin),
+		DealerName:    pgText(d.DealerName),
+		BrokerName:    d.BrokerName,
+		BrokerFee:     pgNumeric(d.BrokerFee),
+		CollectAmount: pgNumeric(d.CollectAmount),
+		DocFee:        pgNumeric(d.DocFee),
+		ReferralTotal: pgNumeric(d.ReferralTotal),
+		BrokerPercent: pgNumeric(d.BrokerPercent),
+		BrokerProfit:  pgNumeric(d.BrokerCommission),
+		CompanyNet:    pgNumeric(d.CompanyNet),
+		Notes:         pgText(d.Notes),
+	}
+	if d.BrokerFeeStatus.Valid {
+		s := string(d.BrokerFeeStatus.PaymentStatus)
+		r.CheckStatus = &s
+	}
+	if d.BrokerCommissionStatus.Valid {
+		s := string(d.BrokerCommissionStatus.PaymentStatus)
+		r.BrokerPaidStatus = &s
+	}
+	if d.BrokerPaymentMethod.Valid {
+		s := string(d.BrokerPaymentMethod.BrokerPaymentMethod)
+		r.BrokerPaymentType = &s
+	}
+	return r
+}
+
 // --- Broker ---
 
 type BrokerResponse struct {

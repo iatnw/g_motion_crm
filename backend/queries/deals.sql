@@ -37,6 +37,46 @@ INSERT INTO deals (
 SELECT * FROM deals
 WHERE id = $1;
 
+-- name: GetDealShow :one
+SELECT
+    d.id,
+    d.deal_date,
+    (c.first_name || ' ' || c.last_name)::text AS client_name,
+    d.make,
+    d.model,
+    d.trim_level,
+    d.vin,
+    dealers.name AS dealer_name,
+    (brokers.first_name || ' ' || brokers.last_name)::text AS broker_name,
+    d.broker_fee,
+    d.collect_amount,
+    d.doc_fee,
+    COALESCE(referral_totals.referral_total, 0::numeric)::numeric AS referral_total,
+    d.broker_percent,
+    d.broker_commission,
+    (
+        COALESCE(d.broker_fee, 0)
+        - COALESCE(d.broker_commission, 0)
+        - COALESCE(d.doc_fee, 0)
+        - COALESCE(referral_totals.referral_total, 0)
+    )::numeric AS company_net,
+    d.broker_fee_status,
+    d.broker_commission_status,
+    d.broker_payment_method,
+    d.notes
+FROM deals d
+JOIN clients c ON c.id = d.client_id
+LEFT JOIN dealers ON dealers.id = d.dealer_id
+LEFT JOIN brokers ON brokers.id = d.broker_id
+LEFT JOIN (
+    SELECT
+        deal_id,
+        SUM(amount)::numeric AS referral_total
+    FROM referrals
+    GROUP BY deal_id
+) referral_totals ON referral_totals.deal_id = d.id
+WHERE d.id = $1;
+
 -- name: ListDeals :many
 SELECT deals.* FROM deals
 JOIN clients ON clients.id = deals.client_id

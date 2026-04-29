@@ -172,6 +172,7 @@ func main() {
 		r.Get("/deals", dealHandler.List)
 		r.Post("/deals", dealHandler.Create)
 		r.Get("/deals/{id}", dealHandler.Get)
+		r.Get("/deals/{id}/show", dealHandler.GetShow)
 		r.Put("/deals/{id}", dealHandler.Update)
 		r.Patch("/deals/{id}/broker-fee-status", dealHandler.UpdateBrokerFeeStatus)
 		r.Patch("/deals/{id}/broker-commission-status", dealHandler.UpdateBrokerCommissionStatus)

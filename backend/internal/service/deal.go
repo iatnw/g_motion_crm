@@ -90,6 +90,10 @@ func (s *DealService) Get(ctx context.Context, id uuid.UUID) (db.Deal, error) {
 	return s.q.GetDeal(ctx, toUUID(id))
 }
 
+func (s *DealService) GetShow(ctx context.Context, id uuid.UUID) (db.GetDealShowRow, error) {
+	return s.q.GetDealShow(ctx, toUUID(id))
+}
+
 func (s *DealService) List(ctx context.Context, limit, offset int32) ([]db.Deal, error) {
 	return s.q.ListDeals(ctx, db.ListDealsParams{Limit: limit, Offset: offset})
 }
