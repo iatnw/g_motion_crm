@@ -75,6 +75,7 @@ func main() {
 	clientService := service.NewClient(queries, encryptionKey)
 	dealerService := service.NewDealer(queries)
 	documentService := service.NewDocument(queries, s3Client)
+	dashboardService := service.NewDashboard(queries)
 	tallyService := service.NewTally(clientService, documentService, dealService, queries, pool)
 	referralService := service.NewReferral(queries)
 
@@ -84,6 +85,7 @@ func main() {
 	clientHandler := handler.NewClientHandler(clientService)
 	dealerHandler := handler.NewDealerHandler(dealerService)
 	documentHandler := handler.NewDocumentHandler(documentService)
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	tallyHandler := handler.NewTallyHandler(tallyService, cfg.Tally.SigningSecret)
 	referralHandler := handler.NewReferralHandler(referralService)
 
@@ -138,6 +140,9 @@ func main() {
 		r.Post("/auth/totp/enable", authHandler.EnableTOTP)
 		r.Post("/auth/totp/disable", authHandler.DisableTOTP)
 		r.Post("/auth/password", authHandler.SetPassword)
+
+		// Dashboard
+		r.Get("/dashboard/summary", dashboardHandler.Summary)
 
 		// Clients
 		r.Get("/clients", clientHandler.List)
