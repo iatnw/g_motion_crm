@@ -95,7 +95,7 @@ func (q *Queries) GetBroker(ctx context.Context, id pgtype.UUID) (Broker, error)
 }
 
 const getBrokerStats = `-- name: GetBrokerStats :one
-SELECT id, total_deals, current_month_deals, total_broker_commission, total_broker_fee, broker_clean_income, avg_broker_fee_per_deal, avg_deals_per_month FROM broker_stats
+SELECT id, total_deals, current_month_deals, total_broker_commission, total_broker_fee, company_net_income, avg_broker_fee_per_deal, avg_deals_per_month FROM broker_stats
 WHERE id = $1
 `
 
@@ -108,7 +108,7 @@ func (q *Queries) GetBrokerStats(ctx context.Context, id pgtype.UUID) (BrokerSta
 		&i.CurrentMonthDeals,
 		&i.TotalBrokerCommission,
 		&i.TotalBrokerFee,
-		&i.BrokerCleanIncome,
+		&i.CompanyNetIncome,
 		&i.AvgBrokerFeePerDeal,
 		&i.AvgDealsPerMonth,
 	)
@@ -116,7 +116,7 @@ func (q *Queries) GetBrokerStats(ctx context.Context, id pgtype.UUID) (BrokerSta
 }
 
 const listBrokerStats = `-- name: ListBrokerStats :many
-SELECT id, total_deals, current_month_deals, total_broker_commission, total_broker_fee, broker_clean_income, avg_broker_fee_per_deal, avg_deals_per_month FROM broker_stats
+SELECT id, total_deals, current_month_deals, total_broker_commission, total_broker_fee, company_net_income, avg_broker_fee_per_deal, avg_deals_per_month FROM broker_stats
 `
 
 func (q *Queries) ListBrokerStats(ctx context.Context) ([]BrokerStat, error) {
@@ -134,7 +134,7 @@ func (q *Queries) ListBrokerStats(ctx context.Context) ([]BrokerStat, error) {
 			&i.CurrentMonthDeals,
 			&i.TotalBrokerCommission,
 			&i.TotalBrokerFee,
-			&i.BrokerCleanIncome,
+			&i.CompanyNetIncome,
 			&i.AvgBrokerFeePerDeal,
 			&i.AvgDealsPerMonth,
 		); err != nil {

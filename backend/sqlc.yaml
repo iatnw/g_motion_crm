@@ -20,5 +20,5 @@ sql:
             go_type: "github.com/jackc/pgx/v5/pgtype.Numeric"
           - column: "broker_stats.total_broker_fee"
             go_type: "github.com/jackc/pgx/v5/pgtype.Numeric"
-          - column: "broker_stats.broker_clean_income"
+          - column: "broker_stats.company_net_income"
             go_type: "github.com/jackc/pgx/v5/pgtype.Numeric"

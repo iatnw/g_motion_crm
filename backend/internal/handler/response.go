@@ -232,7 +232,7 @@ type BrokerStatResponse struct {
 	CurrentMonthDeals     int64    `json:"current_month_deals"`
 	TotalBrokerFee        *float64 `json:"total_broker_fee"`
 	TotalBrokerCommission *float64 `json:"total_broker_commission"`
-	BrokerCleanIncome     *float64 `json:"broker_clean_income"`
+	CompanyNetIncome      *float64 `json:"company_net_income"`
 	AvgBrokerFeePerDeal   *float64 `json:"avg_broker_fee_per_deal"`
 	AvgDealsPerMonth      *float64 `json:"avg_deals_per_month"`
 }
@@ -244,7 +244,7 @@ func toBrokerStatResponse(b db.BrokerStat) BrokerStatResponse {
 		CurrentMonthDeals:     b.CurrentMonthDeals,
 		TotalBrokerFee:        pgNumeric(b.TotalBrokerFee),
 		TotalBrokerCommission: pgNumeric(b.TotalBrokerCommission),
-		BrokerCleanIncome:     pgNumeric(b.BrokerCleanIncome),
+		CompanyNetIncome:      pgNumeric(b.CompanyNetIncome),
 		AvgBrokerFeePerDeal:   pgNumeric(b.AvgBrokerFeePerDeal),
 		AvgDealsPerMonth:      pgNumeric(b.AvgDealsPerMonth),
 	}

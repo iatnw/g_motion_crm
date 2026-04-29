@@ -429,7 +429,7 @@ type BrokerStat struct {
 	CurrentMonthDeals     int64          `json:"current_month_deals"`
 	TotalBrokerCommission pgtype.Numeric `json:"total_broker_commission"`
 	TotalBrokerFee        pgtype.Numeric `json:"total_broker_fee"`
-	BrokerCleanIncome     pgtype.Numeric `json:"broker_clean_income"`
+	CompanyNetIncome      pgtype.Numeric `json:"company_net_income"`
 	AvgBrokerFeePerDeal   pgtype.Numeric `json:"avg_broker_fee_per_deal"`
 	AvgDealsPerMonth      pgtype.Numeric `json:"avg_deals_per_month"`
 }
@@ -549,4 +549,11 @@ type Setting struct {
 	OwnerTotpSecret   pgtype.Text        `json:"owner_totp_secret"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TallyWebhookEvent struct {
+	ID           int64              `json:"id"`
+	EventID      pgtype.Text        `json:"event_id"`
+	SubmissionID pgtype.Text        `json:"submission_id"`
+	ProcessedAt  pgtype.Timestamptz `json:"processed_at"`
 }
