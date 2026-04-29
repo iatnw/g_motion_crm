@@ -1,0 +1,200 @@
+package handler
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/umbrllacrp/g_motion_crm/internal/service"
+)
+
+type ReferralHandler struct {
+	referral *service.ReferralService
+}
+
+func NewReferralHandler(referral *service.ReferralService) *ReferralHandler {
+	return &ReferralHandler{referral: referral}
+}
+
+type referralRequest struct {
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Phone     *string  `json:"phone"`
+	Amount    *float64 `json:"amount"`
+	Notes     *string  `json:"notes"`
+}
+
+func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
+	dealID, err := uuid.Parse(chi.URLParam(r, "dealID"))
+	if err != nil {
+		http.Error(w, "invalid deal_id", http.StatusBadRequest)
+		return
+	}
+
+	var req referralRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.FirstName == "" || req.LastName == "" {
+		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
+		return
+	}
+
+	referral, err := h.referral.Create(r.Context(), service.CreateReferralInput{
+		DealID:    dealID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Phone:     req.Phone,
+		Amount:    req.Amount,
+		Notes:     req.Notes,
+	})
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(toReferralResponse(referral))
+}
+
+func (h *ReferralHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
+	dealID, err := uuid.Parse(chi.URLParam(r, "dealID"))
+	if err != nil {
+		http.Error(w, "invalid deal_id", http.StatusBadRequest)
+		return
+	}
+
+	referrals, err := h.referral.List(r.Context(), dealID)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toReferralResponses(referrals))
+}
+
+func (h *ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	referral, err := h.referral.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toReferralResponse(referral))
+}
+
+func (h *ReferralHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req referralRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.FirstName == "" || req.LastName == "" {
+		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
+		return
+	}
+
+	referral, err := h.referral.Update(r.Context(), service.UpdateReferralInput{
+		ID:        id,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Phone:     req.Phone,
+		Amount:    req.Amount,
+		Notes:     req.Notes,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toReferralResponse(referral))
+}
+
+func (h *ReferralHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "" {
+		http.Error(w, "status is required", http.StatusBadRequest)
+		return
+	}
+	status, err := nullReferralStatus(&req.Status)
+	if err != nil {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+
+	referral, err := h.referral.UpdateStatus(r.Context(), id, status.ReferralStatus)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toReferralResponse(referral))
+}
+
+func (h *ReferralHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.referral.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

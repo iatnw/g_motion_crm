@@ -40,13 +40,16 @@ func NewS3Client(cfg config.AWSConfig) (*S3Client, error) {
 }
 
 func (s *S3Client) Upload(ctx context.Context, key string, body io.Reader, size int64, contentType string) error {
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(s.bucket),
-		Key:           aws.String(key),
-		Body:          body,
-		ContentLength: aws.Int64(size),
-		ContentType:   aws.String(contentType),
-	})
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		Body:        body,
+		ContentType: aws.String(contentType),
+	}
+	if size >= 0 {
+		input.ContentLength = aws.Int64(size)
+	}
+	_, err := s.client.PutObject(ctx, input)
 	return err
 }
 

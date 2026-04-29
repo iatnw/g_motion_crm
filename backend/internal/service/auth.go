@@ -13,10 +13,12 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidTOTP        = errors.New("invalid TOTP code")
-	ErrTOTPNotEnabled     = errors.New("TOTP not enabled")
-	ErrTOTPAlreadyEnabled = errors.New("TOTP already enabled")
+	ErrInvalidCredentials     = errors.New("invalid credentials")
+	ErrInvalidCurrentPassword = errors.New("invalid current password")
+	ErrWeakPassword           = errors.New("password must be at least 12 characters")
+	ErrInvalidTOTP            = errors.New("invalid TOTP code")
+	ErrTOTPNotEnabled         = errors.New("TOTP not enabled")
+	ErrTOTPAlreadyEnabled     = errors.New("TOTP already enabled")
 )
 
 type AuthService struct {
@@ -120,7 +122,21 @@ func (s *AuthService) DisableTOTP(ctx context.Context) error {
 	return err
 }
 
-func (s *AuthService) SetPassword(ctx context.Context, password string) error {
+func (s *AuthService) SetPassword(ctx context.Context, currentPassword, password string) error {
+	if len(password) < 12 {
+		return ErrWeakPassword
+	}
+
+	setting, err := s.q.GetSetting(ctx)
+	if err != nil {
+		return err
+	}
+	if setting.OwnerPasswordHash != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(setting.OwnerPasswordHash), []byte(currentPassword)); err != nil {
+			return ErrInvalidCurrentPassword
+		}
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err

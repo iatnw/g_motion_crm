@@ -1,14 +1,13 @@
 package handler
 
 import (
-	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/umbrllacrp/g_motion_crm/internal/db"
+	"github.com/jackc/pgx/v5"
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
 
@@ -329,8 +328,13 @@ func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "broker fee status is required", http.StatusBadRequest)
 		return
 	}
+	status, err := nullPaymentStatus(&req.Status)
+	if err != nil {
+		http.Error(w, "invalid broker fee status", http.StatusBadRequest)
+		return
+	}
 
-	deal, err := h.deal.UpdateBrokerFeeStatus(r.Context(), id, db.PaymentStatus(req.Status))
+	deal, err := h.deal.UpdateBrokerFeeStatus(r.Context(), id, status.PaymentStatus)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -364,8 +368,13 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 		http.Error(w, "broker commission status is required", http.StatusBadRequest)
 		return
 	}
+	status, err := nullPaymentStatus(&req.Status)
+	if err != nil {
+		http.Error(w, "invalid broker commission status", http.StatusBadRequest)
+		return
+	}
 
-	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, db.PaymentStatus(req.Status))
+	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, status.PaymentStatus)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -378,4 +387,3 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
-

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -51,6 +52,12 @@ func (s *DocumentService) Upload(
 		DocumentType:  docType,
 	})
 	if err != nil {
+		if deleteErr := s.s3.Delete(ctx, key); deleteErr != nil {
+			return db.Document{}, errors.Join(
+				fmt.Errorf("create document record: %w", err),
+				fmt.Errorf("cleanup uploaded object: %w", deleteErr),
+			)
+		}
 		return db.Document{}, fmt.Errorf("create document record: %w", err)
 	}
 
@@ -88,6 +95,9 @@ func (s *DocumentService) UploadFromURL(
 		return db.Document{}, fmt.Errorf("download file: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return db.Document{}, fmt.Errorf("download file: unexpected status %d", resp.StatusCode)
+	}
 
 	key := buildKey(clientID, dealID, filename)
 	if err := s.s3.Upload(ctx, key, resp.Body, resp.ContentLength, resp.Header.Get("Content-Type")); err != nil {
@@ -103,6 +113,12 @@ func (s *DocumentService) UploadFromURL(
 		DocumentType:  docType,
 	})
 	if err != nil {
+		if deleteErr := s.s3.Delete(ctx, key); deleteErr != nil {
+			return db.Document{}, errors.Join(
+				fmt.Errorf("create document: %w", err),
+				fmt.Errorf("cleanup uploaded object: %w", deleteErr),
+			)
+		}
 		return db.Document{}, fmt.Errorf("create document: %w", err)
 	}
 
@@ -127,11 +143,15 @@ func (s *DocumentService) ListByDeal(ctx context.Context, dealID uuid.UUID) ([]d
 }
 
 func (s *DocumentService) Delete(ctx context.Context, id uuid.UUID) error {
-	doc, err := s.q.DeleteDocument(ctx, toUUID(id))
+	doc, err := s.q.GetDocument(ctx, toUUID(id))
 	if err != nil {
 		return err
 	}
-	return s.s3.Delete(ctx, doc.S3Key)
+	if err := s.s3.Delete(ctx, doc.S3Key); err != nil {
+		return err
+	}
+	_, err = s.q.DeleteDocument(ctx, toUUID(id))
+	return err
 }
 
 func buildKey(clientID uuid.NullUUID, dealID uuid.NullUUID, filename string) string {

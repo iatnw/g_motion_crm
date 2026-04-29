@@ -142,7 +142,8 @@ func (h *AuthHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type setPasswordRequest struct {
-	Password string `json:"password"`
+	CurrentPassword string `json:"current_password"`
+	Password        string `json:"password"`
 }
 
 func (h *AuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +153,15 @@ func (h *AuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.auth.SetPassword(r.Context(), req.Password); err != nil {
+	if err := h.auth.SetPassword(r.Context(), req.CurrentPassword, req.Password); err != nil {
+		if errors.Is(err, service.ErrWeakPassword) {
+			http.Error(w, "password must be at least 12 characters", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrInvalidCurrentPassword) {
+			http.Error(w, "invalid current password", http.StatusUnauthorized)
+			return
+		}
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

@@ -76,6 +76,7 @@ func main() {
 	dealerService := service.NewDealer(queries)
 	documentService := service.NewDocument(queries, s3Client)
 	tallyService := service.NewTally(clientService, documentService, dealService, queries, pool)
+	referralService := service.NewReferral(queries)
 
 	authHandler := handler.NewAuthHandler(authService)
 	brokerHandler := handler.NewBrokerHandler(brokerService)
@@ -84,6 +85,7 @@ func main() {
 	dealerHandler := handler.NewDealerHandler(dealerService)
 	documentHandler := handler.NewDocumentHandler(documentService)
 	tallyHandler := handler.NewTallyHandler(tallyService, cfg.Tally.SigningSecret)
+	referralHandler := handler.NewReferralHandler(referralService)
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
@@ -170,6 +172,14 @@ func main() {
 		r.Patch("/deals/{id}/broker-commission-status", dealHandler.UpdateBrokerCommissionStatus)
 		r.Get("/deals/{id}/documents", documentHandler.ListByDeal)
 		r.Post("/deals/{id}/documents", documentHandler.UploadForDeal)
+
+		// Referrals
+		r.Post("/deals/{dealID}/referrals", referralHandler.Create)
+		r.Get("/deals/{dealID}/referrals", referralHandler.ListByDeal)
+		r.Get("/referrals/{id}", referralHandler.Get)
+		r.Put("/referrals/{id}", referralHandler.Update)
+		r.Patch("/referrals/{id}/status", referralHandler.UpdateStatus)
+		r.Delete("/referrals/{id}", referralHandler.Delete)
 
 		// Documents
 		r.Get("/documents/{id}/url", documentHandler.GetURL)

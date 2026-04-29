@@ -336,6 +336,46 @@ func toDocumentResponses(ds []db.Document) []DocumentResponse {
 	return out
 }
 
+// --- Referral ---
+
+type ReferralResponse struct {
+	ID        string   `json:"id"`
+	DealID    string   `json:"deal_id"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Phone     *string  `json:"phone"`
+	Amount    *float64 `json:"amount"`
+	Status    string   `json:"status"`
+	PaidDate  *string  `json:"paid_date"`
+	Notes     *string  `json:"notes"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
+}
+
+func toReferralResponse(r db.Referral) ReferralResponse {
+	return ReferralResponse{
+		ID:        pgUUID(r.ID),
+		DealID:    pgUUID(r.DealID),
+		FirstName: r.FirstName,
+		LastName:  r.LastName,
+		Phone:     pgText(r.Phone),
+		Amount:    pgNumeric(r.Amount),
+		Status:    string(r.Status),
+		PaidDate:  pgDate(r.PaidDate),
+		Notes:     pgText(r.Notes),
+		CreatedAt: pgTimestamp(r.CreatedAt),
+		UpdatedAt: pgTimestamp(r.UpdatedAt),
+	}
+}
+
+func toReferralResponses(rs []db.Referral) []ReferralResponse {
+	out := make([]ReferralResponse, len(rs))
+	for i, r := range rs {
+		out[i] = toReferralResponse(r)
+	}
+	return out
+}
+
 // --- pgtype helpers ---
 
 func pgText(t pgtype.Text) *string {

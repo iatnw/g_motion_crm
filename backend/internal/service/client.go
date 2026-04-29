@@ -108,19 +108,7 @@ func (s *ClientService) Get(ctx context.Context, id uuid.UUID) (db.Client, error
 }
 
 func (s *ClientService) List(ctx context.Context, limit, offset int32) ([]db.Client, error) {
-	clients, err := s.q.ListClients(ctx, db.ListClientsParams{Limit: limit, Offset: offset})
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range clients {
-		clients[i], err = s.decryptSSN(clients[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return clients, nil
+	return s.q.ListClients(ctx, db.ListClientsParams{Limit: limit, Offset: offset})
 }
 
 type UpdateClientInput struct {

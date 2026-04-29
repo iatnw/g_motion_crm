@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
@@ -203,8 +204,17 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 
 	txClient := s.client.WithTx(tx)
 	txDeal := s.deal.WithTx(tx)
+	txQueries := s.q.WithTx(tx)
 
-	existing, lookupErr := s.findExistingClient(ctx, phone, email)
+	claimed, err := claimTallyEvent(ctx, tx, payload.EventID, payload.Data.SubmissionID)
+	if err != nil {
+		return fmt.Errorf("claim tally event: %w", err)
+	}
+	if !claimed {
+		return nil
+	}
+
+	existing, lookupErr := findExistingClient(ctx, txQueries, phone, email)
 	if lookupErr == nil {
 		clientID = uuid.UUID(existing.ID.Bytes)
 		_, err = txClient.Update(ctx, UpdateClientInput{
@@ -319,15 +329,38 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	return nil
 }
 
-func (s *TallyService) findExistingClient(ctx context.Context, phone, email string) (db.Client, error) {
+func claimTallyEvent(ctx context.Context, tx pgx.Tx, eventID, submissionID string) (bool, error) {
+	eventID = strings.TrimSpace(eventID)
+	submissionID = strings.TrimSpace(submissionID)
+	if eventID == "" && submissionID == "" {
+		return false, fmt.Errorf("missing event_id and submission_id")
+	}
+
+	var claimed bool
+	err := tx.QueryRow(ctx, `
+		INSERT INTO tally_webhook_events (event_id, submission_id)
+		VALUES (NULLIF($1, ''), NULLIF($2, ''))
+		ON CONFLICT DO NOTHING
+		RETURNING true
+	`, eventID, submissionID).Scan(&claimed)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return claimed, nil
+}
+
+func findExistingClient(ctx context.Context, q *db.Queries, phone, email string) (db.Client, error) {
 	if phone != "" {
-		c, err := s.q.GetClientByPhone(ctx, phone)
+		c, err := q.GetClientByPhone(ctx, phone)
 		if err == nil {
 			return c, nil
 		}
 	}
 	if email != "" {
-		c, err := s.q.GetClientByEmail(ctx, email)
+		c, err := q.GetClientByEmail(ctx, email)
 		if err == nil {
 			return c, nil
 		}
@@ -439,4 +472,3 @@ func strPtr(s string) *string {
 	}
 	return &s
 }
-
