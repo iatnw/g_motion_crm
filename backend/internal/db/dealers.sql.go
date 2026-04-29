@@ -101,7 +101,7 @@ func (q *Queries) GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 }
 
 const getDealerStats = `-- name: GetDealerStats :one
-SELECT id, deal_count, total_broker_fee, avg_days_to_payment FROM dealer_stats
+SELECT id, deal_count, total_amount_to_company, avg_days_to_payment FROM dealer_stats
 WHERE id = $1
 `
 
@@ -111,14 +111,14 @@ func (q *Queries) GetDealerStats(ctx context.Context, id pgtype.UUID) (DealerSta
 	err := row.Scan(
 		&i.ID,
 		&i.DealCount,
-		&i.TotalBrokerFee,
+		&i.TotalAmountToCompany,
 		&i.AvgDaysToPayment,
 	)
 	return i, err
 }
 
 const listDealerStats = `-- name: ListDealerStats :many
-SELECT id, deal_count, total_broker_fee, avg_days_to_payment FROM dealer_stats
+SELECT id, deal_count, total_amount_to_company, avg_days_to_payment FROM dealer_stats
 `
 
 func (q *Queries) ListDealerStats(ctx context.Context) ([]DealerStat, error) {
@@ -133,7 +133,7 @@ func (q *Queries) ListDealerStats(ctx context.Context) ([]DealerStat, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.DealCount,
-			&i.TotalBrokerFee,
+			&i.TotalAmountToCompany,
 			&i.AvgDaysToPayment,
 		); err != nil {
 			return nil, err

@@ -512,10 +512,10 @@ type Dealer struct {
 }
 
 type DealerStat struct {
-	ID               pgtype.UUID    `json:"id"`
-	DealCount        int64          `json:"deal_count"`
-	TotalBrokerFee   pgtype.Numeric `json:"total_broker_fee"`
-	AvgDaysToPayment pgtype.Numeric `json:"avg_days_to_payment"`
+	ID                   pgtype.UUID    `json:"id"`
+	DealCount            int64          `json:"deal_count"`
+	TotalAmountToCompany pgtype.Numeric `json:"total_amount_to_company"`
+	AvgDaysToPayment     pgtype.Numeric `json:"avg_days_to_payment"`
 }
 
 type Document struct {
