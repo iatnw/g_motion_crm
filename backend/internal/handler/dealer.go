@@ -3,11 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v5"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
 
@@ -49,6 +50,7 @@ func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ContactPersonEmail: req.ContactPersonEmail,
 	})
 	if err != nil {
+		slog.Error("create dealer", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -62,6 +64,7 @@ func (h *DealerHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 	dealers, err := h.dealer.List(r.Context(), limit+1, offset)
 	if err != nil {
+		slog.Error("list dealers", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -88,6 +91,7 @@ func (h *DealerHandler) Get(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get dealer", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -108,6 +112,7 @@ func (h *DealerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("delete dealer", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -147,6 +152,7 @@ func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update dealer", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -168,6 +174,7 @@ func (h *DealerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get dealer stats", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

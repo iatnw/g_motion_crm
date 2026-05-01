@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -53,7 +54,7 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.ClientID == "" {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "client_id is required", http.StatusBadRequest)
 		return
 	}
 
@@ -132,12 +133,12 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		BrokerPaymentMethod:    brokerPaymentMethod,
 		Notes:                  req.Notes,
 	})
-
 	if err != nil {
 		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
 			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
 			return
 		}
+		slog.Error("create deal", "client_id", clientID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -249,6 +250,7 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update deal", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -270,6 +272,7 @@ func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get deal", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -290,6 +293,7 @@ func (h *DealHandler) GetShow(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get deal show", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -309,6 +313,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		deals, err := h.deal.ListByClient(r.Context(), clientID, limit+1, offset)
 		if err != nil {
+			slog.Error("list deals by client", "client_id", clientID, "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -324,6 +329,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	deals, err := h.deal.List(r.Context(), limit+1, offset)
 	if err != nil {
+		slog.Error("list deals", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -346,7 +352,6 @@ func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		Status string `json:"status"`
 	}
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -368,6 +373,7 @@ func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Reque
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update deal broker fee status", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -386,7 +392,6 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	var req struct {
 		Status string `json:"status"`
 	}
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -408,6 +413,7 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update deal broker commission status", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -426,7 +432,6 @@ func (h *DealHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Status string `json:"status"`
 	}
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -448,6 +453,7 @@ func (h *DealHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update deal status", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -459,6 +465,7 @@ func (h *DealHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 func (h *DealHandler) NextNumber(w http.ResponseWriter, r *http.Request) {
 	num, err := h.deal.PreviewNextDealNumber(r.Context())
 	if err != nil {
+		slog.Error("next deal number", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -479,6 +486,7 @@ func (h *DealHandler) MarkPaymentReminderEmailSent(w http.ResponseWriter, r *htt
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("mark payment reminder email sent", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

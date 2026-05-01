@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -103,6 +104,7 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 		Limit:    limit,
 	})
 	if err != nil {
+		slog.Error("dashboard summary", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

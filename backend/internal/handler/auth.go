@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
@@ -37,18 +38,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
+		slog.Error("login", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(loginResponse{
+	if err = json.NewEncoder(w).Encode(loginResponse{
 		Token:        result.Token,
 		TOTPRequired: result.TOTPRequired,
-	})
-	if err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+	}); err != nil {
+		slog.Error("login: encode response", "error", err)
 	}
 }
 
@@ -72,14 +72,13 @@ func (h *AuthHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid TOTP code", http.StatusUnauthorized)
 			return
 		}
+		slog.Error("verify totp", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(verifyTOTPResponse{Token: token})
-	if err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+	if err = json.NewEncoder(w).Encode(verifyTOTPResponse{Token: token}); err != nil {
+		slog.Error("verify totp: encode response", "error", err)
 	}
 }
 
@@ -95,17 +94,13 @@ func (h *AuthHandler) SetUpTOTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "TOTP already enabled", http.StatusConflict)
 			return
 		}
+		slog.Error("setup totp", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(setupTOTPResponse{
-		Secret: secret,
-		KeyURI: keyURI,
-	})
-	if err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+	if err = json.NewEncoder(w).Encode(setupTOTPResponse{Secret: secret, KeyURI: keyURI}); err != nil {
+		slog.Error("setup totp: encode response", "error", err)
 	}
 }
 
@@ -126,6 +121,7 @@ func (h *AuthHandler) EnableTOTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid TOTP code", http.StatusUnauthorized)
 			return
 		}
+		slog.Error("enable totp", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -134,10 +130,10 @@ func (h *AuthHandler) EnableTOTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
 	if err := h.auth.DisableTOTP(r.Context()); err != nil {
+		slog.Error("disable totp", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -162,9 +158,9 @@ func (h *AuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid current password", http.StatusUnauthorized)
 			return
 		}
+		slog.Error("set password", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -54,6 +55,7 @@ func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Notes:     req.Notes,
 	})
 	if err != nil {
+		slog.Error("create referral", "deal_id", dealID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -72,6 +74,7 @@ func (h *ReferralHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
 
 	referrals, err := h.referral.List(r.Context(), dealID)
 	if err != nil {
+		slog.Error("list referrals by deal", "deal_id", dealID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -93,6 +96,7 @@ func (h *ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get referral", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -132,6 +136,7 @@ func (h *ReferralHandler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update referral", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -150,7 +155,6 @@ func (h *ReferralHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Status string `json:"status"`
 	}
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -172,6 +176,7 @@ func (h *ReferralHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("update referral status", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -192,6 +197,7 @@ func (h *ReferralHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("delete referral", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

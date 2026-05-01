@@ -3,11 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v5"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
@@ -119,6 +120,7 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "client with this phone or email already exists", http.StatusConflict)
 			return
 		}
+		slog.Error("create client", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -141,6 +143,7 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get client", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -153,6 +156,7 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 	clients, err := h.client.List(r.Context(), limit+1, offset)
 	if err != nil {
+		slog.Error("list clients", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -240,6 +244,7 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "client with this phone or email already exists", http.StatusConflict)
 			return
 		}
+		slog.Error("update client", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

@@ -1,13 +1,14 @@
 package handler
 
 import (
-	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
@@ -22,8 +23,8 @@ func NewDocumentHandler(doc *service.DocumentService) *DocumentHandler {
 	return &DocumentHandler{doc: doc}
 }
 
-// UploadForClient Upload handles multipart file upload.
-// POST /clients/{id}/documents  or  POST /deals/{id}/documents
+// UploadForClient handles multipart file upload for a client.
+// POST /clients/{id}/documents
 func (h *DocumentHandler) UploadForClient(w http.ResponseWriter, r *http.Request) {
 	clientID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -33,6 +34,8 @@ func (h *DocumentHandler) UploadForClient(w http.ResponseWriter, r *http.Request
 	h.upload(w, r, uuid.NullUUID{UUID: clientID, Valid: true}, uuid.NullUUID{})
 }
 
+// UploadForDeal handles multipart file upload for a deal.
+// POST /deals/{id}/documents
 func (h *DocumentHandler) UploadForDeal(w http.ResponseWriter, r *http.Request) {
 	dealID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -76,6 +79,7 @@ func (h *DocumentHandler) upload(w http.ResponseWriter, r *http.Request, clientI
 		db.DocumentType(docTypeStr),
 	)
 	if err != nil {
+		slog.Error("upload document", "client_id", clientID, "deal_id", dealID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -100,6 +104,7 @@ func (h *DocumentHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("get document url", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -119,6 +124,7 @@ func (h *DocumentHandler) ListByClient(w http.ResponseWriter, r *http.Request) {
 
 	docs, err := h.doc.ListByClient(r.Context(), clientID)
 	if err != nil {
+		slog.Error("list documents by client", "client_id", clientID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -138,6 +144,7 @@ func (h *DocumentHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
 
 	docs, err := h.doc.ListByDeal(r.Context(), dealID)
 	if err != nil {
+		slog.Error("list documents by deal", "deal_id", dealID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -160,6 +167,7 @@ func (h *DocumentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		slog.Error("delete document", "id", id, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
