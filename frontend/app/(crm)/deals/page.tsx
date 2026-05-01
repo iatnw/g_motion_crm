@@ -34,15 +34,16 @@ export default function DealsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleSave(data: object) {
+  async function handleSave(data: object): Promise<Deal> {
     if (modal.deal) {
       const updated = await deals.update(modal.deal.id, data);
       setAllDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      return updated;
     } else {
       const created = await deals.create(data);
       setAllDeals((prev) => [created, ...prev]);
+      return created;
     }
-    setModal({ open: false });
   }
 
   async function handleStatusChange(deal: Deal, status: DealStatus) {

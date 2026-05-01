@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import type { Deal, Broker, Dealer, Client } from "@/lib/types";
-import { deals as dealsApi } from "@/lib/api";
+import { useState, useEffect } from "react";
+import type { Deal, Broker, Dealer, Client, Referral } from "@/lib/types";
+import { deals as dealsApi, referrals as referralsApi } from "@/lib/api";
 
 interface Props {
   deal?: Deal;
@@ -11,10 +11,12 @@ interface Props {
   clients?: Client[];
   brokers: Broker[];
   dealers: Dealer[];
-  onSave: (data: object) => Promise<void>;
+  onSave: (data: object) => Promise<Deal>;
   onClose: () => void;
   onStatusChange?: (deal: Deal) => void;
 }
+
+type ReferralDraft = { first_name: string; last_name: string; phone: string; amount: string };
 
 export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose, onStatusChange }: Props) {
   const [currentDeal, setCurrentDeal] = useState<Deal | undefined>(deal);
@@ -46,6 +48,14 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
+  const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
+
+  useEffect(() => {
+    if (!deal) return;
+    referralsApi.listByDeal(deal.id).then(setExistingReferrals).catch(() => {});
+  }, [deal]);
+
   function set(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -66,6 +76,37 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     } catch {
       setError("Failed to update status");
     }
+  }
+
+  async function toggleReferralStatus(ref: Referral) {
+    const next = ref.status === "paid" ? "pending" : "paid";
+    try {
+      const updated = await referralsApi.updateStatus(ref.id, next);
+      setExistingReferrals((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    } catch {
+      setError("Failed to update referral status");
+    }
+  }
+
+  async function deleteReferral(id: string) {
+    try {
+      await referralsApi.delete(id);
+      setExistingReferrals((prev) => prev.filter((r) => r.id !== id));
+    } catch {
+      setError("Failed to delete referral");
+    }
+  }
+
+  function addReferralRow() {
+    setNewReferrals((prev) => [...prev, { first_name: "", last_name: "", phone: "", amount: "" }]);
+  }
+
+  function updateReferralRow(i: number, field: keyof ReferralDraft, value: string) {
+    setNewReferrals((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+  }
+
+  function removeReferralRow(i: number) {
+    setNewReferrals((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -92,7 +133,21 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
         if (v === "") continue;
         payload[k] = numericFields.has(k) ? Number(v) : v;
       }
-      await onSave(payload);
+      const savedDeal = await onSave(payload);
+
+      const validNewReferrals = newReferrals.filter((r) => r.first_name.trim());
+      await Promise.all(
+        validNewReferrals.map((r) =>
+          referralsApi.create(savedDeal.id, {
+            first_name: r.first_name,
+            last_name: r.last_name || undefined,
+            phone: r.phone || undefined,
+            amount: r.amount ? Number(r.amount) : undefined,
+          })
+        )
+      );
+
+      onClose();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
@@ -299,6 +354,116 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               )}
             </section>
           )}
+
+          {/* Referrals */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Referrals</h3>
+              <button
+                type="button"
+                onClick={addReferralRow}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
+              >
+                + Add
+              </button>
+            </div>
+
+            {existingReferrals.length === 0 && newReferrals.length === 0 && (
+              <p className="text-xs text-slate-600 py-1">No referrals. Click + Add to add one.</p>
+            )}
+
+            {existingReferrals.length > 0 && (
+              <div className="space-y-2 mb-2">
+                {existingReferrals.map((ref) => (
+                  <div key={ref.id} className="flex items-center gap-2 bg-[#111213] border border-[#252628] rounded-lg px-3 py-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-200 truncate">{ref.first_name} {ref.last_name}</p>
+                      {ref.phone && <p className="text-xs text-slate-600">{ref.phone}</p>}
+                    </div>
+                    {ref.amount != null && (
+                      <span className="text-sm font-semibold text-slate-300 shrink-0">${Number(ref.amount).toLocaleString()}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleReferralStatus(ref)}
+                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium transition-colors ${
+                        ref.status === "paid"
+                          ? "bg-green-500/10 border-green-500/25 text-green-400"
+                          : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500 hover:text-slate-300"
+                      }`}
+                    >
+                      {ref.status === "paid" ? "Paid" : "Pending"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteReferral(ref.id)}
+                      className="shrink-0 text-slate-600 hover:text-red-400 transition-colors text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {newReferrals.length > 0 && (
+              <div className="space-y-2">
+                {newReferrals.map((ref, i) => (
+                  <div key={i} className="grid grid-cols-2 gap-2 bg-[#111213] border border-[#252628] rounded-lg p-3">
+                    <div>
+                      <FieldLabel>First Name</FieldLabel>
+                      <input
+                        type="text"
+                        value={ref.first_name}
+                        onChange={(e) => updateReferralRow(i, "first_name", e.target.value)}
+                        placeholder="First name"
+                        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Last Name</FieldLabel>
+                      <input
+                        type="text"
+                        value={ref.last_name}
+                        onChange={(e) => updateReferralRow(i, "last_name", e.target.value)}
+                        placeholder="Last name"
+                        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Phone</FieldLabel>
+                      <input
+                        type="text"
+                        value={ref.phone}
+                        onChange={(e) => updateReferralRow(i, "phone", e.target.value)}
+                        placeholder="Phone"
+                        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel>Commission ($)</FieldLabel>
+                      <input
+                        type="number"
+                        value={ref.amount}
+                        onChange={(e) => updateReferralRow(i, "amount", e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removeReferralRow(i)}
+                        className="text-xs text-slate-600 hover:text-red-400 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
