@@ -252,10 +252,7 @@ func normalizeBrokerCommission(brokerFee *float64, collectAmount *float64, broke
 		collect = *collectAmount
 	}
 
-	base := fee
-	if base == 0 {
-		base = collect
-	}
+	base := fee + collect
 
 	hasPercent := brokerPercent != nil && *brokerPercent != nil
 	hasCommission := brokerCommission != nil && *brokerCommission != nil

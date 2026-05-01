@@ -189,9 +189,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
               <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => set("doc_fee", v)} />
               <Field label="Broker Fee ($)" type="number" value={form.broker_fee} onChange={(v) => {
-                const fee = parseFloat(v);
-                const collect = parseFloat(form.collect_amount);
-                const base = !isNaN(fee) && fee > 0 ? fee : (!isNaN(collect) ? collect : 0);
+                const base = commissionBase(v, form.collect_amount);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
                 setForm((prev) => {
@@ -208,11 +206,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Collect ($)" type="number" value={form.collect_amount} onChange={(v) => {
-                const fee = parseFloat(form.broker_fee);
-                const useFee = !isNaN(fee) && fee > 0;
-                if (useFee) { set("collect_amount", v); return; }
-                const collect = parseFloat(v);
-                const base = !isNaN(collect) ? collect : 0;
+                const base = commissionBase(form.broker_fee, v);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
                 setForm((prev) => {
@@ -229,9 +223,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Broker %" type="number" value={form.broker_percent} onChange={(v) => {
-                const fee = parseFloat(form.broker_fee);
-                const collect = parseFloat(form.collect_amount);
-                const base = !isNaN(fee) && fee > 0 ? fee : (!isNaN(collect) ? collect : 0);
+                const base = commissionBase(form.broker_fee, form.collect_amount);
                 const pct = parseFloat(v);
                 setForm((prev) => {
                   if (!v || isNaN(pct) || base === 0) return { ...prev, broker_percent: v };
@@ -240,9 +232,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Broker Commission ($)" type="number" value={form.broker_commission} onChange={(v) => {
-                const fee = parseFloat(form.broker_fee);
-                const collect = parseFloat(form.collect_amount);
-                const base = !isNaN(fee) && fee > 0 ? fee : (!isNaN(collect) ? collect : 0);
+                const base = commissionBase(form.broker_fee, form.collect_amount);
                 const com = parseFloat(v);
                 setForm((prev) => {
                   if (!v || isNaN(com)) return { ...prev, broker_commission: v };
@@ -389,6 +379,12 @@ function formatDateInput(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function commissionBase(brokerFee: string, collectAmount: string) {
+  const fee = parseFloat(brokerFee);
+  const collect = parseFloat(collectAmount);
+  return (isNaN(fee) ? 0 : fee) + (isNaN(collect) ? 0 : collect);
 }
 
 function StatusButton({
