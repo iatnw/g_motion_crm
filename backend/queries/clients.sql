@@ -53,14 +53,6 @@ SELECT * FROM clients
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
--- name: ActivateClientIfNoDeal :exec
-UPDATE clients
-SET
-    status = 'active',
-    updated_at = NOW()
-WHERE id = $1
-  AND status = 'no_deal';
-
 -- name: UpdateClient :one
 UPDATE clients
 SET

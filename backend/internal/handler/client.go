@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"github.com/jackc/pgx/v5"
 	"encoding/json"
 	"errors"
+	"github.com/jackc/pgx/v5"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -22,21 +22,21 @@ func NewClientHandler(client *service.ClientService) *ClientHandler {
 }
 
 type clientRequest struct {
-	FirstName             string  `json:"first_name"`
-	LastName              string  `json:"last_name"`
-	Phone                 string  `json:"phone"`
-	Email                 string  `json:"email"`
-	Status                string  `json:"status"`
-	Source                *string `json:"source"`
-	Notes                 *string `json:"notes"`
-	DateOfBirth           *string `json:"date_of_birth"`
-	Address               *string `json:"address"`
-	City                  *string `json:"city"`
-	State                 *string `json:"state"`
-	Zip                   *string `json:"zip"`
-	Ssn                   *string `json:"ssn"`
-	HousingStatus         *string `json:"housing_status"`
-	HousingDuration       *string `json:"housing_duration"`
+	FirstName             string   `json:"first_name"`
+	LastName              string   `json:"last_name"`
+	Phone                 string   `json:"phone"`
+	Email                 string   `json:"email"`
+	Status                string   `json:"status"`
+	Source                *string  `json:"source"`
+	Notes                 *string  `json:"notes"`
+	DateOfBirth           *string  `json:"date_of_birth"`
+	Address               *string  `json:"address"`
+	City                  *string  `json:"city"`
+	State                 *string  `json:"state"`
+	Zip                   *string  `json:"zip"`
+	Ssn                   *string  `json:"ssn"`
+	HousingStatus         *string  `json:"housing_status"`
+	HousingDuration       *string  `json:"housing_duration"`
 	HousingMonthlyPayment *float64 `json:"housing_monthly_payment"`
 	EmployerName          *string  `json:"employer_name"`
 	EmployerAddress       *string  `json:"employer_address"`
@@ -179,9 +179,12 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.FirstName == "" || req.LastName == "" || req.Phone == "" || req.Email == "" || req.Status == "" {
-		http.Error(w, "first_name, last_name, phone, email and status are required", http.StatusBadRequest)
+	if req.FirstName == "" || req.LastName == "" || req.Phone == "" || req.Email == "" {
+		http.Error(w, "first_name, last_name, phone and email are required", http.StatusBadRequest)
 		return
+	}
+	if req.Status == "" {
+		req.Status = string(db.ClientStatusActive)
 	}
 
 	dob, err := nullTime(req.DateOfBirth)

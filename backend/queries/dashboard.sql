@@ -2,9 +2,7 @@
 WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 )
@@ -38,9 +36,7 @@ FROM filtered_deals;
 WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.deal_status = 'pending'
       AND d.deal_status_pending_since IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
@@ -66,9 +62,7 @@ FROM aged;
 WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.broker_id IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
@@ -94,9 +88,7 @@ ORDER BY gross_revenue DESC, deal_count DESC;
 WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.dealer_id IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
@@ -121,9 +113,7 @@ ORDER BY gross_revenue DESC, deal_count DESC;
 -- name: ListDashboardRecentDeals :many
 SELECT d.*
 FROM deals d
-JOIN clients c ON c.id = d.client_id
-WHERE c.status != 'no_deal'
-  AND COALESCE(d.deal_status != 'cancelled', TRUE)
+WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
   AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
   AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 ORDER BY COALESCE(d.deal_date, d.created_at::date) DESC, d.created_at DESC

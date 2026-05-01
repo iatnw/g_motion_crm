@@ -130,12 +130,6 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		return db.Deal{}, err
 	}
 
-	if in.DealStatus.DealStatus != db.DealStatusCancelled {
-		if err := q.ActivateClientIfNoDeal(ctx, toUUID(in.ClientID)); err != nil {
-			return db.Deal{}, err
-		}
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return db.Deal{}, err
 	}

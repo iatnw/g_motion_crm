@@ -82,8 +82,7 @@ WHERE d.id = $1;
 
 -- name: ListDeals :many
 SELECT deals.* FROM deals
-JOIN clients ON clients.id = deals.client_id
-WHERE clients.status != 'no_deal'
+WHERE deals.deal_status IN ('pending', 'paid')
 ORDER BY deals.created_at DESC
 LIMIT $1 OFFSET $2;
 

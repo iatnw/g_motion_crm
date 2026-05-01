@@ -15,7 +15,6 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
     last_name: initial?.last_name ?? "",
     phone: initial?.phone ?? "",
     email: initial?.email ?? "",
-    status: initial?.status ?? "active",
     source: initial?.source ?? "",
     notes: initial?.notes ?? "",
     date_of_birth: initial?.date_of_birth?.slice(0, 10) ?? "",
@@ -60,7 +59,6 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
       payload.last_name = form.last_name;
       payload.phone = form.phone;
       payload.email = form.email;
-      payload.status = form.status;
       await onSave(payload);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to save");
@@ -80,16 +78,6 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
           <Field label="Email *" type="email" value={form.email} onChange={(v) => set("email", v)} required />
           <Field label="Date of Birth" type="date" value={form.date_of_birth} onChange={(v) => set("date_of_birth", v)} />
           <Field label="SSN" value={form.ssn} onChange={(v) => set("ssn", v)} placeholder="123456789" />
-          <SelectField
-            label="Status"
-            value={form.status}
-            onChange={(v) => set("status", v)}
-            options={[
-              { value: "active", label: "Active" },
-              { value: "closed", label: "Closed" },
-              { value: "no_deal", label: "No Deal" },
-            ]}
-          />
           <SelectField
             label="Source"
             value={form.source}

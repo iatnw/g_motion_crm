@@ -15,9 +15,7 @@ const getDashboardAging = `-- name: GetDashboardAging :one
 WITH filtered_deals AS (
     SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.deal_status = 'pending'
       AND d.deal_status_pending_since IS NOT NULL
       AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
@@ -74,9 +72,7 @@ const getDashboardTotals = `-- name: GetDashboardTotals :one
 WITH filtered_deals AS (
     SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
       AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $2::date)
 )
@@ -151,9 +147,7 @@ const listDashboardBrokerStats = `-- name: ListDashboardBrokerStats :many
 WITH filtered_deals AS (
     SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.broker_id IS NOT NULL
       AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
       AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $2::date)
@@ -225,9 +219,7 @@ const listDashboardDealerStats = `-- name: ListDashboardDealerStats :many
 WITH filtered_deals AS (
     SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
     FROM deals d
-    JOIN clients c ON c.id = d.client_id
-    WHERE c.status != 'no_deal'
-      AND COALESCE(d.deal_status != 'cancelled', TRUE)
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.dealer_id IS NOT NULL
       AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
       AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $2::date)
@@ -292,9 +284,7 @@ func (q *Queries) ListDashboardDealerStats(ctx context.Context, arg ListDashboar
 const listDashboardRecentDeals = `-- name: ListDashboardRecentDeals :many
 SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
 FROM deals d
-JOIN clients c ON c.id = d.client_id
-WHERE c.status != 'no_deal'
-  AND COALESCE(d.deal_status != 'cancelled', TRUE)
+WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
   AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $2::date)
   AND ($3::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $3::date)
 ORDER BY COALESCE(d.deal_date, d.created_at::date) DESC, d.created_at DESC

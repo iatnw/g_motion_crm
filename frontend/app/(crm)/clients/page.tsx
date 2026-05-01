@@ -3,19 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { clients } from "@/lib/api";
-import type { Client, ClientStatus } from "@/lib/types";
-
-const statusLabel: Record<ClientStatus, string> = {
-  active: "Active",
-  closed: "Closed",
-  no_deal: "No Deal",
-};
-
-const statusStyle: Record<ClientStatus, string> = {
-  active: "bg-green-500/10 text-green-400 border border-green-500/25",
-  closed: "bg-slate-500/10 text-slate-400 border border-slate-500/25",
-  no_deal: "bg-red-500/10 text-red-400 border border-red-500/25",
-};
+import type { Client } from "@/lib/types";
 
 function isNew(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 48 * 60 * 60 * 1000;
@@ -24,7 +12,6 @@ function isNew(createdAt: string) {
 export default function ClientsPage() {
   const [all, setAll] = useState<Client[]>([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ClientStatus | "all">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,8 +31,7 @@ export default function ClientsPage() {
       c.last_name.toLowerCase().includes(q) ||
       c.phone.includes(q) ||
       c.email.toLowerCase().includes(q);
-    const matchFilter = filter === "all" || c.status === filter;
-    return matchSearch && matchFilter;
+    return matchSearch;
   });
 
   return (
@@ -65,7 +51,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-5">
+      <div className="mb-5">
         <div className="relative flex-1">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -78,16 +64,6 @@ export default function ClientsPage() {
             className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors"
           />
         </div>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as ClientStatus | "all")}
-          className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none transition-colors"
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="closed">Closed</option>
-          <option value="no_deal">No Deal</option>
-        </select>
       </div>
 
       {loading && (
@@ -106,7 +82,6 @@ export default function ClientsPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Name</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Phone</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Email</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Added</th>
                 </tr>
               </thead>
@@ -127,11 +102,6 @@ export default function ClientsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-slate-400">{c.phone}</td>
                     <td className="px-4 py-3.5 text-slate-400">{c.email}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusStyle[c.status]}`}>
-                        {statusLabel[c.status]}
-                      </span>
-                    </td>
                     <td className="px-4 py-3.5 text-slate-600">
                       {new Date(c.created_at).toLocaleDateString()}
                     </td>
