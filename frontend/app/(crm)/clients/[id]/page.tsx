@@ -8,6 +8,7 @@ import type { Client, Deal, Broker, Dealer } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DocumentsTab from "@/components/DocumentsTab";
 import ClientForm from "@/components/ClientForm";
+import DealStatusSelect from "@/components/DealStatusSelect";
 
 type Tab = "profile" | "documents" | "deals";
 
@@ -304,6 +305,14 @@ function DealsTab({
     } catch {}
   }
 
+  async function updateDealStatus(deal: Deal, status: Deal["deal_status"]) {
+    if (!status) return;
+    try {
+      const updated = await deals.updateStatus(deal.id, status);
+      onStatusChange(updated);
+    } catch {}
+  }
+
   if (!dealList.length) {
     return (
       <div className="bg-[#0b0c0d] rounded-xl border border-[#252628] py-12 text-center text-slate-600 text-sm">
@@ -372,12 +381,17 @@ function DealsTab({
                 <p className="text-slate-300 mt-0.5">${deal.doc_fee}</p>
               </div>
             )}
-            {deal.deal_status && (
-              <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Deal Status</span>
-                <p className="text-slate-300 mt-0.5">{deal.deal_status}</p>
+            <div>
+              <span className="text-slate-600 text-xs uppercase tracking-wider">Deal Status</span>
+              <div className="mt-1">
+                <DealStatusSelect
+                  value={deal.deal_status}
+                  days={deal.pending_payment_days}
+                  bucket={deal.pending_payment_bucket}
+                  onChange={(status) => updateDealStatus(deal, status)}
+                />
               </div>
-            )}
+            </div>
           </div>
 
           <div className="flex gap-2 flex-wrap">

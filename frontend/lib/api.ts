@@ -110,6 +110,11 @@ export const deals = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  updateStatus: (id: string, status: string) =>
+    request<import("./types").Deal>(
+      `/deals/${id}/status`,
+      { method: "PATCH", body: JSON.stringify({ status }) }
+    ),
   updateBrokerFeeStatus: (id: string, status: string) =>
     request<import("./types").Deal>(
       `/deals/${id}/broker-fee-status`,

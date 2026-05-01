@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { dashboard } from "@/lib/api";
-import type { DashboardSummary } from "@/lib/types";
+import { dashboard, deals } from "@/lib/api";
+import type { DealStatus, DashboardSummary } from "@/lib/types";
+import DealStatusSelect from "@/components/DealStatusSelect";
 
 type RangeMode = "all" | "month" | "custom";
 
@@ -22,12 +23,28 @@ export default function DashboardPage() {
   }, [mode, from, to]);
 
   useEffect(() => {
+    let cancelled = false;
     dashboard
       .summary({ ...params, limit: 8 })
-      .then(setSummary)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load dashboard"))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [params]);
+
+  async function handleDealStatusChange(id: string, status: DealStatus) {
+    await deals.updateStatus(id, status);
+    const next = await dashboard.summary({ ...params, limit: 8 });
+    setSummary(next);
+  }
 
   const totals = summary?.totals;
   const aging = summary?.aging;
@@ -64,6 +81,7 @@ export default function DashboardPage() {
             <Metric label="Gross revenue" value={money(totals.gross_revenue)} />
             <Metric label="Company profit" value={money(totals.company_profit_before_tax)} tone="green" />
             <Metric label="Pending revenue" value={money(totals.pending_revenue)} tone="yellow" />
+            <Metric label="Paid revenue" value={money(totals.paid_revenue)} tone="green" />
             <Metric label="Broker payout" value={money(totals.broker_payout)} />
             <Metric label="Doc fees" value={money(totals.total_doc_fees)} />
             <Metric label="Avg revenue / deal" value={money(totals.avg_revenue_per_deal)} />
@@ -108,17 +126,21 @@ export default function DashboardPage() {
                 <div className="py-8 text-center text-sm text-slate-600">No recent deals</div>
               ) : (
                 summary.recent_deals.map((deal) => (
-                  <Link
-                    href="/deals"
+                  <div
                     key={deal.id}
                     className="grid grid-cols-5 gap-3 px-4 py-3 text-sm hover:bg-blue-500/5 transition-colors"
                   >
                     <span className="text-slate-200">{[deal.make, deal.model].filter(Boolean).join(" ") || "Deal"}</span>
                     <span className="text-slate-500">{deal.deal_date ?? "-"}</span>
                     <span className="text-slate-400">{money(deal.broker_fee)}</span>
-                    <span className={statusClass(deal.deal_status)}>{deal.deal_status ?? "-"}</span>
-                    <span className="text-right text-blue-400">View</span>
-                  </Link>
+                    <DealStatusSelect
+                      value={deal.deal_status}
+                      days={deal.pending_payment_days}
+                      bucket={deal.pending_payment_bucket}
+                      onChange={(status) => handleDealStatusChange(deal.id, status)}
+                    />
+                    <Link href="/deals" className="text-right text-blue-400 hover:text-blue-300">View</Link>
+                  </div>
                 ))
               )}
             </div>
@@ -145,13 +167,6 @@ function formatDateInput(date: Date) {
 
 function money(value?: number) {
   return `$${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-}
-
-function statusClass(status?: string) {
-  if (status === "paid") return "text-green-400";
-  if (status === "pending") return "text-yellow-400";
-  if (status === "cancelled") return "text-red-400";
-  return "text-slate-500";
 }
 
 function SegmentedButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

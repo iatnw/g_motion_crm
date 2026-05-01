@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { deals, clients, brokers, dealers } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealShow } from "@/lib/types";
+import type { Deal, Client, Broker, Dealer, DealShow, DealStatus } from "@/lib/types";
 import DealModal from "@/components/DealModal";
+import DealStatusSelect from "@/components/DealStatusSelect";
 
 export default function DealsPage() {
   const [allDeals, setAllDeals] = useState<Deal[]>([]);
@@ -42,6 +43,16 @@ export default function DealsPage() {
       setAllDeals((prev) => [created, ...prev]);
     }
     setModal({ open: false });
+  }
+
+  async function handleStatusChange(deal: Deal, status: DealStatus) {
+    const updated = await deals.updateStatus(deal.id, status);
+    setAllDeals((prev) => {
+      if (updated.deal_status === "cancelled") {
+        return prev.filter((d) => d.id !== updated.id);
+      }
+      return prev.map((d) => (d.id === updated.id ? updated : d));
+    });
   }
 
   const openShow = useCallback(async (id: string) => {
@@ -159,7 +170,12 @@ export default function DealsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3.5">
-                        <StatusPill status={d.deal_status} bucket={d.pending_payment_bucket} days={d.pending_payment_days} />
+                        <DealStatusSelect
+                          value={d.deal_status}
+                          days={d.pending_payment_days}
+                          bucket={d.pending_payment_bucket}
+                          onChange={(status) => handleStatusChange(d, status)}
+                        />
                       </td>
                       <td className="px-4 py-3.5 text-slate-600">
                         {d.deal_date ? new Date(d.deal_date).toLocaleDateString() : "–"}
@@ -217,22 +233,6 @@ export default function DealsPage() {
 
 function money(value?: number) {
   return `$${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-}
-
-function StatusPill({ status, bucket, days }: { status?: string; bucket?: string; days?: number }) {
-  const color =
-    status === "paid"
-      ? "bg-green-500/10 text-green-400 border-green-500/25"
-      : status === "pending"
-        ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/25"
-        : status === "cancelled"
-          ? "bg-red-500/10 text-red-400 border-red-500/25"
-          : "bg-[#0a0a1e] text-slate-500 border-[#1e1e45]";
-  return (
-    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs border ${color}`}>
-      {status ?? "none"}{days != null ? ` · ${days}d ${bucket ?? ""}` : ""}
-    </span>
-  );
 }
 
 function DealShowModal({ loading, deal, onClose }: { loading: boolean; deal?: DealShow; onClose: () => void }) {
