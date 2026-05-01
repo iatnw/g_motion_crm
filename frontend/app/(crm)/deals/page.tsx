@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { deals, clients, brokers, dealers } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealShow, DealStatus } from "@/lib/types";
+import { deals, clients, brokers, dealers, referrals } from "@/lib/api";
+import type { Deal, Client, Broker, Dealer, DealShow, DealStatus, Referral } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
@@ -18,7 +18,7 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
-  const [show, setShow] = useState<{ open: boolean; loading?: boolean; deal?: DealShow }>({ open: false });
+  const [show, setShow] = useState<{ open: boolean; loading?: boolean; deal?: DealShow; dealReferrals?: Referral[] }>({ open: false });
 
   useEffect(() => {
     Promise.all([deals.list(), clients.list(), brokers.list(), dealers.list()])
@@ -59,8 +59,8 @@ export default function DealsPage() {
   const openShow = useCallback(async (id: string) => {
     setShow({ open: true, loading: true });
     try {
-      const data = await deals.getShow(id);
-      setShow({ open: true, deal: data });
+      const [data, refs] = await Promise.all([deals.getShow(id), referrals.listByDeal(id)]);
+      setShow({ open: true, deal: data, dealReferrals: refs });
     } catch {
       setShow({ open: false });
       alert("Failed to load deal");
@@ -225,6 +225,7 @@ export default function DealsPage() {
         <DealShowModal
           loading={!!show.loading}
           deal={show.deal}
+          dealReferrals={show.dealReferrals}
           onClose={() => setShow({ open: false })}
         />
       )}
@@ -236,13 +237,13 @@ function money(value?: number) {
   return `$${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }
 
-function DealShowModal({ loading, deal, onClose }: { loading: boolean; deal?: DealShow; onClose: () => void }) {
+function DealShowModal({ loading, deal, dealReferrals, onClose }: { loading: boolean; deal?: DealShow; dealReferrals?: Referral[]; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-[#252628] shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
           <div>
-            <h2 className="text-base font-semibold text-white">DealShow</h2>
+            <h2 className="text-base font-semibold text-white">Deal Info</h2>
             {deal && <p className="text-xs text-slate-500 mt-0.5">{deal.client_name}</p>}
           </div>
           <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
@@ -252,7 +253,7 @@ function DealShowModal({ loading, deal, onClose }: { loading: boolean; deal?: De
         ) : (
           <div className="p-6 space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <ShowField label="Data" value={deal.date} />
+              <ShowField label="Date" value={deal.date} />
               <ShowField label="Name" value={deal.client_name} />
               <ShowField label="Make" value={deal.make} />
               <ShowField label="Model" value={deal.model} />
@@ -265,7 +266,7 @@ function DealShowModal({ loading, deal, onClose }: { loading: boolean; deal?: De
               <ShowField label="Broker fee" value={money(deal.broker_fee)} />
               <ShowField label="Collect" value={money(deal.collect_amount)} />
               <ShowField label="Doc fee" value={money(deal.doc_fee)} />
-              <ShowField label="Referral money" value={money(deal.referral_total)} />
+              <ShowField label="Referral total" value={money(deal.referral_total)} />
               <ShowField label="Broker percent" value={deal.broker_percent == null ? undefined : `${deal.broker_percent}%`} />
               <ShowField label="Broker profit" value={money(deal.broker_profit)} />
               <ShowField label="Net" value={money(deal.company_net)} highlight />
@@ -276,6 +277,34 @@ function DealShowModal({ loading, deal, onClose }: { loading: boolean; deal?: De
               <ShowField label="Broker paid/not paid" value={deal.broker_paid_status} />
               <ShowField label="Notes" value={deal.notes} />
             </div>
+
+            {dealReferrals && dealReferrals.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Referrals</p>
+                <div className="space-y-2">
+                  {dealReferrals.map((ref) => (
+                    <div key={ref.id} className="flex items-center gap-3 bg-[#111213] border border-[#252628] rounded-lg px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-200">{ref.first_name} {ref.last_name}</p>
+                        {ref.phone && <p className="text-xs text-slate-600 mt-0.5">{ref.phone}</p>}
+                      </div>
+                      {ref.amount != null && (
+                        <span className="text-sm font-semibold text-slate-300">${Number(ref.amount).toLocaleString()}</span>
+                      )}
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                        ref.status === "paid"
+                          ? "bg-green-500/10 border-green-500/25 text-green-400"
+                          : ref.status === "pending"
+                            ? "bg-yellow-500/10 border-yellow-500/25 text-yellow-400"
+                            : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500"
+                      }`}>
+                        {ref.status ?? "none"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
