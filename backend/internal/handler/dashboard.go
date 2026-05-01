@@ -39,6 +39,7 @@ type DashboardTotalsResponse struct {
 	PendingCompanyProfit   *float64 `json:"pending_company_profit"`
 	AvgRevenuePerDeal      *float64 `json:"avg_revenue_per_deal"`
 	AvgProfitPerDeal       *float64 `json:"avg_profit_per_deal"`
+	TotalReferralPayout    *float64 `json:"total_referral_payout"`
 }
 
 type DashboardAgingResponse struct {
@@ -146,6 +147,7 @@ func toDashboardTotalsResponse(t db.GetDashboardTotalsRow) DashboardTotalsRespon
 		PendingCompanyProfit:   pgNumeric(t.PendingCompanyProfit),
 		AvgRevenuePerDeal:      pgNumeric(t.AvgRevenuePerDeal),
 		AvgProfitPerDeal:       pgNumeric(t.AvgProfitPerDeal),
+		TotalReferralPayout:    pgNumeric(t.TotalReferralPayout),
 	}
 }
 

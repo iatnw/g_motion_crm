@@ -29,7 +29,11 @@ SELECT
         WHEN COUNT(*) > 0
         THEN COALESCE(SUM(COALESCE(broker_fee, 0) - COALESCE(broker_commission, 0)), 0::numeric) / COUNT(*)
         ELSE 0::numeric
-    END AS avg_profit_per_deal
+    END AS avg_profit_per_deal,
+    COALESCE(
+        (SELECT SUM(r.amount) FROM referrals r WHERE r.deal_id IN (SELECT id FROM filtered_deals)),
+        0::numeric
+    )::numeric AS total_referral_payout
 FROM filtered_deals;
 
 -- name: GetDashboardAging :one

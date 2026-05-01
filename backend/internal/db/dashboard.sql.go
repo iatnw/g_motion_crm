@@ -99,7 +99,11 @@ SELECT
         WHEN COUNT(*) > 0
         THEN COALESCE(SUM(COALESCE(broker_fee, 0) - COALESCE(broker_commission, 0)), 0::numeric) / COUNT(*)
         ELSE 0::numeric
-    END AS avg_profit_per_deal
+    END AS avg_profit_per_deal,
+    COALESCE(
+        (SELECT SUM(r.amount) FROM referrals r WHERE r.deal_id IN (SELECT id FROM filtered_deals)),
+        0::numeric
+    )::numeric AS total_referral_payout
 FROM filtered_deals
 `
 
@@ -121,6 +125,7 @@ type GetDashboardTotalsRow struct {
 	PendingCompanyProfit   pgtype.Numeric `json:"pending_company_profit"`
 	AvgRevenuePerDeal      pgtype.Numeric `json:"avg_revenue_per_deal"`
 	AvgProfitPerDeal       pgtype.Numeric `json:"avg_profit_per_deal"`
+	TotalReferralPayout    pgtype.Numeric `json:"total_referral_payout"`
 }
 
 func (q *Queries) GetDashboardTotals(ctx context.Context, arg GetDashboardTotalsParams) (GetDashboardTotalsRow, error) {
@@ -139,6 +144,7 @@ func (q *Queries) GetDashboardTotals(ctx context.Context, arg GetDashboardTotals
 		&i.PendingCompanyProfit,
 		&i.AvgRevenuePerDeal,
 		&i.AvgProfitPerDeal,
+		&i.TotalReferralPayout,
 	)
 	return i, err
 }
