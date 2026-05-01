@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { dashboard, deals } from "@/lib/api";
-import type { DealStatus, DashboardSummary } from "@/lib/types";
+import { dashboard, deals, clients } from "@/lib/api";
+import type { DealStatus, DashboardSummary, Deal, Client, PendingPaymentBucket } from "@/lib/types";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
 type RangeMode = "all" | "month" | "custom";
@@ -15,6 +15,9 @@ export default function DashboardPage() {
   const [mode, setMode] = useState<RangeMode>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client> } | null>(null);
+  const [bucketLoading, setBucketLoading] = useState(false);
 
   const params = useMemo(() => {
     if (mode === "all") return {};
@@ -36,6 +39,18 @@ export default function DashboardPage() {
     await deals.updateStatus(id, status);
     const next = await dashboard.summary({ ...params, limit: 8 });
     setSummary(next);
+  }
+
+  async function openBucket(bucket: PendingPaymentBucket) {
+    setBucketLoading(true);
+    try {
+      const [allDeals, allClients] = await Promise.all([deals.list(), clients.list()]);
+      const filtered = (allDeals ?? []).filter((d) => d.deal_status === "pending" && d.pending_payment_bucket === bucket);
+      const clientMap = Object.fromEntries((allClients ?? []).map((c) => [c.id, c]));
+      setBucketModal({ bucket, deals: filtered, clientMap });
+    } finally {
+      setBucketLoading(false);
+    }
   }
 
   const totals = summary?.totals;
@@ -135,11 +150,11 @@ export default function DashboardPage() {
 
           {/* Aging — most actionable, shown high */}
           <div className="space-y-3">
-            <SectionLabel>Pending by age</SectionLabel>
+            <SectionLabel>Pending by date</SectionLabel>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <AgingCard title="0–31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" badge="On time" />
-              <AgingCard title="32–40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" badge="Watch" />
-              <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" badge="Overdue" />
+              <AgingCard title="0–31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" badge="On time" onClick={() => openBucket("green")} />
+              <AgingCard title="32–40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" badge="Watch" onClick={() => openBucket("yellow")} />
+              <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" badge="Overdue" onClick={() => openBucket("red")} />
             </div>
           </div>
 
@@ -209,6 +224,16 @@ export default function DashboardPage() {
 
         </div>
       ) : null}
+
+      {(bucketLoading || bucketModal) && (
+        <BucketModal
+          loading={bucketLoading}
+          bucket={bucketModal?.bucket}
+          deals={bucketModal?.deals ?? []}
+          clientMap={bucketModal?.clientMap ?? {}}
+          onClose={() => setBucketModal(null)}
+        />
+      )}
     </div>
   );
 }
@@ -240,13 +265,13 @@ function StatChip({ label, value, warn }: { label: string; value: string; warn?:
   );
 }
 
-function AgingCard({ title, count, amount, tone, badge }: { title: string; count: number; amount?: number; tone: "green" | "yellow" | "red"; badge: string }) {
+function AgingCard({ title, count, amount, tone, badge, onClick }: { title: string; count: number; amount?: number; tone: "green" | "yellow" | "red"; badge: string; onClick: () => void }) {
   const bg = tone === "green" ? "bg-green-500/5" : tone === "yellow" ? "bg-yellow-500/5" : "bg-red-500/5";
   const border = tone === "green" ? "border-green-500/20" : tone === "yellow" ? "border-yellow-500/20" : "border-red-500/20";
   const countColor = tone === "green" ? "text-green-400" : tone === "yellow" ? "text-yellow-400" : "text-red-400";
   const badgeCls = tone === "green" ? "bg-green-500/15 text-green-400" : tone === "yellow" ? "bg-yellow-500/15 text-yellow-400" : "bg-red-500/15 text-red-400";
   return (
-    <div className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4`}>
+    <button onClick={onClick} className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4 text-left w-full hover:brightness-110 transition-all cursor-pointer`}>
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{title}</p>
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}>{badge}</span>
@@ -254,6 +279,70 @@ function AgingCard({ title, count, amount, tone, badge }: { title: string; count
       <div>
         <p className={`text-4xl font-bold tracking-tight ${countColor}`}>{count}</p>
         <p className="text-sm text-slate-400 mt-1">{money(amount)}</p>
+      </div>
+    </button>
+  );
+}
+
+const bucketLabel: Record<string, string> = { green: "0–31 days", yellow: "32–40 days", red: "41+ days" };
+
+function BucketModal({ loading, bucket, deals, clientMap, onClose }: {
+  loading: boolean;
+  bucket?: string;
+  deals: Deal[];
+  clientMap: Record<string, Client>;
+  onClose: () => void;
+}) {
+  const tone = bucket === "green" ? "text-green-400" : bucket === "yellow" ? "text-yellow-400" : "text-red-400";
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628] shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-white">Pending deals</h2>
+            {bucket && <p className={`text-xs mt-0.5 font-medium ${tone}`}>{bucketLabel[bucket]}</p>}
+          </div>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="py-16 text-center text-sm text-slate-600">Loading...</div>
+          ) : deals.length === 0 ? (
+            <div className="py-16 text-center text-sm text-slate-600">No deals in this range</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b border-[#252628] sticky top-0 bg-[#0b0c0d]">
+                <tr>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Deal #</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Client</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Vehicle</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Days</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Revenue</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1e1f20]">
+                {deals.map((d) => {
+                  const client = clientMap[d.client_id];
+                  return (
+                    <tr key={d.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-5 py-3.5 text-slate-400">{d.deal_number ?? "—"}</td>
+                      <td className="px-5 py-3.5">
+                        {client ? (
+                          <Link href={`/clients/${d.client_id}`} onClick={onClose} className="text-blue-400 hover:text-blue-300 transition-colors">
+                            {client.first_name} {client.last_name}
+                          </Link>
+                        ) : "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-300">{[d.make, d.model].filter(Boolean).join(" ") || "—"}</td>
+                      <td className={`px-5 py-3.5 font-medium ${tone}`}>{d.pending_payment_days ?? "—"}d</td>
+                      <td className="px-5 py-3.5 text-slate-300">{money(d.broker_fee)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );
