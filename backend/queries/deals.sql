@@ -126,6 +126,32 @@ SET
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateDealStatus :one
+UPDATE deals
+SET
+    deal_status = $2,
+    broker_fee_status = CASE
+        WHEN $2::deal_status = 'paid' THEN 'paid'::payment_status
+        WHEN $2::deal_status = 'pending' THEN 'pending'::payment_status
+        ELSE broker_fee_status
+    END,
+    broker_fee_paid_date = CASE
+        WHEN $2::deal_status = 'paid' THEN CURRENT_DATE
+        WHEN $2::deal_status = 'pending' THEN NULL
+        ELSE broker_fee_paid_date
+    END,
+    deal_status_pending_since = CASE
+        WHEN $2::deal_status = 'pending'
+         AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
+        THEN CURRENT_DATE
+        WHEN $2::deal_status IS DISTINCT FROM 'pending'
+        THEN NULL
+        ELSE deal_status_pending_since
+    END,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
 -- name: MarkDealPaymentReminderEmailSent :one
 UPDATE deals
 SET

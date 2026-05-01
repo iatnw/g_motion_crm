@@ -416,6 +416,46 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	json.NewEncoder(w).Encode(toDealResponse(deal))
 }
 
+func (h *DealHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status == "" {
+		http.Error(w, "deal status is required", http.StatusBadRequest)
+		return
+	}
+	status, err := nullDealStatus(&req.Status)
+	if err != nil {
+		http.Error(w, "invalid deal status", http.StatusBadRequest)
+		return
+	}
+
+	deal, err := h.deal.UpdateStatus(r.Context(), id, status.DealStatus)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toDealResponse(deal))
+}
+
 func (h *DealHandler) NextNumber(w http.ResponseWriter, r *http.Request) {
 	num, err := h.deal.PreviewNextDealNumber(r.Context())
 	if err != nil {

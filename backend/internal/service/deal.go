@@ -230,6 +230,13 @@ func (s *DealService) UpdateBrokerCommissionStatus(ctx context.Context, id uuid.
 	})
 }
 
+func (s *DealService) UpdateStatus(ctx context.Context, id uuid.UUID, status db.DealStatus) (db.Deal, error) {
+	return s.q.UpdateDealStatus(ctx, db.UpdateDealStatusParams{
+		ID:         toUUID(id),
+		DealStatus: db.NullDealStatus{DealStatus: status, Valid: true},
+	})
+}
+
 func (s *DealService) MarkPaymentReminderEmailSent(ctx context.Context, id uuid.UUID) (db.Deal, error) {
 	return s.q.MarkDealPaymentReminderEmailSent(ctx, toUUID(id))
 }

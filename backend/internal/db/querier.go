@@ -58,6 +58,7 @@ type Querier interface {
 	UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error)
 	UpdateDealBrokerCommissionStatus(ctx context.Context, arg UpdateDealBrokerCommissionStatusParams) (Deal, error)
 	UpdateDealBrokerFeeStatus(ctx context.Context, arg UpdateDealBrokerFeeStatusParams) (Deal, error)
+	UpdateDealStatus(ctx context.Context, arg UpdateDealStatusParams) (Deal, error)
 	UpdateDealer(ctx context.Context, arg UpdateDealerParams) (Dealer, error)
 	UpdateOwnerPassword(ctx context.Context, ownerPasswordHash string) (Setting, error)
 	UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (Setting, error)

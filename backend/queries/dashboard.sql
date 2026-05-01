@@ -12,13 +12,13 @@ SELECT
     COALESCE(SUM(broker_commission), 0::numeric)::numeric AS broker_payout,
     COALESCE(SUM(doc_fee), 0::numeric)::numeric AS total_doc_fees,
     COALESCE(SUM(COALESCE(broker_fee, 0) - COALESCE(broker_commission, 0) - COALESCE(doc_fee, 0)), 0::numeric)::numeric AS company_profit_before_tax,
-    COALESCE(SUM(broker_fee) FILTER (WHERE broker_fee_status = 'paid'), 0::numeric)::numeric AS paid_revenue,
-    COALESCE(SUM(broker_fee) FILTER (WHERE broker_fee_status = 'pending'), 0::numeric)::numeric AS pending_revenue,
+    COALESCE(SUM(broker_fee) FILTER (WHERE deal_status = 'paid'), 0::numeric)::numeric AS paid_revenue,
+    COALESCE(SUM(broker_fee) FILTER (WHERE deal_status = 'pending'), 0::numeric)::numeric AS pending_revenue,
     COALESCE(SUM(broker_commission) FILTER (WHERE broker_commission_status = 'paid'), 0::numeric)::numeric AS paid_broker_payout,
     COALESCE(SUM(broker_commission) FILTER (WHERE broker_commission_status = 'pending'), 0::numeric)::numeric AS unpaid_broker_payout,
     COALESCE(
         SUM(COALESCE(broker_fee, 0) - COALESCE(broker_commission, 0) - COALESCE(doc_fee, 0))
-            FILTER (WHERE broker_fee_status = 'pending'),
+            FILTER (WHERE deal_status = 'pending'),
         0::numeric
     )::numeric AS pending_company_profit,
     CASE

@@ -701,3 +701,73 @@ func (q *Queries) UpdateDealBrokerFeeStatus(ctx context.Context, arg UpdateDealB
 	)
 	return i, err
 }
+
+const updateDealStatus = `-- name: UpdateDealStatus :one
+UPDATE deals
+SET
+    deal_status = $2,
+    broker_fee_status = CASE
+        WHEN $2::deal_status = 'paid' THEN 'paid'::payment_status
+        WHEN $2::deal_status = 'pending' THEN 'pending'::payment_status
+        ELSE broker_fee_status
+    END,
+    broker_fee_paid_date = CASE
+        WHEN $2::deal_status = 'paid' THEN CURRENT_DATE
+        WHEN $2::deal_status = 'pending' THEN NULL
+        ELSE broker_fee_paid_date
+    END,
+    deal_status_pending_since = CASE
+        WHEN $2::deal_status = 'pending'
+         AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
+        THEN CURRENT_DATE
+        WHEN $2::deal_status IS DISTINCT FROM 'pending'
+        THEN NULL
+        ELSE deal_status_pending_since
+    END,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
+`
+
+type UpdateDealStatusParams struct {
+	ID         pgtype.UUID    `json:"id"`
+	DealStatus NullDealStatus `json:"deal_status"`
+}
+
+func (q *Queries) UpdateDealStatus(ctx context.Context, arg UpdateDealStatusParams) (Deal, error) {
+	row := q.db.QueryRow(ctx, updateDealStatus, arg.ID, arg.DealStatus)
+	var i Deal
+	err := row.Scan(
+		&i.ID,
+		&i.ClientID,
+		&i.BrokerID,
+		&i.DealerID,
+		&i.DealDate,
+		&i.DealNumber,
+		&i.Vin,
+		&i.Make,
+		&i.Model,
+		&i.TrimLevel,
+		&i.DownPayment,
+		&i.DownPaymentMethod,
+		&i.MonthlyPayment,
+		&i.BrokerFee,
+		&i.BrokerPercent,
+		&i.BrokerCommission,
+		&i.BrokerCommissionStatus,
+		&i.BrokerCommissionPaidDate,
+		&i.YourNet,
+		&i.BrokerFeeStatus,
+		&i.BrokerFeePaidDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DealStatus,
+		&i.CollectAmount,
+		&i.DocFee,
+		&i.BrokerPaymentMethod,
+		&i.Notes,
+		&i.DealStatusPendingSince,
+		&i.PaymentReminderEmailSentAt,
+	)
+	return i, err
+}
