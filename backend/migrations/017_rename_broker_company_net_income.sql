@@ -1,6 +1,7 @@
 -- +goose Up
 
-CREATE OR REPLACE VIEW broker_stats AS
+DROP VIEW IF EXISTS broker_stats;
+CREATE VIEW broker_stats AS
 SELECT
     b.id,
     COUNT(dl.id) AS total_deals,

@@ -1,6 +1,7 @@
 -- +goose Up
 
-CREATE OR REPLACE VIEW dealer_stats AS
+DROP VIEW IF EXISTS dealer_stats;
+CREATE VIEW dealer_stats AS
 SELECT
     d.id,
     COUNT(dl.id) AS deal_count,
