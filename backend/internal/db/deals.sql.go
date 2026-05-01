@@ -202,7 +202,6 @@ SELECT
     (
         COALESCE(d.broker_fee, 0)
         - COALESCE(d.broker_commission, 0)
-        - COALESCE(d.doc_fee, 0)
         - COALESCE(referral_totals.referral_total, 0)
     )::numeric AS company_net,
     d.broker_fee_status,
