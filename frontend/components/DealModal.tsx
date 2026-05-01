@@ -1,0 +1,416 @@
+"use client";
+
+import { useState } from "react";
+import type { Deal, Broker, Dealer, Client } from "@/lib/types";
+import { deals as dealsApi } from "@/lib/api";
+
+interface Props {
+  deal?: Deal;
+  clientId?: string;
+  nextDealNumber?: string;
+  clients?: Client[];
+  brokers: Broker[];
+  dealers: Dealer[];
+  onSave: (data: object) => Promise<void>;
+  onClose: () => void;
+  onStatusChange?: (deal: Deal) => void;
+}
+
+export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose, onStatusChange }: Props) {
+  const [currentDeal, setCurrentDeal] = useState<Deal | undefined>(deal);
+  const [form, setForm] = useState({
+    client_id: clientId ?? deal?.client_id ?? "",
+    deal_date: deal?.deal_date?.slice(0, 10) ?? "",
+    deal_number: deal?.deal_number ?? nextDealNumber ?? "",
+    vin: deal?.vin ?? "",
+    make: deal?.make ?? "",
+    model: deal?.model ?? "",
+    trim_level: deal?.trim_level ?? "",
+    broker_id: deal?.broker_id ?? "",
+    dealer_id: deal?.dealer_id ?? "",
+    down_payment: deal?.down_payment?.toString() ?? "",
+    down_payment_method: deal?.down_payment_method ?? "",
+    monthly_payment: deal?.monthly_payment?.toString() ?? "",
+    broker_fee: deal?.broker_fee?.toString() ?? "",
+    broker_percent: deal?.broker_percent?.toString() ?? "",
+    broker_commission: deal?.broker_commission?.toString() ?? "",
+    your_net: deal?.your_net?.toString() ?? "",
+    broker_fee_status: deal?.broker_fee_status ?? "",
+    broker_commission_status: deal?.broker_commission_status ?? "",
+    deal_status: deal?.deal_status ?? "",
+    collect_amount: deal?.collect_amount?.toString() ?? "",
+    doc_fee: deal?.doc_fee?.toString() ?? "",
+    broker_payment_method: deal?.broker_payment_method ?? "",
+    notes: deal?.notes ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  function set(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function toggleStatus(field: "broker_fee_status" | "broker_commission_status") {
+    if (!currentDeal) return;
+    try {
+      let updated: Deal;
+      if (field === "broker_fee_status") {
+        const next = currentDeal.broker_fee_status === "paid" ? "pending" : "paid";
+        updated = await dealsApi.updateBrokerFeeStatus(currentDeal.id, next);
+      } else {
+        const next = currentDeal.broker_commission_status === "paid" ? "pending" : "paid";
+        updated = await dealsApi.updateBrokerCommissionStatus(currentDeal.id, next);
+      }
+      setCurrentDeal(updated);
+      onStatusChange?.(updated);
+    } catch {
+      setError("Failed to update status");
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.client_id) {
+      setError("Client is required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const numericFields = new Set([
+        "down_payment",
+        "monthly_payment",
+        "broker_fee",
+        "broker_percent",
+        "broker_commission",
+        "your_net",
+        "collect_amount",
+        "doc_fee",
+      ]);
+      const payload: Record<string, string | number> = {};
+      for (const [k, v] of Object.entries(form)) {
+        if (v === "") continue;
+        payload[k] = numericFields.has(k) ? Number(v) : v;
+      }
+      await onSave(payload);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const showClientSelector = !clientId && !!clients;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-[#252628] shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
+          <h2 className="text-base font-semibold text-white">
+            {deal ? "Edit Deal" : "New Deal"}
+          </h2>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Client selector */}
+          {showClientSelector && (
+            <section>
+              <div>
+                <FieldLabel>Client *</FieldLabel>
+                <DarkSelect
+                  value={form.client_id}
+                  onChange={(e) => set("client_id", e.target.value)}
+                  required
+                >
+                  <option value="">Select a client…</option>
+                  {clients!.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.first_name} {c.last_name} — {c.phone}
+                    </option>
+                  ))}
+                </DarkSelect>
+              </div>
+            </section>
+          )}
+
+          {/* Vehicle */}
+          <section>
+            <SectionLabel>Vehicle</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Make" value={form.make} onChange={(v) => set("make", v)} />
+              <Field label="Model" value={form.model} onChange={(v) => set("model", v)} />
+              <Field label="Trim" value={form.trim_level} onChange={(v) => set("trim_level", v)} />
+              <Field label="VIN" value={form.vin} onChange={(v) => set("vin", v)} />
+            </div>
+          </section>
+
+          {/* Deal Info */}
+          <section>
+            <SectionLabel>Deal Info</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Deal Number" value={form.deal_number} onChange={(v) => set("deal_number", v)} />
+              <Field label="Deal Date" type="date" value={form.deal_date} onChange={(v) => set("deal_date", v)} />
+              <div>
+                <FieldLabel>Broker</FieldLabel>
+                <DarkSelect value={form.broker_id} onChange={(e) => set("broker_id", e.target.value)}>
+                  <option value="">None</option>
+                  {brokers.map((b) => (
+                    <option key={b.id} value={b.id}>{b.first_name} {b.last_name}</option>
+                  ))}
+                </DarkSelect>
+              </div>
+              <div>
+                <FieldLabel>Dealer</FieldLabel>
+                <DarkSelect value={form.dealer_id} onChange={(e) => set("dealer_id", e.target.value)}>
+                  <option value="">None</option>
+                  {dealers.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </DarkSelect>
+              </div>
+            </div>
+          </section>
+
+          {/* Financials */}
+          <section>
+            <SectionLabel>Financials</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Down Payment ($)" type="number" value={form.down_payment} onChange={(v) => set("down_payment", v)} />
+              <div>
+                <FieldLabel>Down Payment Method</FieldLabel>
+                <DarkSelect value={form.down_payment_method} onChange={(e) => set("down_payment_method", e.target.value)}>
+                  <option value="">None</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                </DarkSelect>
+              </div>
+              <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
+              <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => set("doc_fee", v)} />
+              <Field label="Broker Fee ($)" type="number" value={form.broker_fee} onChange={(v) => {
+                const fee = parseFloat(v);
+                const collect = parseFloat(form.collect_amount);
+                const base = !isNaN(fee) && fee > 0 ? fee : (!isNaN(collect) ? collect : 0);
+                const pct = parseFloat(form.broker_percent);
+                const com = parseFloat(form.broker_commission);
+                setForm((prev) => {
+                  const next: Partial<typeof prev> = { broker_fee: v };
+                  if (form.broker_percent && !isNaN(pct) && base > 0) {
+                    const commission = base * pct / 100;
+                    next.broker_commission = commission.toFixed(2);
+                    next.your_net = (base - commission).toFixed(2);
+                  } else if (form.broker_commission && !isNaN(com) && base > 0) {
+                    next.broker_percent = (com / base * 100).toFixed(2);
+                    next.your_net = (base - com).toFixed(2);
+                  }
+                  return { ...prev, ...next };
+                });
+              }} />
+              <Field label="Collect ($)" type="number" value={form.collect_amount} onChange={(v) => {
+                const fee = parseFloat(form.broker_fee);
+                const useFee = !isNaN(fee) && fee > 0;
+                if (useFee) { set("collect_amount", v); return; }
+                const collect = parseFloat(v);
+                const base = !isNaN(collect) ? collect : 0;
+                const pct = parseFloat(form.broker_percent);
+                const com = parseFloat(form.broker_commission);
+                setForm((prev) => {
+                  const next: Partial<typeof prev> = { collect_amount: v };
+                  if (form.broker_percent && !isNaN(pct) && base > 0) {
+                    const commission = base * pct / 100;
+                    next.broker_commission = commission.toFixed(2);
+                    next.your_net = (base - commission).toFixed(2);
+                  } else if (form.broker_commission && !isNaN(com) && base > 0) {
+                    next.broker_percent = (com / base * 100).toFixed(2);
+                    next.your_net = (base - com).toFixed(2);
+                  }
+                  return { ...prev, ...next };
+                });
+              }} />
+              <Field label="Broker %" type="number" value={form.broker_percent} onChange={(v) => {
+                const fee = parseFloat(form.broker_fee);
+                const collect = parseFloat(form.collect_amount);
+                const base = !isNaN(fee) && fee > 0 ? fee : (!isNaN(collect) ? collect : 0);
+                const pct = parseFloat(v);
+                setForm((prev) => {
+                  if (!v || isNaN(pct) || base === 0) return { ...prev, broker_percent: v };
+                  const commission = base * pct / 100;
+                  return { ...prev, broker_percent: v, broker_commission: commission.toFixed(2), your_net: (base - commission).toFixed(2) };
+                });
+              }} />
+              <Field label="Broker Commission ($)" type="number" value={form.broker_commission} onChange={(v) => {
+                const fee = parseFloat(form.broker_fee);
+                const collect = parseFloat(form.collect_amount);
+                const base = !isNaN(fee) && fee > 0 ? fee : (!isNaN(collect) ? collect : 0);
+                const com = parseFloat(v);
+                setForm((prev) => {
+                  if (!v || isNaN(com)) return { ...prev, broker_commission: v };
+                  const next: Partial<typeof prev> = { broker_commission: v, your_net: base > 0 ? (base - com).toFixed(2) : prev.your_net };
+                  if (base > 0) next.broker_percent = (com / base * 100).toFixed(2);
+                  return { ...prev, ...next };
+                });
+              }} />
+              <Field label="Your Net ($)" type="number" value={form.your_net} onChange={(v) => set("your_net", v)} />
+              <div>
+                <FieldLabel>Deal Status</FieldLabel>
+                <DarkSelect value={form.deal_status} onChange={(e) => set("deal_status", e.target.value)}>
+                  <option value="">None</option>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </DarkSelect>
+              </div>
+              <div>
+                <FieldLabel>Broker Payment Type</FieldLabel>
+                <DarkSelect value={form.broker_payment_method} onChange={(e) => set("broker_payment_method", e.target.value)}>
+                  <option value="">None</option>
+                  <option value="zelle_gmotion">Zelle G Motion</option>
+                  <option value="zelle_personal">Zelle Personal</option>
+                </DarkSelect>
+              </div>
+            </div>
+            <div className="mt-3">
+              <FieldLabel>Notes</FieldLabel>
+              <textarea
+                value={form.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                rows={3}
+                className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors resize-none"
+              />
+            </div>
+          </section>
+
+          {/* Payment statuses — only when editing */}
+          {currentDeal && (
+            <section>
+              <SectionLabel>Payment Status</SectionLabel>
+              <div className="flex gap-3 flex-wrap">
+                <StatusButton
+                  label="Broker Fee"
+                  amount={currentDeal.broker_fee}
+                  status={currentDeal.broker_fee_status}
+                  paidDate={currentDeal.broker_fee_paid_date}
+                  onClick={() => toggleStatus("broker_fee_status")}
+                />
+                <StatusButton
+                  label="Commission"
+                  amount={currentDeal.broker_commission}
+                  status={currentDeal.broker_commission_status}
+                  paidDate={currentDeal.broker_commission_paid_date}
+                  onClick={() => toggleStatus("broker_commission_status")}
+                />
+              </div>
+              {currentDeal.pending_payment_days != null && (
+                <p className="text-xs text-slate-500 mt-3">
+                  Pending {currentDeal.pending_payment_days} days · {currentDeal.pending_payment_bucket}
+                </p>
+              )}
+            </section>
+          )}
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+
+          <div className="flex justify-end gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-all glow-blue-sm"
+            >
+              {saving ? "Saving…" : "Save Deal"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{children}</h3>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">{children}</label>
+  );
+}
+
+function DarkSelect({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none transition-colors"
+    >
+      {children}
+    </select>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+}) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors"
+      />
+    </div>
+  );
+}
+
+function StatusButton({
+  label,
+  amount,
+  status,
+  paidDate,
+  onClick,
+}: {
+  label: string;
+  amount?: number;
+  status?: string;
+  paidDate?: string;
+  onClick: () => void;
+}) {
+  const paid = status === "paid";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+        paid
+          ? "bg-green-500/10 border-green-500/25 text-green-400 hover:bg-green-500/15 glow-green-sm"
+          : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500 hover:text-slate-300 hover:border-slate-600"
+      }`}
+    >
+      <span>{paid ? "✓" : "○"}</span>
+      <span>{label}{amount ? ` $${amount}` : ""}</span>
+      {paid && paidDate && (
+        <span className="text-green-600 opacity-80">
+          {new Date(paidDate).toLocaleDateString()}
+        </span>
+      )}
+    </button>
+  );
+}
