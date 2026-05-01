@@ -26,18 +26,10 @@ export default function DashboardPage() {
     let cancelled = false;
     dashboard
       .summary({ ...params, limit: 8 })
-      .then((data) => {
-        if (!cancelled) setSummary(data);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((data) => { if (!cancelled) setSummary(data); })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [params]);
 
   async function handleDealStatusChange(id: string, status: DealStatus) {
@@ -49,8 +41,14 @@ export default function DashboardPage() {
   const totals = summary?.totals;
   const aging = summary?.aging;
 
+  const paidRev = totals?.paid_revenue ?? 0;
+  const pendingRev = totals?.pending_revenue ?? 0;
+  const grossRev = totals?.gross_revenue ?? 0;
+  const collectionPct = grossRev > 0 ? Math.round((paidRev / grossRev) * 100) : 0;
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Dashboard</h1>
@@ -58,7 +56,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <SegmentedButton active={mode === "all"} onClick={() => setMode("all")}>All time</SegmentedButton>
-          <SegmentedButton active={mode === "month"} onClick={() => setMode("month")}>Current month</SegmentedButton>
+          <SegmentedButton active={mode === "month"} onClick={() => setMode("month")}>This month</SegmentedButton>
           <SegmentedButton active={mode === "custom"} onClick={() => setMode("custom")}>Custom</SegmentedButton>
         </div>
       </div>
@@ -75,82 +73,126 @@ export default function DashboardPage() {
       ) : error ? (
         <div className="text-red-400 text-sm">{error}</div>
       ) : summary && totals && aging ? (
-        <div className="space-y-8">
-          <div className="space-y-3">
-            <SectionLabel>Volume</SectionLabel>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Metric label="Total deals" value={totals.total_deals.toLocaleString()} />
-              <Metric label="Avg revenue / deal" value={money(totals.avg_revenue_per_deal)} />
-              <Metric label="Avg profit / deal" value={money(totals.avg_profit_per_deal)} />
+        <div className="space-y-6">
+
+          {/* Hero row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <HeroCard
+              label="Total deals"
+              value={totals.total_deals.toLocaleString()}
+              sub={`Avg ${money(totals.avg_revenue_per_deal)} / deal`}
+              accent="blue"
+            />
+            <HeroCard
+              label="Gross revenue"
+              value={money(totals.gross_revenue)}
+              sub={`Avg profit ${money(totals.avg_profit_per_deal)} / deal`}
+              accent="default"
+            />
+            <HeroCard
+              label="Company net"
+              value={money(totals.company_profit_before_tax)}
+              sub={`Pending ${money(totals.pending_company_profit)}`}
+              accent="green"
+            />
+          </div>
+
+          {/* Collection status */}
+          <div className="bg-[#111213] border border-[#1e1f21] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Revenue collection</p>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                collectionPct >= 80
+                  ? "bg-green-500/15 text-green-400"
+                  : collectionPct >= 50
+                    ? "bg-yellow-500/15 text-yellow-400"
+                    : "bg-red-500/15 text-red-400"
+              }`}>{collectionPct}% collected</span>
+            </div>
+            <div className="w-full h-2.5 bg-[#1e1f21] rounded-full overflow-hidden mb-4">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${
+                  collectionPct >= 80 ? "bg-green-500" : collectionPct >= 50 ? "bg-yellow-500" : "bg-red-500"
+                }`}
+                style={{ width: `${collectionPct}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Gross</p>
+                <p className="text-base font-semibold text-white">{money(grossRev)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Collected</p>
+                <p className="text-base font-semibold text-green-400">{money(paidRev)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Outstanding</p>
+                <p className="text-base font-semibold text-yellow-400">{money(pendingRev)}</p>
+              </div>
             </div>
           </div>
 
+          {/* Aging — most actionable, shown high */}
           <div className="space-y-3">
-            <SectionLabel>Revenue</SectionLabel>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Metric label="Gross revenue" value={money(totals.gross_revenue)} />
-              <Metric label="Paid revenue" value={money(totals.paid_revenue)} tone="green" />
-              <Metric label="Pending revenue" value={money(totals.pending_revenue)} tone="yellow" />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <SectionLabel>Costs & Profit</SectionLabel>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              <Metric label="Company profit" value={money(totals.company_profit_before_tax)} tone="green" />
-              <Metric label="Broker payout" value={money(totals.broker_payout)} />
-              <Metric label="Doc fees" value={money(totals.total_doc_fees)} />
-              <Metric label="Referral payout" value={money(totals.total_referral_payout)} />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <SectionLabel>Pending payments by age</SectionLabel>
+            <SectionLabel>Pending by age</SectionLabel>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <AgingCard title="0–31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" />
-              <AgingCard title="32–40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" />
-              <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" />
+              <AgingCard title="0–31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" badge="On time" />
+              <AgingCard title="32–40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" badge="Watch" />
+              <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" badge="Overdue" />
             </div>
           </div>
 
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            <Panel title="Brokers">
-              <Table
-                headers={["Broker", "Deals", "Revenue", "Payout", "Profit"]}
-                rows={summary.brokers.map((b) => [
-                  `${b.first_name} ${b.last_name}`,
-                  b.deal_count.toLocaleString(),
-                  money(b.gross_revenue),
-                  money(b.broker_payout),
-                  money(b.company_profit_before_tax),
-                ])}
-              />
-            </Panel>
-            <Panel title="Dealers">
-              <Table
-                headers={["Dealer", "Deals", "Revenue", "Avg days"]}
-                rows={summary.dealers.map((d) => [
-                  d.name,
-                  d.deal_count.toLocaleString(),
-                  money(d.gross_revenue),
-                  d.avg_days_to_payment == null ? "-" : Number(d.avg_days_to_payment).toFixed(1),
-                ])}
-              />
-            </Panel>
-          </section>
+          {/* Secondary stats — compact */}
+          <div className="space-y-3">
+            <SectionLabel>Costs</SectionLabel>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <StatChip label="Broker payout" value={money(totals.broker_payout)} />
+              <StatChip label="Doc fees" value={money(totals.total_doc_fees)} />
+              <StatChip label="Referral payout" value={money(totals.total_referral_payout)} />
+            </div>
+          </div>
 
+          {/* Brokers + Dealers */}
+          <div className="space-y-3">
+            <SectionLabel>Performance</SectionLabel>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <Panel title="Brokers">
+                <Table
+                  headers={["Broker", "Deals", "Revenue", "Payout", "Profit"]}
+                  rows={summary.brokers.map((b) => [
+                    `${b.first_name} ${b.last_name}`,
+                    b.deal_count.toLocaleString(),
+                    money(b.gross_revenue),
+                    money(b.broker_payout),
+                    money(b.company_profit_before_tax),
+                  ])}
+                />
+              </Panel>
+              <Panel title="Dealers">
+                <Table
+                  headers={["Dealer", "Deals", "Revenue", "Avg days"]}
+                  rows={summary.dealers.map((d) => [
+                    d.name,
+                    d.deal_count.toLocaleString(),
+                    money(d.gross_revenue),
+                    d.avg_days_to_payment == null ? "—" : Number(d.avg_days_to_payment).toFixed(1),
+                  ])}
+                />
+              </Panel>
+            </div>
+          </div>
+
+          {/* Recent deals */}
           <Panel title="Recent deals">
             <div className="divide-y divide-[#1e1f20]">
               {summary.recent_deals.length === 0 ? (
                 <div className="py-8 text-center text-sm text-slate-600">No recent deals</div>
               ) : (
                 summary.recent_deals.map((deal) => (
-                  <div
-                    key={deal.id}
-                    className="grid grid-cols-5 gap-3 px-4 py-3 text-sm hover:bg-blue-500/5 transition-colors"
-                  >
+                  <div key={deal.id} className="grid grid-cols-5 gap-3 px-4 py-3 text-sm hover:bg-blue-500/5 transition-colors">
                     <span className="text-slate-200">{[deal.make, deal.model].filter(Boolean).join(" ") || "Deal"}</span>
-                    <span className="text-slate-500">{deal.deal_date ?? "-"}</span>
+                    <span className="text-slate-500">{deal.deal_date ?? "—"}</span>
                     <span className="text-slate-400">{money(deal.broker_fee)}</span>
                     <DealStatusSelect
                       value={deal.deal_status}
@@ -164,8 +206,55 @@ export default function DashboardPage() {
               )}
             </div>
           </Panel>
+
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// --- Components ---
+
+function HeroCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: "blue" | "green" | "default" }) {
+  const border = accent === "green" ? "border-green-500/25" : accent === "blue" ? "border-blue-500/20" : "border-[#252628]";
+  const valueColor = accent === "green" ? "text-green-400" : accent === "blue" ? "text-blue-400" : "text-white";
+  const dot = accent === "green" ? "bg-green-400" : accent === "blue" ? "bg-blue-500" : "bg-slate-500";
+  return (
+    <div className={`bg-[#111213] border ${border} rounded-2xl p-6 flex flex-col gap-2`}>
+      <div className="flex items-center gap-2">
+        <span className={`w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{label}</p>
+      </div>
+      <p className={`text-4xl font-bold tracking-tight ${valueColor}`}>{value}</p>
+      <p className="text-xs text-slate-600">{sub}</p>
+    </div>
+  );
+}
+
+function StatChip({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className="bg-[#111213] border border-[#1e1f21] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+      <p className="text-xs text-slate-500 truncate">{label}</p>
+      <p className={`text-sm font-semibold shrink-0 ${warn ? "text-red-400" : "text-slate-200"}`}>{value}</p>
+    </div>
+  );
+}
+
+function AgingCard({ title, count, amount, tone, badge }: { title: string; count: number; amount?: number; tone: "green" | "yellow" | "red"; badge: string }) {
+  const bg = tone === "green" ? "bg-green-500/5" : tone === "yellow" ? "bg-yellow-500/5" : "bg-red-500/5";
+  const border = tone === "green" ? "border-green-500/20" : tone === "yellow" ? "border-yellow-500/20" : "border-red-500/20";
+  const countColor = tone === "green" ? "text-green-400" : tone === "yellow" ? "text-yellow-400" : "text-red-400";
+  const badgeCls = tone === "green" ? "bg-green-500/15 text-green-400" : tone === "yellow" ? "bg-yellow-500/15 text-yellow-400" : "bg-red-500/15 text-red-400";
+  return (
+    <div className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4`}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{title}</p>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}>{badge}</span>
+      </div>
+      <div>
+        <p className={`text-4xl font-bold tracking-tight ${countColor}`}>{count}</p>
+        <p className="text-sm text-slate-400 mt-1">{money(amount)}</p>
+      </div>
     </div>
   );
 }
@@ -175,87 +264,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <div className="flex items-center gap-3">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{children}</p>
       <div className="flex-1 h-px bg-[#1e1f21]" />
-    </div>
-  );
-}
-
-function currentMonthRange() {
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return { from: formatDateInput(first), to: formatDateInput(last) };
-}
-
-function formatDateInput(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function money(value?: number) {
-  return `$${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-}
-
-function SegmentedButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-        active ? "bg-blue-600/15 text-blue-400 border-blue-500/30" : "text-slate-500 border-[#252628] hover:text-slate-300"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function DateInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="text-xs text-slate-500 uppercase tracking-wider">
-      <span className="mr-2">{label}</span>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none"
-      />
-    </label>
-  );
-}
-
-function Metric({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "green" | "yellow" }) {
-  const border = tone === "green" ? "border-green-500/25" : tone === "yellow" ? "border-yellow-500/25" : "border-[#252628]";
-  const glow = tone === "green" ? "shadow-green-500/5" : tone === "yellow" ? "shadow-yellow-500/5" : "shadow-blue-500/5";
-  const dot = tone === "green" ? "bg-green-400" : tone === "yellow" ? "bg-yellow-400" : "bg-blue-500";
-  const valueColor = tone === "green" ? "text-green-400" : tone === "yellow" ? "text-yellow-400" : "text-white";
-  return (
-    <div className={`bg-[#111213] border ${border} rounded-2xl p-5 shadow-lg ${glow} flex flex-col gap-3`}>
-      <div className="flex items-center gap-2">
-        <span className={`w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium truncate">{label}</p>
-      </div>
-      <p className={`text-3xl font-bold tracking-tight ${valueColor}`}>{value}</p>
-    </div>
-  );
-}
-
-function AgingCard({ title, count, amount, tone }: { title: string; count: number; amount?: number; tone: "green" | "yellow" | "red" }) {
-  const bg = tone === "green" ? "bg-green-500/5" : tone === "yellow" ? "bg-yellow-500/5" : "bg-red-500/5";
-  const border = tone === "green" ? "border-green-500/20" : tone === "yellow" ? "border-yellow-500/20" : "border-red-500/20";
-  const countColor = tone === "green" ? "text-green-400" : tone === "yellow" ? "text-yellow-400" : "text-red-400";
-  const badge = tone === "green" ? "bg-green-500/15 text-green-400" : tone === "yellow" ? "bg-yellow-500/15 text-yellow-400" : "bg-red-500/15 text-red-400";
-  const badgeLabel = tone === "green" ? "On time" : tone === "yellow" ? "Watch" : "Overdue";
-  return (
-    <div className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4`}>
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{title}</p>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge}`}>{badgeLabel}</span>
-      </div>
-      <div>
-        <p className={`text-4xl font-bold tracking-tight ${countColor}`}>{count}</p>
-        <p className="text-sm text-slate-400 mt-1">{money(amount)}</p>
-      </div>
     </div>
   );
 }
@@ -284,14 +292,56 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-[#1e1f20]">
-        {rows.map((row, index) => (
-          <tr key={index}>
-            {row.map((cell, i) => (
-              <td key={i} className={i === 0 ? "px-4 py-3 text-slate-200" : "px-4 py-3 text-slate-400"}>{cell}</td>
+        {rows.map((row, i) => (
+          <tr key={i}>
+            {row.map((cell, j) => (
+              <td key={j} className={j === 0 ? "px-4 py-3 text-slate-200" : "px-4 py-3 text-slate-400"}>{cell}</td>
             ))}
           </tr>
         ))}
       </tbody>
     </table>
   );
+}
+
+function SegmentedButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+        active ? "bg-blue-600/15 text-blue-400 border-blue-500/30" : "text-slate-500 border-[#252628] hover:text-slate-300"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DateInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="text-xs text-slate-500 uppercase tracking-wider">
+      <span className="mr-2">{label}</span>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function money(value?: number) {
+  return `$${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function currentMonthRange() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { from: fmt(first), to: fmt(last) };
+}
+
+function fmt(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
