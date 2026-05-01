@@ -91,14 +91,7 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 	num := formatDealNumber(seq)
 	in.DealNumber = &num
 
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return db.Deal{}, err
-	}
-	defer tx.Rollback(ctx)
-
-	q := s.q.WithTx(tx)
-	deal, err := q.CreateDeal(ctx, db.CreateDealParams{
+	deal, err := s.q.CreateDeal(ctx, db.CreateDealParams{
 		ClientID:               toUUID(in.ClientID),
 		BrokerID:               toNullUUID(in.BrokerID),
 		DealerID:               toNullUUID(in.DealerID),
@@ -124,10 +117,6 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		Notes:                  toText(in.Notes),
 	})
 	if err != nil {
-		return db.Deal{}, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
 		return db.Deal{}, err
 	}
 	return deal, nil
