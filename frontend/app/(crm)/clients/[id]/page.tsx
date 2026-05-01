@@ -70,18 +70,15 @@ export default function ClientDetailPage() {
     }
   }
 
-  async function handleSaveDeal(data: object) {
-    try {
-      if (dealModal.deal) {
-        const updated = await deals.update(dealModal.deal.id, { ...data, client_id: id });
-        setClientDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-      } else {
-        const created = await deals.create({ ...data, client_id: id });
-        setClientDeals((prev) => [created, ...prev]);
-      }
-      setDealModal({ open: false });
-    } catch (e: unknown) {
-      throw e;
+  async function handleSaveDeal(data: object): Promise<Deal> {
+    if (dealModal.deal) {
+      const updated = await deals.update(dealModal.deal.id, { ...data, client_id: id });
+      setClientDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      return updated;
+    } else {
+      const created = await deals.create({ ...data, client_id: id });
+      setClientDeals((prev) => [created, ...prev]);
+      return created;
     }
   }
 
