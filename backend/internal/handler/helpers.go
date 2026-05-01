@@ -132,7 +132,7 @@ func nullBrokerPaymentMethod(s *string) (db.NullBrokerPaymentMethod, error) {
 		return db.NullBrokerPaymentMethod{}, nil
 	}
 	switch db.BrokerPaymentMethod(*s) {
-	case db.BrokerPaymentMethodZelleGmotion, db.BrokerPaymentMethodZellePersonal:
+	case db.BrokerPaymentMethodZelleGmotion, db.BrokerPaymentMethodZellePersonal, db.BrokerPaymentMethodCash:
 		return db.NullBrokerPaymentMethod{BrokerPaymentMethod: db.BrokerPaymentMethod(*s), Valid: true}, nil
 	default:
 		return db.NullBrokerPaymentMethod{}, fmt.Errorf("invalid broker payment method: %s", *s)

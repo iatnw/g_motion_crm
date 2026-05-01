@@ -16,6 +16,7 @@ type BrokerPaymentMethod string
 const (
 	BrokerPaymentMethodZelleGmotion  BrokerPaymentMethod = "zelle_gmotion"
 	BrokerPaymentMethodZellePersonal BrokerPaymentMethod = "zelle_personal"
+	BrokerPaymentMethodCash          BrokerPaymentMethod = "cash"
 )
 
 func (e *BrokerPaymentMethod) Scan(src interface{}) error {

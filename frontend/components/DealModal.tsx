@@ -313,6 +313,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   <option value="">None</option>
                   <option value="zelle_gmotion">Zelle G Motion</option>
                   <option value="zelle_personal">Zelle Personal</option>
+                  <option value="cash">Cash</option>
                 </DarkSelect>
               </div>
             </div>
