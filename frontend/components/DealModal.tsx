@@ -150,7 +150,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
           <section>
             <SectionLabel>Deal Info</SectionLabel>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Deal Number" value={form.deal_number} onChange={(v) => set("deal_number", v)} />
+              <Field label="Deal Number" value={form.deal_number} onChange={(v) => set("deal_number", v)} readOnly={!deal} />
               <Field label="Deal Date" type="date" value={form.deal_date} onChange={(v) => set("deal_date", v)} />
               <div>
                 <FieldLabel>Broker</FieldLabel>
@@ -362,11 +362,13 @@ function Field({
   value,
   onChange,
   type = "text",
+  readOnly,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div>
@@ -375,7 +377,8 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors"
+        readOnly={readOnly}
+        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors read-only:text-slate-500"
       />
     </div>
   );

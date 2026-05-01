@@ -36,7 +36,7 @@ func (s *DealService) PreviewNextDealNumber(ctx context.Context) (string, error)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("GM-%d-%04d", time.Now().Year(), seq), nil
+	return formatDealNumber(seq), nil
 }
 
 type CreateDealInput struct {
@@ -84,15 +84,12 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		return db.Deal{}, err
 	}
 
-	if in.DealNumber == nil {
-		seq, err := s.q.NextDealNumber(ctx)
-		if err != nil {
-			return db.Deal{}, err
-		}
-		year := time.Now().Year()
-		num := fmt.Sprintf("GM-%d-%04d", year, seq)
-		in.DealNumber = &num
+	seq, err := s.q.NextDealNumber(ctx)
+	if err != nil {
+		return db.Deal{}, err
 	}
+	num := formatDealNumber(seq)
+	in.DealNumber = &num
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -134,6 +131,10 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		return db.Deal{}, err
 	}
 	return deal, nil
+}
+
+func formatDealNumber(seq int64) string {
+	return fmt.Sprintf("GM-%04d", seq)
 }
 
 func (s *DealService) Get(ctx context.Context, id uuid.UUID) (db.Deal, error) {
