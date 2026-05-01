@@ -5,8 +5,8 @@ WITH filtered_deals AS (
     JOIN clients c ON c.id = d.client_id
     WHERE c.status != 'no_deal'
       AND COALESCE(d.deal_status != 'cancelled', TRUE)
-      AND (sqlc.narg('from_date')::date IS NULL OR d.deal_date >= sqlc.narg('from_date')::date)
-      AND (sqlc.narg('to_date')::date IS NULL OR d.deal_date <= sqlc.narg('to_date')::date)
+      AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
+      AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 )
 SELECT
     COUNT(*)::bigint AS total_deals,
@@ -43,8 +43,8 @@ WITH filtered_deals AS (
       AND COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.deal_status = 'pending'
       AND d.deal_status_pending_since IS NOT NULL
-      AND (sqlc.narg('from_date')::date IS NULL OR d.deal_date >= sqlc.narg('from_date')::date)
-      AND (sqlc.narg('to_date')::date IS NULL OR d.deal_date <= sqlc.narg('to_date')::date)
+      AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
+      AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 ),
 aged AS (
     SELECT
@@ -70,8 +70,8 @@ WITH filtered_deals AS (
     WHERE c.status != 'no_deal'
       AND COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.broker_id IS NOT NULL
-      AND (sqlc.narg('from_date')::date IS NULL OR d.deal_date >= sqlc.narg('from_date')::date)
-      AND (sqlc.narg('to_date')::date IS NULL OR d.deal_date <= sqlc.narg('to_date')::date)
+      AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
+      AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 )
 SELECT
     b.id,
@@ -98,8 +98,8 @@ WITH filtered_deals AS (
     WHERE c.status != 'no_deal'
       AND COALESCE(d.deal_status != 'cancelled', TRUE)
       AND d.dealer_id IS NOT NULL
-      AND (sqlc.narg('from_date')::date IS NULL OR d.deal_date >= sqlc.narg('from_date')::date)
-      AND (sqlc.narg('to_date')::date IS NULL OR d.deal_date <= sqlc.narg('to_date')::date)
+      AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
+      AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 )
 SELECT
     d.id,
@@ -124,7 +124,7 @@ FROM deals d
 JOIN clients c ON c.id = d.client_id
 WHERE c.status != 'no_deal'
   AND COALESCE(d.deal_status != 'cancelled', TRUE)
-  AND (sqlc.narg('from_date')::date IS NULL OR d.deal_date >= sqlc.narg('from_date')::date)
-  AND (sqlc.narg('to_date')::date IS NULL OR d.deal_date <= sqlc.narg('to_date')::date)
-ORDER BY d.deal_date DESC NULLS LAST, d.created_at DESC
+  AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
+  AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
+ORDER BY COALESCE(d.deal_date, d.created_at::date) DESC, d.created_at DESC
 LIMIT $1;
