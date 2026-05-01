@@ -164,6 +164,7 @@ export interface DashboardSummary {
     pending_company_profit?: number;
     avg_revenue_per_deal?: number;
     avg_profit_per_deal?: number;
+    total_referral_payout?: number;
   };
   aging: {
     pending_0_31_count: number;

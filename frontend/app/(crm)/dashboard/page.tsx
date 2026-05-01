@@ -75,24 +75,43 @@ export default function DashboardPage() {
       ) : error ? (
         <div className="text-red-400 text-sm">{error}</div>
       ) : summary && totals && aging ? (
-        <div className="space-y-6">
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Metric label="Deals" value={totals.total_deals.toLocaleString()} />
-            <Metric label="Gross revenue" value={money(totals.gross_revenue)} />
-            <Metric label="Company profit" value={money(totals.company_profit_before_tax)} tone="green" />
-            <Metric label="Pending revenue" value={money(totals.pending_revenue)} tone="yellow" />
-            <Metric label="Paid revenue" value={money(totals.paid_revenue)} tone="green" />
-            <Metric label="Broker payout" value={money(totals.broker_payout)} />
-            <Metric label="Doc fees" value={money(totals.total_doc_fees)} />
-            <Metric label="Avg revenue / deal" value={money(totals.avg_revenue_per_deal)} />
-            <Metric label="Avg profit / deal" value={money(totals.avg_profit_per_deal)} />
-          </section>
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <SectionLabel>Volume</SectionLabel>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Metric label="Total deals" value={totals.total_deals.toLocaleString()} />
+              <Metric label="Avg revenue / deal" value={money(totals.avg_revenue_per_deal)} />
+              <Metric label="Avg profit / deal" value={money(totals.avg_profit_per_deal)} />
+            </div>
+          </div>
 
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <AgingCard title="0-31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" />
-            <AgingCard title="32-40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" />
-            <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" />
-          </section>
+          <div className="space-y-3">
+            <SectionLabel>Revenue</SectionLabel>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Metric label="Gross revenue" value={money(totals.gross_revenue)} />
+              <Metric label="Paid revenue" value={money(totals.paid_revenue)} tone="green" />
+              <Metric label="Pending revenue" value={money(totals.pending_revenue)} tone="yellow" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <SectionLabel>Costs & Profit</SectionLabel>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <Metric label="Company profit" value={money(totals.company_profit_before_tax)} tone="green" />
+              <Metric label="Broker payout" value={money(totals.broker_payout)} />
+              <Metric label="Doc fees" value={money(totals.total_doc_fees)} />
+              <Metric label="Referral payout" value={money(totals.total_referral_payout)} />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <SectionLabel>Pending payments by age</SectionLabel>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <AgingCard title="0–31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" />
+              <AgingCard title="32–40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" />
+              <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" />
+            </div>
+          </div>
 
           <section className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             <Panel title="Brokers">
@@ -147,6 +166,15 @@ export default function DashboardPage() {
           </Panel>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{children}</p>
+      <div className="flex-1 h-px bg-[#1e1f21]" />
     </div>
   );
 }
