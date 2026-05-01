@@ -50,7 +50,7 @@ SELECT
     d.trim_level,
     d.vin,
     dealers.name AS dealer_name,
-    (brokers.first_name || ' ' || brokers.last_name)::text AS broker_name,
+    CASE WHEN brokers.id IS NOT NULL THEN (brokers.first_name || ' ' || brokers.last_name)::text ELSE ''::text END AS broker_name,
     d.broker_fee,
     d.collect_amount,
     d.doc_fee,
