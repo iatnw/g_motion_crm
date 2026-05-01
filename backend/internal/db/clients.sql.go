@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateClientIfNoDeal = `-- name: ActivateClientIfNoDeal :exec
+UPDATE clients
+SET
+    status = 'active',
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'no_deal'
+`
+
+func (q *Queries) ActivateClientIfNoDeal(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, activateClientIfNoDeal, id)
+	return err
+}
+
 const createClient = `-- name: CreateClient :one
 INSERT INTO clients(
     first_name,

@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ActivateClientIfNoDeal(ctx context.Context, id pgtype.UUID) error
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateBroker(ctx context.Context, arg CreateBrokerParams) (Broker, error)
 	CreateClient(ctx context.Context, arg CreateClientParams) (Client, error)

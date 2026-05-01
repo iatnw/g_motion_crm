@@ -20,7 +20,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const [currentDeal, setCurrentDeal] = useState<Deal | undefined>(deal);
   const [form, setForm] = useState({
     client_id: clientId ?? deal?.client_id ?? "",
-    deal_date: deal?.deal_date?.slice(0, 10) ?? "",
+    deal_date: deal?.deal_date?.slice(0, 10) ?? formatDateInput(),
     deal_number: deal?.deal_number ?? nextDealNumber ?? "",
     vin: deal?.vin ?? "",
     make: deal?.make ?? "",
@@ -35,9 +35,9 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     broker_percent: deal?.broker_percent?.toString() ?? "",
     broker_commission: deal?.broker_commission?.toString() ?? "",
     your_net: deal?.your_net?.toString() ?? "",
-    broker_fee_status: deal?.broker_fee_status ?? "",
-    broker_commission_status: deal?.broker_commission_status ?? "",
-    deal_status: deal?.deal_status ?? "",
+    broker_fee_status: deal?.broker_fee_status ?? "pending",
+    broker_commission_status: deal?.broker_commission_status ?? "pending",
+    deal_status: deal?.deal_status ?? "pending",
     collect_amount: deal?.collect_amount?.toString() ?? "",
     doc_fee: deal?.doc_fee?.toString() ?? "",
     broker_payment_method: deal?.broker_payment_method ?? "",
@@ -252,15 +252,16 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Your Net ($)" type="number" value={form.your_net} onChange={(v) => set("your_net", v)} />
-              <div>
-                <FieldLabel>Deal Status</FieldLabel>
-                <DarkSelect value={form.deal_status} onChange={(e) => set("deal_status", e.target.value)}>
-                  <option value="">None</option>
-                  <option value="pending">Pending</option>
-                  <option value="paid">Paid</option>
-                  <option value="cancelled">Cancelled</option>
-                </DarkSelect>
-              </div>
+              {currentDeal && (
+                <div>
+                  <FieldLabel>Deal Status</FieldLabel>
+                  <DarkSelect value={form.deal_status} onChange={(e) => set("deal_status", e.target.value)}>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="cancelled">Cancelled</option>
+                  </DarkSelect>
+                </div>
+              )}
               <div>
                 <FieldLabel>Broker Payment Type</FieldLabel>
                 <DarkSelect value={form.broker_payment_method} onChange={(e) => set("broker_payment_method", e.target.value)}>
@@ -378,6 +379,13 @@ function Field({
       />
     </div>
   );
+}
+
+function formatDateInput(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function StatusButton({

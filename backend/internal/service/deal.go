@@ -66,6 +66,20 @@ type CreateDealInput struct {
 }
 
 func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, error) {
+	if !in.DealStatus.Valid {
+		in.DealStatus = db.NullDealStatus{DealStatus: db.DealStatusPending, Valid: true}
+	}
+	if !in.BrokerFeeStatus.Valid {
+		in.BrokerFeeStatus = db.NullPaymentStatus{PaymentStatus: db.PaymentStatusPending, Valid: true}
+	}
+	if !in.BrokerCommissionStatus.Valid {
+		in.BrokerCommissionStatus = db.NullPaymentStatus{PaymentStatus: db.PaymentStatusPending, Valid: true}
+	}
+	if in.DealDate == nil {
+		now := time.Now()
+		in.DealDate = &now
+	}
+
 	if err := normalizeBrokerCommission(in.BrokerFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
 		return db.Deal{}, err
 	}
@@ -80,7 +94,14 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		in.DealNumber = &num
 	}
 
-	return s.q.CreateDeal(ctx, db.CreateDealParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return db.Deal{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	q := s.q.WithTx(tx)
+	deal, err := q.CreateDeal(ctx, db.CreateDealParams{
 		ClientID:               toUUID(in.ClientID),
 		BrokerID:               toNullUUID(in.BrokerID),
 		DealerID:               toNullUUID(in.DealerID),
@@ -105,6 +126,20 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		BrokerPaymentMethod:    in.BrokerPaymentMethod,
 		Notes:                  toText(in.Notes),
 	})
+	if err != nil {
+		return db.Deal{}, err
+	}
+
+	if in.DealStatus.DealStatus != db.DealStatusCancelled {
+		if err := q.ActivateClientIfNoDeal(ctx, toUUID(in.ClientID)); err != nil {
+			return db.Deal{}, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return db.Deal{}, err
+	}
+	return deal, nil
 }
 
 func (s *DealService) Get(ctx context.Context, id uuid.UUID) (db.Deal, error) {
