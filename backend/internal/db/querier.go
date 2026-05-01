@@ -52,6 +52,7 @@ type Querier interface {
 	ListDocumentsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Document, error)
 	ListReferralsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Referral, error)
 	MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtype.UUID) (Deal, error)
+	NextDealNumber(ctx context.Context) (int64, error)
 	UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error)
 	UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error)
 	UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error)

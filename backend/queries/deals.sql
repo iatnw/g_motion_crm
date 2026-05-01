@@ -1,3 +1,6 @@
+-- name: NextDealNumber :one
+SELECT nextval('deal_number_seq');
+
 -- name: CreateDeal :one
 INSERT INTO deals (
     client_id,

@@ -134,10 +134,6 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		if errors.Is(err, service.ErrBrokerFeeRequiredForCommission) {
-			http.Error(w, "broker_fee is required to calculate broker commission or percent", http.StatusBadRequest)
-			return
-		}
 		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
 			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
 			return
@@ -245,10 +241,6 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Notes:                  req.Notes,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrBrokerFeeRequiredForCommission) {
-			http.Error(w, "broker_fee is required to calculate broker commission or percent", http.StatusBadRequest)
-			return
-		}
 		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
 			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
 			return
@@ -422,6 +414,16 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(toDealResponse(deal))
+}
+
+func (h *DealHandler) NextNumber(w http.ResponseWriter, r *http.Request) {
+	num, err := h.deal.PreviewNextDealNumber(r.Context())
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"deal_number": num})
 }
 
 func (h *DealHandler) MarkPaymentReminderEmailSent(w http.ResponseWriter, r *http.Request) {

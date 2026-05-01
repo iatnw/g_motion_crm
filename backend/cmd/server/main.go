@@ -71,7 +71,7 @@ func main() {
 
 	authService := service.NewAuth(queries, cfg.Auth)
 	brokerService := service.NewBroker(queries)
-	dealService := service.NewDeal(queries)
+	dealService := service.NewDeal(queries, pool)
 	clientService := service.NewClient(queries, encryptionKey)
 	dealerService := service.NewDealer(queries)
 	documentService := service.NewDocument(queries, s3Client)
@@ -169,6 +169,7 @@ func main() {
 		r.Get("/dealers/{id}/stats", dealerHandler.GetStats)
 
 		// Deals
+		r.Get("/deals/next-number", dealHandler.NextNumber)
 		r.Get("/deals", dealHandler.List)
 		r.Post("/deals", dealHandler.Create)
 		r.Get("/deals/{id}", dealHandler.Get)

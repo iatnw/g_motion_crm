@@ -3,29 +3,40 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
-var (
-	ErrBrokerFeeRequiredForCommission = errors.New("broker_fee is required to calculate broker commission or percent")
-	ErrBrokerCommissionMismatch       = errors.New("broker_commission does not match broker_percent and broker_fee")
-)
+var ErrBrokerCommissionMismatch = errors.New("broker_commission does not match broker_percent and broker_fee")
 
 func (s *DealService) WithTx(tx pgx.Tx) *DealService {
-	return &DealService{q: s.q.WithTx(tx)}
+	return &DealService{q: s.q.WithTx(tx), pool: s.pool}
 }
 
 type DealService struct {
-	q *db.Queries
+	q    *db.Queries
+	pool *pgxpool.Pool
 }
 
-func NewDeal(q *db.Queries) *DealService {
-	return &DealService{q: q}
+func NewDeal(q *db.Queries, pool *pgxpool.Pool) *DealService {
+	return &DealService{q: q, pool: pool}
+}
+
+func (s *DealService) PreviewNextDealNumber(ctx context.Context) (string, error) {
+	var seq int64
+	err := s.pool.QueryRow(ctx,
+		`SELECT CASE WHEN is_called THEN last_value + 1 ELSE last_value END FROM deal_number_seq`,
+	).Scan(&seq)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("GM-%d-%04d", time.Now().Year(), seq), nil
 }
 
 type CreateDealInput struct {
@@ -55,8 +66,18 @@ type CreateDealInput struct {
 }
 
 func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, error) {
-	if err := normalizeBrokerCommission(in.BrokerFee, &in.BrokerPercent, &in.BrokerCommission); err != nil {
+	if err := normalizeBrokerCommission(in.BrokerFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
 		return db.Deal{}, err
+	}
+
+	if in.DealNumber == nil {
+		seq, err := s.q.NextDealNumber(ctx)
+		if err != nil {
+			return db.Deal{}, err
+		}
+		year := time.Now().Year()
+		num := fmt.Sprintf("GM-%d-%04d", year, seq)
+		in.DealNumber = &num
 	}
 
 	return s.q.CreateDeal(ctx, db.CreateDealParams{
@@ -134,7 +155,7 @@ type UpdateDealInput struct {
 }
 
 func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, error) {
-	if err := normalizeBrokerCommission(in.BrokerFee, &in.BrokerPercent, &in.BrokerCommission); err != nil {
+	if err := normalizeBrokerCommission(in.BrokerFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
 		return db.Deal{}, err
 	}
 
@@ -184,31 +205,47 @@ func (s *DealService) MarkPaymentReminderEmailSent(ctx context.Context, id uuid.
 	return s.q.MarkDealPaymentReminderEmailSent(ctx, toUUID(id))
 }
 
-func normalizeBrokerCommission(brokerFee *float64, brokerPercent **float64, brokerCommission **float64) error {
+func normalizeBrokerCommission(brokerFee *float64, collectAmount *float64, brokerPercent **float64, brokerCommission **float64, yourNet **float64) error {
+	fee := 0.0
+	if brokerFee != nil {
+		fee = *brokerFee
+	}
+	collect := 0.0
+	if collectAmount != nil {
+		collect = *collectAmount
+	}
+
+	base := fee
+	if base == 0 {
+		base = collect
+	}
+
 	hasPercent := brokerPercent != nil && *brokerPercent != nil
 	hasCommission := brokerCommission != nil && *brokerCommission != nil
-	if !hasPercent && !hasCommission {
-		return nil
-	}
-	if brokerFee == nil || *brokerFee == 0 {
-		return ErrBrokerFeeRequiredForCommission
-	}
 
-	fee := *brokerFee
 	if hasPercent && !hasCommission {
-		commission := fee * (**brokerPercent) / 100
-		*brokerCommission = &commission
-		return nil
-	}
-	if hasCommission && !hasPercent {
-		percent := (**brokerCommission) / fee * 100
-		*brokerPercent = &percent
-		return nil
+		if base > 0 {
+			commission := base * (**brokerPercent) / 100
+			*brokerCommission = &commission
+		}
+	} else if hasCommission && !hasPercent {
+		if base > 0 {
+			percent := (**brokerCommission) / base * 100
+			*brokerPercent = &percent
+		}
+	} else if hasPercent && hasCommission {
+		if base > 0 {
+			expectedCommission := base * (**brokerPercent) / 100
+			if math.Abs(expectedCommission-(**brokerCommission)) > 0.01 {
+				return ErrBrokerCommissionMismatch
+			}
+		}
 	}
 
-	expectedCommission := fee * (**brokerPercent) / 100
-	if math.Abs(expectedCommission-(**brokerCommission)) > 0.01 {
-		return ErrBrokerCommissionMismatch
+	if yourNet != nil && *yourNet == nil && hasCommission {
+		net := base - (**brokerCommission)
+		*yourNet = &net
 	}
+
 	return nil
 }

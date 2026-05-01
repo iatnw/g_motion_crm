@@ -11,8 +11,9 @@ func TestNormalizeBrokerCommissionCalculatesCommission(t *testing.T) {
 	percentValue := 25.0
 	percent := &percentValue
 	var commission *float64
+	var net *float64
 
-	err := normalizeBrokerCommission(&fee, &percent, &commission)
+	err := normalizeBrokerCommission(&fee, nil, &percent, &commission, &net)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
@@ -26,8 +27,9 @@ func TestNormalizeBrokerCommissionCalculatesPercent(t *testing.T) {
 	var percent *float64
 	commissionValue := 250.0
 	commission := &commissionValue
+	var net *float64
 
-	err := normalizeBrokerCommission(&fee, &percent, &commission)
+	err := normalizeBrokerCommission(&fee, nil, &percent, &commission, &net)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
@@ -42,8 +44,9 @@ func TestNormalizeBrokerCommissionRejectsMismatch(t *testing.T) {
 	percent := &percentValue
 	commissionValue := 300.0
 	commission := &commissionValue
+	var net *float64
 
-	err := normalizeBrokerCommission(&fee, &percent, &commission)
+	err := normalizeBrokerCommission(&fee, nil, &percent, &commission, &net)
 	if !errors.Is(err, ErrBrokerCommissionMismatch) {
 		t.Fatalf("err = %v, want ErrBrokerCommissionMismatch", err)
 	}

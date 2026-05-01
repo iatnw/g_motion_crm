@@ -449,6 +449,17 @@ func (q *Queries) MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtyp
 	return i, err
 }
 
+const nextDealNumber = `-- name: NextDealNumber :one
+SELECT nextval('deal_number_seq')
+`
+
+func (q *Queries) NextDealNumber(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, nextDealNumber)
+	var nextval int64
+	err := row.Scan(&nextval)
+	return nextval, err
+}
+
 const updateDeal = `-- name: UpdateDeal :one
 UPDATE deals
 SET
