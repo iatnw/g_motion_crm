@@ -55,9 +55,7 @@ func (h *DealerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(toDealerResponse(dealer))
+	writeJSON(w, http.StatusCreated, toDealerResponse(dealer))
 }
 
 func (h *DealerHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -69,8 +67,7 @@ func (h *DealerHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dealers, hasMore := paginate(dealers, limit)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"data":     toDealerResponses(dealers),
 		"limit":    limit,
 		"offset":   offset,
@@ -96,8 +93,7 @@ func (h *DealerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealerResponse(dealer))
+	writeJSON(w, http.StatusOK, toDealerResponse(dealer))
 }
 
 func (h *DealerHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -157,8 +153,7 @@ func (h *DealerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealerResponse(dealer))
+	writeJSON(w, http.StatusOK, toDealerResponse(dealer))
 }
 
 func (h *DealerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +173,5 @@ func (h *DealerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealerStatResponse(stats))
+	writeJSON(w, http.StatusOK, toDealerStatResponse(stats))
 }

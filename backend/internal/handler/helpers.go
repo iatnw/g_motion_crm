@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +11,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		slog.Error("encode response", "error", err)
+	}
+}
 
 const (
 	defaultLimit = 50

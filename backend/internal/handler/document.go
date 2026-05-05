@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -84,9 +83,7 @@ func (h *DocumentHandler) upload(w http.ResponseWriter, r *http.Request, clientI
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(toDocumentResponse(doc))
+	writeJSON(w, http.StatusCreated, toDocumentResponse(doc))
 }
 
 // GetURL returns a 15-minute presigned download URL for a document.
@@ -109,8 +106,7 @@ func (h *DocumentHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"url": url})
+	writeJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
 // ListByClient returns all documents for a client.
@@ -129,8 +125,7 @@ func (h *DocumentHandler) ListByClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDocumentResponses(docs))
+	writeJSON(w, http.StatusOK, toDocumentResponses(docs))
 }
 
 // ListByDeal returns all documents for a deal.
@@ -149,8 +144,7 @@ func (h *DocumentHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDocumentResponses(docs))
+	writeJSON(w, http.StatusOK, toDocumentResponses(docs))
 }
 
 // Delete removes a document from S3 and DB.

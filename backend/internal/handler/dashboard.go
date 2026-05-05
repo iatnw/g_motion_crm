@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -109,8 +108,7 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDashboardSummaryResponse(summary))
+	writeJSON(w, http.StatusOK, toDashboardSummaryResponse(summary))
 }
 
 func optionalQueryDate(r *http.Request, key string) (*time.Time, error) {

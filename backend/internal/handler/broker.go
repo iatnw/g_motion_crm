@@ -53,9 +53,7 @@ func (h *BrokerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(toBrokerResponse(broker))
+	writeJSON(w, http.StatusCreated, toBrokerResponse(broker))
 }
 
 func (h *BrokerHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +65,7 @@ func (h *BrokerHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	brokers, hasMore := paginate(brokers, limit)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"data":     toBrokerResponses(brokers),
 		"limit":    limit,
 		"offset":   offset,
@@ -94,8 +91,7 @@ func (h *BrokerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toBrokerResponse(broker))
+	writeJSON(w, http.StatusOK, toBrokerResponse(broker))
 }
 
 func (h *BrokerHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -136,8 +132,7 @@ func (h *BrokerHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toBrokerStatResponse(stats))
+	writeJSON(w, http.StatusOK, toBrokerStatResponse(stats))
 }
 
 func (h *BrokerHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +171,5 @@ func (h *BrokerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toBrokerResponse(broker))
+	writeJSON(w, http.StatusOK, toBrokerResponse(broker))
 }

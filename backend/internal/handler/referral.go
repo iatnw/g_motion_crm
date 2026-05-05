@@ -60,9 +60,7 @@ func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(toReferralResponse(referral))
+	writeJSON(w, http.StatusCreated, toReferralResponse(referral))
 }
 
 func (h *ReferralHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
@@ -79,8 +77,7 @@ func (h *ReferralHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toReferralResponses(referrals))
+	writeJSON(w, http.StatusOK, toReferralResponses(referrals))
 }
 
 func (h *ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -101,8 +98,7 @@ func (h *ReferralHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toReferralResponse(referral))
+	writeJSON(w, http.StatusOK, toReferralResponse(referral))
 }
 
 func (h *ReferralHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -141,8 +137,7 @@ func (h *ReferralHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toReferralResponse(referral))
+	writeJSON(w, http.StatusOK, toReferralResponse(referral))
 }
 
 func (h *ReferralHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
@@ -181,8 +176,7 @@ func (h *ReferralHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toReferralResponse(referral))
+	writeJSON(w, http.StatusOK, toReferralResponse(referral))
 }
 
 func (h *ReferralHandler) Delete(w http.ResponseWriter, r *http.Request) {

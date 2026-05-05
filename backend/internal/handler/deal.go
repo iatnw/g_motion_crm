@@ -143,9 +143,7 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusCreated, toDealResponse(deal))
 }
 
 func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -255,8 +253,7 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusOK, toDealResponse(deal))
 }
 
 func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -276,8 +273,7 @@ func (h *DealHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusOK, toDealResponse(deal))
 }
 
 func (h *DealHandler) GetShow(w http.ResponseWriter, r *http.Request) {
@@ -297,12 +293,10 @@ func (h *DealHandler) GetShow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealShowResponse(deal))
+	writeJSON(w, http.StatusOK, toDealShowResponse(deal))
 }
 
 func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	limit, offset := parsePagination(r)
 
 	if clientIDStr := r.URL.Query().Get("client_id"); clientIDStr != "" {
@@ -318,7 +312,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deals, hasMore := paginate(deals, limit)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, http.StatusOK, map[string]any{
 			"data":     toDealResponses(deals),
 			"limit":    limit,
 			"offset":   offset,
@@ -334,7 +328,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	deals, hasMore := paginate(deals, limit)
-	json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"data":     toDealResponses(deals),
 		"limit":    limit,
 		"offset":   offset,
@@ -378,8 +372,7 @@ func (h *DealHandler) UpdateBrokerFeeStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusOK, toDealResponse(deal))
 }
 
 func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *http.Request) {
@@ -418,8 +411,7 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusOK, toDealResponse(deal))
 }
 
 func (h *DealHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
@@ -458,8 +450,7 @@ func (h *DealHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusOK, toDealResponse(deal))
 }
 
 func (h *DealHandler) NextNumber(w http.ResponseWriter, r *http.Request) {
@@ -469,8 +460,7 @@ func (h *DealHandler) NextNumber(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"deal_number": num})
+	writeJSON(w, http.StatusOK, map[string]string{"deal_number": num})
 }
 
 func (h *DealHandler) MarkPaymentReminderEmailSent(w http.ResponseWriter, r *http.Request) {
@@ -491,6 +481,5 @@ func (h *DealHandler) MarkPaymentReminderEmailSent(w http.ResponseWriter, r *htt
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(toDealResponse(deal))
+	writeJSON(w, http.StatusOK, toDealResponse(deal))
 }

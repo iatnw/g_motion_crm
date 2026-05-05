@@ -43,13 +43,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err = json.NewEncoder(w).Encode(loginResponse{
-		Token:        result.Token,
-		TOTPRequired: result.TOTPRequired,
-	}); err != nil {
-		slog.Error("login: encode response", "error", err)
-	}
+	writeJSON(w, http.StatusOK, loginResponse{Token: result.Token, TOTPRequired: result.TOTPRequired})
 }
 
 type verifyTOTPRequest struct {
@@ -76,10 +70,7 @@ func (h *AuthHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err = json.NewEncoder(w).Encode(verifyTOTPResponse{Token: token}); err != nil {
-		slog.Error("verify totp: encode response", "error", err)
-	}
+	writeJSON(w, http.StatusOK, verifyTOTPResponse{Token: token})
 }
 
 type setupTOTPResponse struct {
@@ -98,10 +89,7 @@ func (h *AuthHandler) SetUpTOTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err = json.NewEncoder(w).Encode(setupTOTPResponse{Secret: secret, KeyURI: keyURI}); err != nil {
-		slog.Error("setup totp: encode response", "error", err)
-	}
+	writeJSON(w, http.StatusOK, setupTOTPResponse{Secret: secret, KeyURI: keyURI})
 }
 
 type enableTOTPRequest struct {
