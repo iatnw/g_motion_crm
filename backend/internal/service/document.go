@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -99,8 +100,15 @@ func (s *DocumentService) UploadFromURL(
 		return db.Document{}, fmt.Errorf("download file: unexpected status %d", resp.StatusCode)
 	}
 
+	const maxDownloadSize = 20 * 1024 * 1024 // 20 MB
+	if resp.ContentLength > maxDownloadSize {
+		slog.Error("tally file too large", "url", fileURL, "size", resp.ContentLength, "limit", maxDownloadSize)
+		return db.Document{}, fmt.Errorf("file too large: %d bytes (limit %d)", resp.ContentLength, maxDownloadSize)
+	}
+	body := io.LimitReader(resp.Body, maxDownloadSize)
+
 	key := buildKey(clientID, dealID, filename)
-	if err := s.s3.Upload(ctx, key, resp.Body, resp.ContentLength, resp.Header.Get("Content-Type")); err != nil {
+	if err := s.s3.Upload(ctx, key, body, resp.ContentLength, resp.Header.Get("Content-Type")); err != nil {
 		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
 	}
 
