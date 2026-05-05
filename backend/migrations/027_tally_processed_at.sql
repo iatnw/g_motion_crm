@@ -1,6 +1,6 @@
 -- +goose Up
 
-ALTER TABLE tally_webhook_events ADD COLUMN processed_at TIMESTAMPTZ;
+ALTER TABLE tally_webhook_events ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
 
 -- +goose Down
 
