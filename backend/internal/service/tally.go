@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
@@ -298,6 +299,10 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	}
 	dealCreated = true
 
+	if err = markTallyEventProcessed(ctx, tx, payload.EventID, payload.Data.SubmissionID); err != nil {
+		return fmt.Errorf("mark tally event processed: %w", err)
+	}
+
 	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
@@ -336,6 +341,7 @@ func claimTallyEvent(ctx context.Context, tx pgx.Tx, eventID, submissionID strin
 		return false, fmt.Errorf("missing event_id and submission_id")
 	}
 
+	// Try to insert a new record for this event.
 	var claimed bool
 	err := tx.QueryRow(ctx, `
 		INSERT INTO tally_webhook_events (event_id, submission_id)
@@ -343,13 +349,33 @@ func claimTallyEvent(ctx context.Context, tx pgx.Tx, eventID, submissionID strin
 		ON CONFLICT DO NOTHING
 		RETURNING true
 	`, eventID, submissionID).Scan(&claimed)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return false, nil
-		}
+	if err == nil {
+		return true, nil
+	}
+	if err != pgx.ErrNoRows {
 		return false, err
 	}
-	return claimed, nil
+
+	// Row already exists — check whether the previous attempt completed.
+	// processed_at IS NULL means it was claimed but the processing failed; retry.
+	var processedAt pgtype.Timestamptz
+	err = tx.QueryRow(ctx, `
+		SELECT processed_at FROM tally_webhook_events
+		WHERE (event_id IS NOT DISTINCT FROM NULLIF($1, '') OR submission_id IS NOT DISTINCT FROM NULLIF($2, ''))
+		LIMIT 1
+	`, eventID, submissionID).Scan(&processedAt)
+	if err != nil {
+		return false, fmt.Errorf("check processed status: %w", err)
+	}
+	return !processedAt.Valid, nil
+}
+
+func markTallyEventProcessed(ctx context.Context, tx pgx.Tx, eventID, submissionID string) error {
+	_, err := tx.Exec(ctx, `
+		UPDATE tally_webhook_events SET processed_at = NOW()
+		WHERE (event_id IS NOT DISTINCT FROM NULLIF($1, '') OR submission_id IS NOT DISTINCT FROM NULLIF($2, ''))
+	`, eventID, submissionID)
+	return err
 }
 
 func findExistingClient(ctx context.Context, q *db.Queries, phone, email string) (db.Client, error) {
