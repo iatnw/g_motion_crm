@@ -18,7 +18,7 @@ export type PaymentStatus = "paid" | "pending";
 export type ReferralStatus = "none" | "paid" | "pending";
 export type DownPaymentMethod = "cash" | "card";
 export type DealStatus = "paid" | "pending" | "cancelled";
-export type BrokerPaymentMethod = "zelle_gmotion" | "zelle_personal";
+export type BrokerPaymentMethod = "zelle_gmotion" | "zelle_personal" | "cash";
 export type PendingPaymentBucket = "green" | "yellow" | "red";
 
 export interface Client {
