@@ -1,0 +1,185 @@
+package integration_test
+
+import (
+	"net/http"
+	"testing"
+)
+
+// createTestClient is a helper that creates a client and returns its ID.
+func createTestClient(t *testing.T, cookie *http.Cookie, phone, email string) string {
+	t.Helper()
+	res := do(t, http.MethodPost, "/clients", map[string]any{
+		"first_name": "Test",
+		"last_name":  "Client",
+		"phone":      phone,
+		"email":      email,
+		"status":     "active",
+	}, cookie)
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("create client: got %d, want 201", res.StatusCode)
+	}
+	var got map[string]any
+	decodeJSON(t, res, &got)
+	return got["id"].(string)
+}
+
+func TestCreateDeal(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1001", "deal1@example.com")
+
+	res := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+		"make":      "Toyota",
+		"model":     "Camry",
+	}, cookie)
+
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("got %d, want 201", res.StatusCode)
+	}
+	var got map[string]any
+	decodeJSON(t, res, &got)
+	if got["id"] == nil {
+		t.Fatal("response missing id")
+	}
+	if got["client_id"] != clientID {
+		t.Fatalf("client_id = %v, want %s", got["client_id"], clientID)
+	}
+}
+
+func TestGetDeal(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1002", "deal2@example.com")
+
+	res := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+		"make":      "Honda",
+		"model":     "Civic",
+	}, cookie)
+	var created map[string]any
+	decodeJSON(t, res, &created)
+	dealID := created["id"].(string)
+
+	res2 := do(t, http.MethodGet, "/deals/"+dealID, nil, cookie)
+	if res2.StatusCode != http.StatusOK {
+		t.Fatalf("get: got %d, want 200", res2.StatusCode)
+	}
+	var got map[string]any
+	decodeJSON(t, res2, &got)
+	if got["id"] != dealID {
+		t.Fatalf("id = %v, want %s", got["id"], dealID)
+	}
+}
+
+func TestListDeals(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1003", "deal3@example.com")
+
+	for _, model := range []string{"Accord", "Pilot"} {
+		res := do(t, http.MethodPost, "/deals", map[string]any{
+			"client_id": clientID,
+			"make":      "Honda",
+			"model":     model,
+		}, cookie)
+		if res.StatusCode != http.StatusCreated {
+			t.Fatalf("create deal %s: got %d", model, res.StatusCode)
+		}
+		res.Body.Close()
+	}
+
+	res := do(t, http.MethodGet, "/deals", nil, cookie)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("list: got %d, want 200", res.StatusCode)
+	}
+	var got map[string]any
+	decodeJSON(t, res, &got)
+	data, ok := got["data"].([]any)
+	if !ok || len(data) < 2 {
+		t.Fatalf("expected at least 2 deals, got %v", got["data"])
+	}
+}
+
+func TestUpdateDealStatus(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1004", "deal4@example.com")
+
+	res := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+	}, cookie)
+	var created map[string]any
+	decodeJSON(t, res, &created)
+	dealID := created["id"].(string)
+
+	res2 := do(t, http.MethodPatch, "/deals/"+dealID+"/status", map[string]any{
+		"status": "paid",
+	}, cookie)
+	if res2.StatusCode != http.StatusOK {
+		t.Fatalf("update status: got %d, want 200", res2.StatusCode)
+	}
+	var got map[string]any
+	decodeJSON(t, res2, &got)
+	if got["deal_status"] != "paid" {
+		t.Fatalf("deal_status = %v, want paid", got["deal_status"])
+	}
+}
+
+func TestCreateDealMissingClientID(t *testing.T) {
+	cookie := login(t)
+
+	res := do(t, http.MethodPost, "/deals", map[string]any{
+		"make": "Toyota",
+	}, cookie)
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", res.StatusCode)
+	}
+}
+
+func TestDealReferrals(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1005", "deal5@example.com")
+
+	dealRes := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+	}, cookie)
+	var deal map[string]any
+	decodeJSON(t, dealRes, &deal)
+	dealID := deal["id"].(string)
+
+	// Create referral
+	refRes := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Refer",
+		"last_name":  "Friend",
+		"phone":      "555-9999",
+		"amount":     500.0,
+	}, cookie)
+	if refRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create referral: got %d, want 201", refRes.StatusCode)
+	}
+	var ref map[string]any
+	decodeJSON(t, refRes, &ref)
+	if ref["first_name"] != "Refer" {
+		t.Fatalf("first_name = %v, want Refer", ref["first_name"])
+	}
+
+	// List referrals
+	listRes := do(t, http.MethodGet, "/deals/"+dealID+"/referrals", nil, cookie)
+	if listRes.StatusCode != http.StatusOK {
+		t.Fatalf("list referrals: got %d, want 200", listRes.StatusCode)
+	}
+	var refs []any
+	decodeJSON(t, listRes, &refs)
+	if len(refs) != 1 {
+		t.Fatalf("expected 1 referral, got %d", len(refs))
+	}
+}
