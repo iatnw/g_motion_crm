@@ -68,7 +68,7 @@ type PaginatedResponse<T> = { data: T[]; limit: number; offset: number; has_more
 
 // Clients
 export const clients = {
-  list: () => request<PaginatedResponse<import("./types").Client>>("/clients").then((r) => r.data),
+  list: () => request<PaginatedResponse<import("./types").Client>>("/clients?limit=1000").then((r) => r.data),
   get: (id: string) => request<import("./types").Client>(`/clients/${id}`),
   create: (data: object) =>
     request<import("./types").Client>("/clients", {
@@ -85,9 +85,9 @@ export const clients = {
 // Deals
 export const deals = {
   nextNumber: () => request<{ deal_number: string }>("/deals/next-number").then((r) => r.deal_number),
-  list: () => request<PaginatedResponse<import("./types").Deal>>("/deals").then((r) => r.data),
+  list: () => request<PaginatedResponse<import("./types").Deal>>("/deals?limit=1000").then((r) => r.data),
   listByClient: (clientId: string) =>
-    request<PaginatedResponse<import("./types").Deal>>(`/deals?client_id=${clientId}`).then((r) => r.data),
+    request<PaginatedResponse<import("./types").Deal>>(`/deals?client_id=${clientId}&limit=1000`).then((r) => r.data),
   get: (id: string) => request<import("./types").Deal>(`/deals/${id}`),
   getShow: (id: string) => request<import("./types").DealShow>(`/deals/${id}/show`),
   create: (data: object) =>
@@ -160,7 +160,7 @@ export const dashboard = {
 
 // Brokers
 export const brokers = {
-  list: () => request<PaginatedResponse<import("./types").Broker>>("/brokers").then((r) => r.data),
+  list: () => request<PaginatedResponse<import("./types").Broker>>("/brokers?limit=1000").then((r) => r.data),
   get: (id: string) => request<import("./types").Broker>(`/brokers/${id}`),
   create: (data: object) =>
     request<import("./types").Broker>("/brokers", {
@@ -177,7 +177,7 @@ export const brokers = {
 
 // Dealers
 export const dealers = {
-  list: () => request<PaginatedResponse<import("./types").Dealer>>("/dealers").then((r) => r.data),
+  list: () => request<PaginatedResponse<import("./types").Dealer>>("/dealers?limit=1000").then((r) => r.data),
   get: (id: string) => request<import("./types").Dealer>(`/dealers/${id}`),
   create: (data: object) =>
     request<import("./types").Dealer>("/dealers", {
