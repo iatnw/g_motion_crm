@@ -1,36 +1,24 @@
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
-}
-
-export function setToken(token: string) {
-  localStorage.setItem("token", token);
-}
-
-export function clearToken() {
-  localStorage.removeItem("token");
-}
-
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
 
   if (res.status === 401) {
-    clearToken();
     window.location.href = "/login";
     throw new Error("Unauthorized");
   }
@@ -46,16 +34,18 @@ async function request<T>(
 
 // Auth
 export const auth = {
+  me: () => request<void>("/auth/me"),
   login: (password: string) =>
-    request<{ token: string; totp_required: boolean }>("/auth/login", {
+    request<{ totp_required: boolean }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ password }),
     }),
   verifyTOTP: (code: string) =>
-    request<{ token: string }>("/auth/totp/verify", {
+    request<void>("/auth/totp/verify", {
       method: "POST",
       body: JSON.stringify({ code }),
     }),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
   setPassword: (password: string, currentPassword = "") =>
     request<void>("/auth/password", {
       method: "POST",

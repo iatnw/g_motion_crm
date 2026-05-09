@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, setToken } from "@/lib/api";
+import { auth } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
-  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [totpRequired, setTotpRequired] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -19,10 +19,8 @@ export default function LoginPage() {
     try {
       const res = await auth.login(password);
       if (res.totp_required) {
-        setToken(res.token);
-        setPendingToken(res.token);
+        setTotpRequired(true);
       } else {
-        setToken(res.token);
         router.push("/clients");
       }
     } catch {
@@ -37,8 +35,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await auth.verifyTOTP(totpCode);
-      setToken(res.token);
+      await auth.verifyTOTP(totpCode);
       router.push("/clients");
     } catch {
       setError("Invalid code");
@@ -62,7 +59,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-[#0b0c0d] rounded-2xl p-8 border border-[#252628] border-glow">
-          {!pendingToken ? (
+          {!totpRequired ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
@@ -115,7 +112,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setPendingToken(null)}
+                onClick={() => setTotpRequired(false)}
                 className="w-full text-slate-500 text-xs hover:text-slate-300 transition-colors"
               >
                 Back to password

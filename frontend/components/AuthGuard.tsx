@@ -1,21 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getToken } from "@/lib/api";
+import { auth } from "@/lib/api";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    if (!getToken()) {
-      router.replace("/login");
-    }
+    auth.me().then(() => setVerified(true)).catch(() => router.replace("/login"));
   }, [router]);
 
-  if (typeof window !== "undefined" && !getToken()) {
-    return null;
-  }
+  if (!verified) return null;
 
   return <>{children}</>;
 }

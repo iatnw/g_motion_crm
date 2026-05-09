@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearToken } from "@/lib/api";
+import { auth } from "@/lib/api";
 
 const links = [
   {
@@ -64,8 +64,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  function handleLogout() {
-    clearToken();
+  async function handleLogout() {
+    await auth.logout();
     router.push("/login");
   }
 
