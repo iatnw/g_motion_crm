@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -101,14 +102,20 @@ func (s *DocumentService) UploadFromURL(
 	}
 
 	const maxDownloadSize = 20 * 1024 * 1024 // 20 MB
-	if resp.ContentLength > maxDownloadSize {
-		slog.Error("tally file too large", "url", fileURL, "size", resp.ContentLength, "limit", maxDownloadSize)
-		return db.Document{}, fmt.Errorf("file too large: %d bytes (limit %d)", resp.ContentLength, maxDownloadSize)
+
+	// Read maxDownloadSize+1 bytes so we can detect bodies that exceed the limit,
+	// including cases where Content-Length is missing or misreported.
+	buf, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadSize+1))
+	if err != nil {
+		return db.Document{}, fmt.Errorf("read file: %w", err)
 	}
-	body := io.LimitReader(resp.Body, maxDownloadSize)
+	if int64(len(buf)) > maxDownloadSize {
+		slog.Error("tally file too large", "url", fileURL, "size", len(buf), "limit", maxDownloadSize)
+		return db.Document{}, fmt.Errorf("file too large: body exceeds %d bytes", maxDownloadSize)
+	}
 
 	key := buildKey(clientID, dealID, filename)
-	if err := s.s3.Upload(ctx, key, body, resp.ContentLength, resp.Header.Get("Content-Type")); err != nil {
+	if err := s.s3.Upload(ctx, key, bytes.NewReader(buf), int64(len(buf)), resp.Header.Get("Content-Type")); err != nil {
 		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
 	}
 
@@ -117,7 +124,7 @@ func (s *DocumentService) UploadFromURL(
 		DealID:        nullUUIDToPg(dealID),
 		S3Key:         key,
 		FileName:      filename,
-		FileSizeBytes: int64ToInt4(resp.ContentLength),
+		FileSizeBytes: int64ToInt4(int64(len(buf))),
 		DocumentType:  docType,
 	})
 	if err != nil {
