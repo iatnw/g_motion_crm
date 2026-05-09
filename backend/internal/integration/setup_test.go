@@ -14,11 +14,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -123,10 +121,7 @@ func setup() {
 
 	r.Post("/webhooks/tally", tallyH.Webhook)
 
-	r.Group(func(r chi.Router) {
-		r.Use(httprate.LimitByIP(10, time.Minute))
-		r.Post("/auth/login", authH.Login)
-	})
+	r.Post("/auth/login", authH.Login)
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authSvc.ParseToken, "totp_pending"))

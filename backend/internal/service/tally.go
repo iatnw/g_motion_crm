@@ -197,11 +197,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-	}()
+	defer func() { _ = tx.Rollback(ctx) }() // no-op after commit; ensures cleanup on all return paths
 
 	txClient := s.client.WithTx(tx)
 	txDeal := s.deal.WithTx(tx)
