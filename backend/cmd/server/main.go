@@ -94,7 +94,6 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.RequestSize(1 << 20)) // 1 MB limit on all non-tally endpoints
 
 	frontendURL := cfg.App.FrontendURL
 	if frontendURL == "" {
@@ -122,8 +121,8 @@ func main() {
 		}
 	})
 
-	// Public webhook — Tally sends to this without auth token
-	r.Post("/webhooks/tally", tallyHandler.Webhook)
+	// Public webhook — Tally sends to this without auth token (up to 5 MB)
+	r.With(chimiddleware.RequestSize(5 << 20)).Post("/webhooks/tally", tallyHandler.Webhook)
 
 	r.Group(func(r chi.Router) {
 		r.Use(httprate.LimitByIP(10, time.Minute))
@@ -138,6 +137,7 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
+		r.Use(chimiddleware.RequestSize(1 << 20)) // 1 MB for all standard endpoints
 
 		r.Get("/auth/me", authHandler.Me)
 		r.Post("/auth/logout", authHandler.Logout)
@@ -155,7 +155,6 @@ func main() {
 		r.Get("/clients/{id}", clientHandler.Get)
 		r.Put("/clients/{id}", clientHandler.Update)
 		r.Get("/clients/{id}/documents", documentHandler.ListByClient)
-		r.Post("/clients/{id}/documents", documentHandler.UploadForClient)
 
 		// Brokers
 		r.Get("/brokers", brokerHandler.List)
@@ -185,7 +184,6 @@ func main() {
 		r.Patch("/deals/{id}/broker-commission-status", dealHandler.UpdateBrokerCommissionStatus)
 		r.Patch("/deals/{id}/payment-reminder-email-sent", dealHandler.MarkPaymentReminderEmailSent)
 		r.Get("/deals/{id}/documents", documentHandler.ListByDeal)
-		r.Post("/deals/{id}/documents", documentHandler.UploadForDeal)
 
 		// Referrals
 		r.Post("/deals/{dealID}/referrals", referralHandler.Create)
@@ -198,6 +196,15 @@ func main() {
 		// Documents
 		r.Get("/documents/{id}/url", documentHandler.GetURL)
 		r.Delete("/documents/{id}", documentHandler.Delete)
+	})
+
+	// Document uploads get a 20 MB limit (driver's license, insurance card photos)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
+		r.Use(chimiddleware.RequestSize(20 << 20))
+
+		r.Post("/clients/{id}/documents", documentHandler.UploadForClient)
+		r.Post("/deals/{id}/documents", documentHandler.UploadForDeal)
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.App.Port)
