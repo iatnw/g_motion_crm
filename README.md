@@ -72,17 +72,25 @@ TEST_DATABASE_URL="postgres://user:pass@localhost:5432/gmotion_test?sslmode=disa
 
 ## Production Deployment
 
-Use the production Dockerfiles:
+The prod override file switches to the multi-stage Dockerfiles, removes source volume mounts, and adds `restart: unless-stopped`.
 
 ```bash
-# Backend
-docker build -f backend/Dockerfile.prod -t gmotion-backend ./backend
+# First deployment
+git clone git@github.com:umbrllacrp/g_motion_crm.git
+cd g_motion_crm
+cp .env.example .env
+# Fill in all values in .env, including APP_ENV=production and BACKEND_URL=https://api.yourcrm.com
 
-# Frontend
-docker build -f frontend/Dockerfile.prod -t gmotion-frontend ./frontend
+# Build and start
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Deploying a fix
+git pull
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-Set `APP_ENV=production` in your environment so cookies get the `Secure` flag.
+Set `APP_ENV=production` in `.env` so cookies get the `Secure` flag.
+Set `BACKEND_URL` to the public URL your browser uses to reach the backend (e.g. `https://api.yourcrm.com`).
 
 ## Tally Webhook
 
