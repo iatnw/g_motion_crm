@@ -72,25 +72,39 @@ TEST_DATABASE_URL="postgres://user:pass@localhost:5432/gmotion_test?sslmode=disa
 
 ## Production Deployment
 
-The prod override file switches to the multi-stage Dockerfiles, removes source volume mounts, and adds `restart: unless-stopped`.
+`docker-compose.prod.yml` is a standalone production file — no local Postgres (uses AWS RDS instead), no source mounts, multi-stage builds, `restart: unless-stopped`.
 
+**Infrastructure needed:**
+- EC2 instance (t3.small recommended) with Docker installed
+- RDS PostgreSQL instance — set `DATABASE_URL` to the RDS endpoint in `.env`
+- Two S3 buckets (documents + backups)
+
+**First deployment on EC2:**
 ```bash
-# First deployment
 git clone git@github.com:umbrllacrp/g_motion_crm.git
 cd g_motion_crm
 cp .env.example .env
-# Fill in all values in .env, including APP_ENV=production and BACKEND_URL=https://api.yourcrm.com
+# Fill in all values — DATABASE_URL points to your RDS endpoint,
+# APP_ENV=production, BACKEND_URL=https://api.yourcrm.com
+nano .env
 
-# Build and start
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-
-# Deploying a fix
-git pull
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-Set `APP_ENV=production` in `.env` so cookies get the `Secure` flag.
-Set `BACKEND_URL` to the public URL your browser uses to reach the backend (e.g. `https://api.yourcrm.com`).
+**Deploying a fix:**
+```bash
+git pull
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+**Viewing logs:**
+```bash
+docker logs g_motion_crm-backend-1 -f
+docker logs g_motion_crm-frontend-1 -f
+```
+
+Set `APP_ENV=production` so cookies get the `Secure` flag.
+Set `BACKEND_URL` to the public URL the browser uses to reach the backend (e.g. `https://api.yourcrm.com`).
 
 ## Tally Webhook
 

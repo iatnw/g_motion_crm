@@ -3,8 +3,10 @@ services:
     build:
       context: ./backend/
       dockerfile: Dockerfile.prod
+    env_file: .env
     restart: unless-stopped
-    volumes: []  # no source mount in prod — binary is baked into the image
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
 
   frontend:
     build:
@@ -13,4 +15,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${BACKEND_URL}
     restart: unless-stopped
-    volumes: []  # no source mount in prod
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
