@@ -10,19 +10,31 @@ import (
 )
 
 type AuthHandler struct {
-	auth *service.AuthService
+	auth   *service.AuthService
+	secure bool // true in production — sets Secure flag on cookies
 }
 
-func NewAuthHandler(auth *service.AuthService) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *service.AuthService, secure bool) *AuthHandler {
+	return &AuthHandler{auth: auth, secure: secure}
+}
+
+func (h *AuthHandler) setTokenCookie(w http.ResponseWriter, token string, maxAge int) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   h.secure,
+		SameSite: http.SameSiteStrictMode,
+	})
 }
 
 type loginRequest struct {
 	Password string `json:"password"`
 }
 type loginResponse struct {
-	Token        string `json:"token"`
-	TOTPRequired bool   `json:"totp_required"`
+	TOTPRequired bool `json:"totp_required"`
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -43,14 +55,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, loginResponse{Token: result.Token, TOTPRequired: result.TOTPRequired})
+	// totp_pending tokens live 5 minutes, authenticated tokens 24 hours.
+	maxAge := 24 * 60 * 60
+	if result.TOTPRequired {
+		maxAge = 5 * 60
+	}
+	h.setTokenCookie(w, result.Token, maxAge)
+	writeJSON(w, http.StatusOK, loginResponse{TOTPRequired: result.TOTPRequired})
 }
 
 type verifyTOTPRequest struct {
 	Code string `json:"code"`
-}
-type verifyTOTPResponse struct {
-	Token string `json:"token"`
 }
 
 func (h *AuthHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +85,8 @@ func (h *AuthHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, verifyTOTPResponse{Token: token})
+	h.setTokenCookie(w, token, 24*60*60)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type setupTOTPResponse struct {
@@ -113,6 +129,15 @@ func (h *AuthHandler) EnableTOTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	h.setTokenCookie(w, "", -1)
 	w.WriteHeader(http.StatusNoContent)
 }
 

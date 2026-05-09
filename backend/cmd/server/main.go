@@ -79,7 +79,7 @@ func main() {
 	tallyService := service.NewTally(clientService, documentService, dealService, queries, pool)
 	referralService := service.NewReferral(queries)
 
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, cfg.App.Env == "production")
 	brokerHandler := handler.NewBrokerHandler(brokerService)
 	dealHandler := handler.NewDealHandler(dealService)
 	clientHandler := handler.NewClientHandler(clientService)
@@ -102,7 +102,8 @@ func main() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", frontendURL)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -136,6 +137,8 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
 
+		r.Get("/auth/me", authHandler.Me)
+		r.Post("/auth/logout", authHandler.Logout)
 		r.Post("/auth/totp/setup", authHandler.SetUpTOTP)
 		r.Post("/auth/totp/enable", authHandler.EnableTOTP)
 		r.Post("/auth/totp/disable", authHandler.DisableTOTP)

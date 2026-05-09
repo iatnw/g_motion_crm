@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
@@ -15,15 +14,13 @@ const claimsKey contextKey = "claims"
 func Auth(parseToken func(string) (*service.Claims, error), requiredStage string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			header := r.Header.Get("Authorization")
-			if !strings.HasPrefix(header, "Bearer ") {
+			cookie, err := r.Cookie("token")
+			if err != nil {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			tokenStr := strings.TrimPrefix(header, "Bearer ")
-
-			claims, err := parseToken(tokenStr)
+			claims, err := parseToken(cookie.Value)
 			if err != nil {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
