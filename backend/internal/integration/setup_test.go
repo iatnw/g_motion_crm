@@ -121,6 +121,9 @@ func setup() {
 
 	r.Post("/webhooks/tally", tallyH.Webhook)
 
+	r.Get("/auth/setup-required", authH.SetupRequired)
+	r.Post("/auth/setup", authH.Setup)
+
 	r.Post("/auth/login", authH.Login)
 
 	r.Group(func(r chi.Router) {
@@ -133,6 +136,7 @@ func setup() {
 
 		r.Get("/auth/me", authH.Me)
 		r.Post("/auth/logout", authH.Logout)
+		r.Post("/auth/password", authH.SetPassword)
 
 		r.Get("/clients", clientH.List)
 		r.Post("/clients", clientH.Create)
