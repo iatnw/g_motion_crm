@@ -124,6 +124,10 @@ func main() {
 	// Public webhook — Tally sends to this without auth token (up to 5 MB)
 	r.With(chimiddleware.RequestSize(5 << 20)).Post("/webhooks/tally", tallyHandler.Webhook)
 
+	// First-time setup — only works when no password is set
+	r.Get("/auth/setup-required", authHandler.SetupRequired)
+	r.With(chimiddleware.RequestSize(1<<20)).Post("/auth/setup", authHandler.Setup)
+
 	r.Group(func(r chi.Router) {
 		r.Use(httprate.LimitByIP(10, time.Minute))
 		r.Post("/auth/login", authHandler.Login)

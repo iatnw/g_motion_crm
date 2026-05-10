@@ -18,6 +18,7 @@ var (
 	ErrWeakPassword           = errors.New("password must be at least 12 characters")
 	ErrInvalidTOTP            = errors.New("invalid TOTP code")
 	ErrTOTPNotEnabled         = errors.New("TOTP not enabled")
+	ErrSetupAlreadyDone       = errors.New("setup already completed")
 	ErrTOTPAlreadyEnabled     = errors.New("TOTP already enabled")
 )
 
@@ -43,6 +44,33 @@ func NewAuth(q *db.Queries, cfg config.AuthConfig) *AuthService {
 		jwtSecret:  []byte(cfg.JWTSecret),
 		totpIssuer: cfg.TOTPIssuer,
 	}
+}
+
+func (s *AuthService) SetupRequired(ctx context.Context) (bool, error) {
+	setting, err := s.q.GetSetting(ctx)
+	if err != nil {
+		return false, err
+	}
+	return setting.OwnerPasswordHash == "", nil
+}
+
+func (s *AuthService) Setup(ctx context.Context, password string) error {
+	if len(password) < 12 {
+		return ErrWeakPassword
+	}
+	setting, err := s.q.GetSetting(ctx)
+	if err != nil {
+		return err
+	}
+	if setting.OwnerPasswordHash != "" {
+		return ErrSetupAlreadyDone
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = s.q.UpdateOwnerPassword(ctx, string(hash))
+	return err
 }
 
 func (s *AuthService) Login(ctx context.Context, password string) (LoginResult, error) {

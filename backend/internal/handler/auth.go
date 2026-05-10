@@ -132,6 +132,40 @@ func (h *AuthHandler) EnableTOTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *AuthHandler) SetupRequired(w http.ResponseWriter, r *http.Request) {
+	required, err := h.auth.SetupRequired(r.Context())
+	if err != nil {
+		slog.Error("setup required", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"required": required})
+}
+
+func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	if err := h.auth.Setup(r.Context(), req.Password); err != nil {
+		if errors.Is(err, service.ErrSetupAlreadyDone) {
+			http.Error(w, "setup already completed", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, service.ErrWeakPassword) {
+			http.Error(w, "password must be at least 12 characters", http.StatusBadRequest)
+			return
+		}
+		slog.Error("setup", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }

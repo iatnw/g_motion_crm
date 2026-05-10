@@ -34,6 +34,12 @@ async function request<T>(
 
 // Auth
 export const auth = {
+  setupRequired: () => request<{ required: boolean }>("/auth/setup-required"),
+  setup: (password: string) =>
+    request<void>("/auth/setup", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
   me: () => request<void>("/auth/me"),
   login: (password: string) =>
     request<{ totp_required: boolean }>("/auth/login", {
