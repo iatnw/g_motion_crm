@@ -1,24 +1,27 @@
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+type RequestOptions = RequestInit & { skipAuthRedirect?: boolean };
+
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestOptions = {}
 ): Promise<T> {
+  const { skipAuthRedirect, ...fetchOptions } = options;
   const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string>),
+    ...(fetchOptions.headers as Record<string, string>),
   };
-  if (!(options.body instanceof FormData)) {
+  if (!(fetchOptions.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
 
   const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
     credentials: "include",
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !skipAuthRedirect) {
     window.location.href = "/login";
     throw new Error("Unauthorized");
   }
@@ -56,6 +59,7 @@ export const auth = {
     request<void>("/auth/password", {
       method: "POST",
       body: JSON.stringify({ password, current_password: currentPassword }),
+      skipAuthRedirect: true,
     }),
   setupTOTP: () =>
     request<{ secret: string; key_uri: string }>("/auth/totp/setup", {

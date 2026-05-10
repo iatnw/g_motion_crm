@@ -58,19 +58,18 @@ func (s *AuthService) Setup(ctx context.Context, password string) error {
 	if len(password) < 12 {
 		return ErrWeakPassword
 	}
-	setting, err := s.q.GetSetting(ctx)
-	if err != nil {
-		return err
-	}
-	if setting.OwnerPasswordHash != "" {
-		return ErrSetupAlreadyDone
-	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
-	_, err = s.q.UpdateOwnerPassword(ctx, string(hash))
-	return err
+	result, err := s.q.SetupOwnerPassword(ctx, string(hash))
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrSetupAlreadyDone
+	}
+	return nil
 }
 
 func (s *AuthService) Login(ctx context.Context, password string) (LoginResult, error) {

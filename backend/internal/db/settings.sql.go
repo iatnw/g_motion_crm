@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -54,9 +55,21 @@ func (q *Queries) GetSetting(ctx context.Context) (Setting, error) {
 	return i, err
 }
 
+const setupOwnerPassword = `-- name: SetupOwnerPassword :execresult
+UPDATE settings
+SET
+    owner_password_hash = $1,
+    updated_at = NOW()
+WHERE id = 1 AND owner_password_hash = ''
+`
+
+func (q *Queries) SetupOwnerPassword(ctx context.Context, ownerPasswordHash string) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, setupOwnerPassword, ownerPasswordHash)
+}
+
 const updateOwnerPassword = `-- name: UpdateOwnerPassword :one
 UPDATE settings
-SET 
+SET
     owner_password_hash = $1,
     updated_at = NOW()
 WHERE id = 1
