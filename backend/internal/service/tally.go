@@ -317,7 +317,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	}
 
 	for _, field := range payload.Data.Fields {
-		if field.Type != "FILE_UPLOAD" {
+		if field.Type != "FILE_UPLOAD" && field.Type != "SIGNATURE" {
 			continue
 		}
 		files := parseFiles(field.Value)
@@ -477,9 +477,9 @@ func stringFromMap(m map[string]any, key string) string {
 
 func labelToDocType(label string) db.DocumentType {
 	switch strings.ToLower(label) {
-	case "driver's license", "drivers license":
+	case "driver's license", "drivers license", "driver license":
 		return db.DocumentTypeDriverLicense
-	case "insurance":
+	case "insurance", "insurance card":
 		return db.DocumentTypeInsurance
 	case "broker agreement":
 		return db.DocumentTypeBrokerAgreement
@@ -489,6 +489,8 @@ func labelToDocType(label string) db.DocumentType {
 		return db.DocumentTypeCheckCopy
 	case "credit app", "credit application":
 		return db.DocumentTypeCreditAppPdf
+	case "signature":
+		return db.DocumentTypeOther
 	default:
 		return db.DocumentTypeOther
 	}
