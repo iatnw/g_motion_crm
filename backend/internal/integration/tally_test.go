@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func tallyPayload(eventID, submissionID, phone, email, name string) []byte {
+func tallyPayload(eventID, submissionID, phone, email, firstName, lastName string) []byte {
 	payload := map[string]any{
 		"eventId":   eventID,
 		"eventType": "FORM_RESPONSE",
@@ -21,9 +21,10 @@ func tallyPayload(eventID, submissionID, phone, email, name string) []byte {
 			"formName":     "Credit App",
 			"createdAt":    time.Now().Format(time.RFC3339),
 			"fields": []map[string]any{
-				{"key": "q1", "label": "Full legal name", "type": "INPUT_TEXT", "value": name},
-				{"key": "q2", "label": "Phone Number", "type": "INPUT_PHONE_NUMBER", "value": phone},
-				{"key": "q3", "label": "Email", "type": "INPUT_EMAIL", "value": email},
+				{"key": "q1", "label": "First legal name (as on Driver License)", "type": "INPUT_TEXT", "value": firstName},
+				{"key": "q2", "label": "Last legal name", "type": "INPUT_TEXT", "value": lastName},
+				{"key": "q3", "label": "Phone Number", "type": "INPUT_PHONE_NUMBER", "value": phone},
+				{"key": "q4", "label": "Email", "type": "INPUT_EMAIL", "value": email},
 			},
 		},
 	}
@@ -44,7 +45,7 @@ func postTally(t *testing.T, body []byte) *http.Response {
 }
 
 func TestTallyWebhookInvalidSignature(t *testing.T) {
-	body := tallyPayload("evt-bad", "sub-bad", "555-8001", "bad@example.com", "Bad Actor")
+	body := tallyPayload("evt-bad", "sub-bad", "555-8001", "bad@example.com", "Bad", "Actor")
 
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/webhooks/tally", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -64,7 +65,7 @@ func TestTallyWebhookInvalidSignature(t *testing.T) {
 func TestTallyWebhookCreatesClient(t *testing.T) {
 	t.Cleanup(truncateData)
 
-	body := tallyPayload("evt-001", "sub-001", "555-8002", "tally1@example.com", "Jane Doe")
+	body := tallyPayload("evt-001", "sub-001", "555-8002", "tally1@example.com", "Jane", "Doe")
 	res := postTally(t, body)
 	defer res.Body.Close()
 
@@ -92,7 +93,7 @@ func TestTallyWebhookCreatesClient(t *testing.T) {
 func TestTallyWebhookDeduplication(t *testing.T) {
 	t.Cleanup(truncateData)
 
-	body := tallyPayload("evt-002", "sub-002", "555-8003", "tally2@example.com", "John Smith")
+	body := tallyPayload("evt-002", "sub-002", "555-8003", "tally2@example.com", "John", "Smith")
 
 	// First delivery
 	res1 := postTally(t, body)

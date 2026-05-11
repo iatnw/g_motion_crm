@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -241,11 +242,11 @@ func decodeJSON(t *testing.T, res *http.Response, dst any) {
 	}
 }
 
-// tallySignature computes the HMAC-SHA256 hex signature for a Tally webhook body.
+// tallySignature computes the HMAC-SHA256 base64 signature for a Tally webhook body.
 func tallySignature(body []byte) string {
 	mac := hmac.New(sha256.New, []byte(tallySigningSecret))
 	mac.Write(body)
-	return hex.EncodeToString(mac.Sum(nil))
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
 func mustSetenv(key, val string) {
