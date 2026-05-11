@@ -33,6 +33,9 @@ go.work.sum
 # Air build output
 tmp/
 
+# Go build cache
+backend/.cache/
+
 # Next.js
 node_modules/
 .next/
