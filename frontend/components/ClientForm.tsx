@@ -51,9 +51,14 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
     setSaving(true);
     setError("");
     try {
-      const payload: Record<string, string | null> = {};
+      const numericFields = new Set(["housing_monthly_payment", "gross_monthly_income", "other_monthly_income"]);
+      const payload: Record<string, string | number | null> = {};
       for (const [k, v] of Object.entries(form)) {
-        payload[k] = v || null;
+        if (numericFields.has(k)) {
+          payload[k] = v ? parseFloat(v) : null;
+        } else {
+          payload[k] = v || null;
+        }
       }
       payload.first_name = form.first_name;
       payload.last_name = form.last_name;
