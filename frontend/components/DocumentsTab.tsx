@@ -216,7 +216,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
             <img
               src={preview.url}
               alt={preview.name}
-              className="max-w-full max-h-[85vh] rounded-xl object-contain"
+              className="max-w-full max-h-[85vh] rounded-xl object-contain bg-white"
             />
             <p className="text-center text-slate-500 text-xs mt-2">{preview.name}</p>
           </div>
