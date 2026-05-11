@@ -7,6 +7,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -53,6 +54,7 @@ type Querier interface {
 	ListReferralsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Referral, error)
 	MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtype.UUID) (Deal, error)
 	NextDealNumber(ctx context.Context) (int64, error)
+	SetupOwnerPassword(ctx context.Context, ownerPasswordHash string) (pgconn.CommandTag, error)
 	UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error)
 	UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error)
 	UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error)

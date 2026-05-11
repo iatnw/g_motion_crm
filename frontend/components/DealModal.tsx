@@ -242,20 +242,32 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 </DarkSelect>
               </div>
               <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
-              <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => set("doc_fee", v)} />
+              <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => {
+                const base = commissionBase(form.broker_fee, form.collect_amount);
+                const docFee = parseFloat(v) || 0;
+                const com = parseFloat(form.broker_commission);
+                setForm((prev) => {
+                  const next: Partial<typeof prev> = { doc_fee: v };
+                  if (form.broker_commission && !isNaN(com) && base > 0) {
+                    next.your_net = (base - com - docFee).toFixed(2);
+                  }
+                  return { ...prev, ...next };
+                });
+              }} />
               <Field label="Broker Fee ($)" type="number" value={form.broker_fee} onChange={(v) => {
                 const base = commissionBase(v, form.collect_amount);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
+                const docFee = parseFloat(form.doc_fee) || 0;
                 setForm((prev) => {
                   const next: Partial<typeof prev> = { broker_fee: v };
                   if (form.broker_percent && !isNaN(pct) && base > 0) {
                     const commission = base * pct / 100;
                     next.broker_commission = commission.toFixed(2);
-                    next.your_net = (base - commission).toFixed(2);
+                    next.your_net = (base - commission - docFee).toFixed(2);
                   } else if (form.broker_commission && !isNaN(com) && base > 0) {
                     next.broker_percent = (com / base * 100).toFixed(2);
-                    next.your_net = (base - com).toFixed(2);
+                    next.your_net = (base - com - docFee).toFixed(2);
                   }
                   return { ...prev, ...next };
                 });
@@ -264,15 +276,16 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 const base = commissionBase(form.broker_fee, v);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
+                const docFee = parseFloat(form.doc_fee) || 0;
                 setForm((prev) => {
                   const next: Partial<typeof prev> = { collect_amount: v };
                   if (form.broker_percent && !isNaN(pct) && base > 0) {
                     const commission = base * pct / 100;
                     next.broker_commission = commission.toFixed(2);
-                    next.your_net = (base - commission).toFixed(2);
+                    next.your_net = (base - commission - docFee).toFixed(2);
                   } else if (form.broker_commission && !isNaN(com) && base > 0) {
                     next.broker_percent = (com / base * 100).toFixed(2);
-                    next.your_net = (base - com).toFixed(2);
+                    next.your_net = (base - com - docFee).toFixed(2);
                   }
                   return { ...prev, ...next };
                 });
@@ -280,18 +293,20 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               <Field label="Broker %" type="number" value={form.broker_percent} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, form.collect_amount);
                 const pct = parseFloat(v);
+                const docFee = parseFloat(form.doc_fee) || 0;
                 setForm((prev) => {
                   if (!v || isNaN(pct) || base === 0) return { ...prev, broker_percent: v };
                   const commission = base * pct / 100;
-                  return { ...prev, broker_percent: v, broker_commission: commission.toFixed(2), your_net: (base - commission).toFixed(2) };
+                  return { ...prev, broker_percent: v, broker_commission: commission.toFixed(2), your_net: (base - commission - docFee).toFixed(2) };
                 });
               }} />
               <Field label="Broker Commission ($)" type="number" value={form.broker_commission} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, form.collect_amount);
                 const com = parseFloat(v);
+                const docFee = parseFloat(form.doc_fee) || 0;
                 setForm((prev) => {
                   if (!v || isNaN(com)) return { ...prev, broker_commission: v };
-                  const next: Partial<typeof prev> = { broker_commission: v, your_net: base > 0 ? (base - com).toFixed(2) : prev.your_net };
+                  const next: Partial<typeof prev> = { broker_commission: v, your_net: base > 0 ? (base - com - docFee).toFixed(2) : prev.your_net };
                   if (base > 0) next.broker_percent = (com / base * 100).toFixed(2);
                   return { ...prev, ...next };
                 });
