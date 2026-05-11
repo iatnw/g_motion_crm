@@ -148,10 +148,16 @@ func fieldString(value any) string {
 func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebhook) error {
 	p := newParser(payload.Data.Fields)
 
-	fullName := p.str("Full legal name")
-	firstName, lastName, err := splitName(fullName)
-	if err != nil {
-		return fmt.Errorf("missing required field: full legal name")
+	firstName := strings.TrimSpace(p.str("First legal name (as on Driver License)"))
+	lastName := strings.TrimSpace(p.str("Last legal name"))
+	if firstName == "" {
+		// fallback for older form version with a single combined field
+		fullName := p.str("Full legal name")
+		var err error
+		firstName, lastName, err = splitName(fullName)
+		if err != nil {
+			return fmt.Errorf("missing required field: first name")
+		}
 	}
 
 	phone := p.str("Phone Number")
