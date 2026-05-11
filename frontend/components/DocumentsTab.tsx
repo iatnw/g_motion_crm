@@ -21,7 +21,7 @@ const docTypeStyle: Record<DocumentType, string> = {
   broker_agreement: "bg-orange-500/10 text-orange-400 border border-orange-500/25",
   dealer_docs: "bg-yellow-500/10 text-yellow-400 border border-yellow-500/25",
   check_copy: "bg-pink-500/10 text-pink-400 border border-pink-500/25",
-  other: "bg-slate-500/10 text-slate-400 border border-slate-500/25",
+  other: "bg-slate-500/10 text-slate-200 border border-slate-500/25",
 };
 
 function formatBytes(b?: number) {
@@ -171,6 +171,22 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
                   className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
                 >
                   {isImage(doc.file_name) ? "View" : "Open"}
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { url } = await documents.getURL(doc.id);
+                      const a = window.document.createElement("a");
+                      a.href = url;
+                      a.download = doc.file_name;
+                      a.click();
+                    } catch {
+                      alert("Failed to get download link");
+                    }
+                  }}
+                  className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
+                >
+                  Download
                 </button>
                 <button
                   onClick={() => handleDelete(doc.id)}
