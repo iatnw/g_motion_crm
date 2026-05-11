@@ -3,10 +3,9 @@ package handler
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
@@ -36,10 +35,6 @@ func (h *TallyHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sig := r.Header.Get("tally-signature")
-	mac := hmac.New(sha256.New, []byte(h.signingSecret))
-	mac.Write(body)
-	expected := hex.EncodeToString(mac.Sum(nil))
-	slog.Info("tally signature debug", "received", sig, "expected", expected)
 	if !verifyTallySignature(body, sig, h.signingSecret) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -68,6 +63,6 @@ func (h *TallyHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 func verifyTallySignature(body []byte, signature, secret string) bool {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(body)
-	expected := hex.EncodeToString(mac.Sum(nil))
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 	return hmac.Equal([]byte(signature), []byte(expected))
 }
