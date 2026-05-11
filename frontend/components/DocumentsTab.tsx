@@ -31,12 +31,17 @@ function formatBytes(b?: number) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isImage(fileName: string) {
+  return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(fileName);
+}
+
 export default function DocumentsTab({ clientId, dealId }: { clientId?: string; dealId?: string }) {
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selectedType, setSelectedType] = useState<DocumentType>("other");
   const [error, setError] = useState("");
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -53,12 +58,16 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleDownload(id: string) {
+  async function handleOpen(doc: Document) {
     try {
-      const { url } = await documents.getURL(id);
-      window.open(url, "_blank");
+      const { url } = await documents.getURL(doc.id);
+      if (isImage(doc.file_name)) {
+        setPreview({ url, name: doc.file_name });
+      } else {
+        window.open(url, "_blank");
+      }
     } catch {
-      alert("Failed to get download link");
+      alert("Failed to get link");
     }
   }
 
@@ -94,6 +103,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
   }
 
   return (
+    <>
     <div className="space-y-4">
       {/* Upload */}
       <div className="bg-[#0b0c0d] rounded-xl border border-[#252628] p-4">
@@ -157,10 +167,10 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
               </div>
               <div className="flex items-center gap-3 ml-3">
                 <button
-                  onClick={() => handleDownload(doc.id)}
+                  onClick={() => handleOpen(doc)}
                   className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
                 >
-                  Download
+                  {isImage(doc.file_name) ? "View" : "Open"}
                 </button>
                 <button
                   onClick={() => handleDelete(doc.id)}
@@ -174,5 +184,28 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
         </div>
       )}
     </div>
+
+      {preview && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreview(null)}
+              className="absolute -top-10 right-0 text-slate-400 hover:text-white text-sm transition-colors"
+            >
+              ✕ Close
+            </button>
+            <img
+              src={preview.url}
+              alt={preview.name}
+              className="max-w-full max-h-[85vh] rounded-xl object-contain"
+            />
+            <p className="text-center text-slate-500 text-xs mt-2">{preview.name}</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
