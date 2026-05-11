@@ -176,12 +176,15 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
                   onClick={async () => {
                     try {
                       const { url } = await documents.getURL(doc.id);
+                      const blob = await fetch(url).then((r) => r.blob());
+                      const objectUrl = URL.createObjectURL(blob);
                       const a = window.document.createElement("a");
-                      a.href = url;
+                      a.href = objectUrl;
                       a.download = doc.file_name;
                       a.click();
+                      URL.revokeObjectURL(objectUrl);
                     } catch {
-                      alert("Failed to get download link");
+                      alert("Failed to download");
                     }
                   }}
                   className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
