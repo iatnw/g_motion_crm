@@ -1,0 +1,5 @@
+./auth_test.go
+./client_test.go
+./deal_test.go
+./setup_test.go
+./tally_test.go

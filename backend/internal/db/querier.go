@@ -38,6 +38,7 @@ type Querier interface {
 	GetDocument(ctx context.Context, id pgtype.UUID) (Document, error)
 	GetReferral(ctx context.Context, id pgtype.UUID) (Referral, error)
 	GetSetting(ctx context.Context) (Setting, error)
+	ListAllReferrals(ctx context.Context) ([]ListAllReferralsRow, error)
 	ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error)
 	ListBrokerStats(ctx context.Context) ([]BrokerStat, error)
 	ListBrokers(ctx context.Context, arg ListBrokersParams) ([]Broker, error)

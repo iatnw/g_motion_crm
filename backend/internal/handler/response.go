@@ -467,6 +467,34 @@ func toReferralResponses(rs []db.Referral) []ReferralResponse {
 	return out
 }
 
+type ReferralWithDealResponse struct {
+	ReferralResponse
+	DealNumber string `json:"deal_number"`
+}
+
+func toReferralWithDealResponses(rs []db.ListAllReferralsRow) []ReferralWithDealResponse {
+	out := make([]ReferralWithDealResponse, len(rs))
+	for i, r := range rs {
+		out[i] = ReferralWithDealResponse{
+			ReferralResponse: ReferralResponse{
+				ID:        pgUUID(r.ID),
+				DealID:    pgUUID(r.DealID),
+				FirstName: r.FirstName,
+				LastName:  r.LastName,
+				Phone:     pgText(r.Phone),
+				Amount:    pgNumeric(r.Amount),
+				Status:    string(r.Status),
+				PaidDate:  pgDate(r.PaidDate),
+				Notes:     pgText(r.Notes),
+				CreatedAt: pgTimestamp(r.CreatedAt),
+				UpdatedAt: pgTimestamp(r.UpdatedAt),
+			},
+			DealNumber: r.DealNumber.String,
+		}
+	}
+	return out
+}
+
 // --- pgtype helpers ---
 
 func pgText(t pgtype.Text) *string {

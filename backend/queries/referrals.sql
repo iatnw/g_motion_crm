@@ -47,3 +47,21 @@ SET
 DELETE FROM referrals
 WHERE id = $1
 RETURNING *;
+
+-- name: ListAllReferrals :many
+SELECT
+    r.id,
+    r.deal_id,
+    r.first_name,
+    r.last_name,
+    r.phone,
+    r.amount,
+    r.status,
+    r.paid_date,
+    r.notes,
+    r.created_at,
+    r.updated_at,
+    d.deal_number
+FROM referrals r
+JOIN deals d ON d.id = r.deal_id
+ORDER BY r.created_at DESC;

@@ -1,0 +1,320 @@
+G MOTION CRM - DEV NOTES
+========================
+
+
+## main.go — cmd/server/main.go
+================================
+
+--- IMPORTS ---
+
+"context"   // for context.Background() when creating the DB pool
+"fmt"       // for fmt.Sprintf to build the server address
+"log"       // for log.Fatalf on startup errors, log.Printf for server start message
+"net/http"  // for http.ListenAndServe and the health check handler
+
+"github.com/go-chi/chi/v5"                    // router
+chimiddleware "github.com/go-chi/chi/v5/middleware"  // aliased to avoid collision with our middleware package
+"github.com/jackc/pgx/v5/pgxpool"            // postgres connection pool
+"github.com/jackc/pgx/v5/stdlib"             // bridges pgxpool → *sql.DB for sqlc
+"github.com/pressly/goose/v3"                // database migrations
+
+internal packages: config, db, handler, middleware, service
+
+
+--- STEPS ---
+
+1. config.Load()
+   Load env vars into a typed Config struct. Fatalf on missing required values.
+
+2. pgxpool.New()
+   Create a postgres connection pool. stdlib.OpenDBFromPool wraps it as *sql.DB
+   so sqlc's db.New() can use it — pgxpool alone does not satisfy sqlc's DBTX interface.
+
+3. Migrations
+   goose.SetDialect("postgres") + goose.Up(sqlDB, "migrations")
+   Runs any pending migrations on startup. No embed.FS — goose resolves "migrations/"
+   relative to the working directory, which is backend/ in Docker and Air.
+
+4. Dependencies
+   Instantiated in order: db.New → service.NewAuth → handler.NewAuthHandler
+   Each layer takes the one below it as a dependency.
+
+5. Routes
+   Public (no middleware):
+     POST /auth/login
+     POST /auth/totp/verify
+
+   Protected (wrapped in r.Group with middleware.Auth):
+     POST /auth/totp/setup
+     POST /auth/totp/enable
+     POST /auth/totp/disable
+     POST /auth/password
+
+   r.Group scopes middleware to only those routes — public routes are unaffected.
+
+6. http.ListenAndServe
+   Starts the server on the port from config.
+
+
+## auth.go — middleware/auth.go
+================================
+
+--- IMPORTS ---
+
+"context"     // for context.WithValue — attaching claims to request context
+"net/http"    // for http.Handler, http.HandlerFunc, http.Error
+"strings"     // for HasPrefix/TrimPrefix — parsing the Authorization header
+
+"github.com/umbrllacrp/g_motion_crm/internal/service"  // for service.Claims type
+
+
+--- contextKey + claimsKey ---
+
+type contextKey string
+const claimsKey contextKey = "claims"
+
+A typed string prevents context key collisions. If another package also stores
+something under the key "claims", they won't interfere because the types differ.
+
+
+--- Auth ---
+
+func Auth(parseToken func(string) (*service.Claims, error)) func(http.Handler) http.Handler
+
+Takes parseToken as a callback (not the whole service). Returns a standard Chi
+middleware signature func(http.Handler) http.Handler.
+
+Three rejection points — all return the same generic "unauthorized":
+1. No "Bearer " prefix — missing or malformed Authorization header
+2. parseToken fails — invalid signature or expired token
+3. claims.Stage != "authenticated" — rejects totp_pending tokens trying to
+   access protected routes
+
+On success, attaches claims to context and calls next.
+
+
+--- GetClaims ---
+
+func GetClaims(ctx context.Context) *service.Claims
+
+Helper for handlers to pull claims out of context. The blank identifier _ on the
+type assertion means it returns nil safely if claims aren't in context rather
+than panicking.
+
+
+## auth.go — handler/auth.go
+================================
+
+--- IMPORTS ---
+
+"encoding/json"  // for json.NewDecoder (decode request body) and json.NewEncoder (write response)
+"errors"         // for errors.Is() — comparing against sentinel errors from service
+"net/http"       // for http.Handler, http.Error, http.StatusXxx constants
+
+"github.com/umbrllacrp/g_motion_crm/internal/service"  // for AuthService and sentinel errors
+
+
+--- AuthHandler + NewAuthHandler ---
+
+type AuthHandler struct {
+    auth *service.AuthService
+}
+
+Holds a reference to the service. NewAuthHandler is the constructor, called once
+in main.go. No business logic lives here — handler is purely HTTP translation.
+
+
+--- Handler pattern ---
+
+Every handler follows the same 3 steps:
+1. Decode JSON body → 400 if invalid
+2. Call service method → map known sentinel errors to specific status codes, everything else 500
+3. Write JSON response or 204 No Content if nothing to return
+
+
+--- Login ---
+
+Decodes password from body, calls service.Login.
+- ErrInvalidCredentials → 401 Unauthorized
+- Success → 200 with token + totp_required flag
+
+
+--- VerifyTOTP ---
+
+Decodes 6-digit code from body, calls service.VerifyTOTP.
+- ErrInvalidTOTP → 401 Unauthorized
+- Success → 200 with full session token
+
+
+--- SetUpTOTP ---
+
+No request body — protected endpoint, token already identifies the owner.
+Calls service.SetUpTOTP.
+- ErrTOTPAlreadyEnabled → 409 Conflict
+- Success → 200 with secret + key_uri for QR rendering
+
+
+--- EnableTOTP ---
+
+Decodes secret + code from body, calls service.EnableTOTP.
+- ErrInvalidTOTP → 401 Unauthorized
+- Success → 204 No Content
+
+
+--- DisableTOTP ---
+
+No request body, no response body. Calls service.DisableTOTP.
+- Success → 204 No Content
+
+
+--- SetPassword ---
+
+Decodes password from body, calls service.SetPassword.
+- Success → 204 No Content
+
+
+## auth.go — service/auth.go
+==============================
+
+--- IMPORTS ---
+
+"context"       // for ctx in all DB-touching functions
+"database/sql"  // for sql.NullString — wraps nullable string (totp secret can be NULL in DB)
+"errors"        // for errors.New() — creating sentinel errors
+"time"          // for token TTL durations (5*time.Minute, 24*time.Hour)
+
+"github.com/golang-jwt/jwt/v5"    // JWT creation and parsing
+"github.com/pquerna/otp/totp"     // TOTP code generation and validation
+"golang.org/x/crypto/bcrypt"      // password hashing and comparison
+
+"github.com/umbrllacrp/g_motion_crm/internal/config"  // AuthConfig (jwt secret, totp issuer)
+"github.com/umbrllacrp/g_motion_crm/internal/db"      // sqlc-generated Queries
+
+
+--- SENTINEL ERRORS ---
+
+var (
+    ErrInvalidCredentials = errors.New("invalid credentials")
+    ErrInvalidTOTP        = errors.New("invalid totp code")
+    ErrTOTPNotEnabled     = errors.New("totp not enabled")
+    ErrTOTPAlreadyEnabled = errors.New("totp already enabled")
+)
+
+Named errors defined once. Handlers compare against these with errors.Is() to decide
+what HTTP status to return. Never expose the raw error message to the client.
+
+
+--- Claims ---
+
+type Claims struct {
+    Stage string `json:"stage"`
+    jwt.RegisteredClaims
+}
+
+What gets encoded inside the JWT. Stage is either "authenticated" or "totp_pending".
+jwt.RegisteredClaims adds standard fields like exp (expiry) and iat (issued at).
+Middleware checks Stage == "authenticated" before allowing access.
+
+
+--- AuthService ---
+
+type AuthService struct {
+    q          *db.Queries
+    jwtSecret  []byte
+    totpIssuer string
+}
+
+The service struct. q is the sqlc query object for DB access. jwtSecret is used to
+sign and verify tokens. totpIssuer is the app name shown in the authenticator app
+(e.g. "GMotionCRM").
+
+
+--- LoginResult ---
+
+type LoginResult struct {
+    Token        string
+    TOTPRequired bool
+}
+
+Return type for Login. If TOTPRequired is true, the frontend redirects to the TOTP
+screen and uses Token as a short-lived pre-auth token. If false, Token is the full
+session token.
+
+
+--- NewAuth ---
+
+func NewAuth(q *db.Queries, cfg config.AuthConfig) *AuthService
+
+Constructor. Takes dependencies in, returns a ready service. Called once in main.go
+during startup.
+
+
+--- Login ---
+
+func (s *AuthService) Login(ctx context.Context, password string) (LoginResult, error)
+
+1. Fetches the single settings row — if DB fails, returns ErrInvalidCredentials
+   (not the real error, to avoid leaking internal state)
+2. bcrypt.CompareHashAndPassword — verifies the password against the stored hash
+3. If TOTP secret exists → issues a 5-minute totp_pending token
+4. If no TOTP → issues a 24-hour authenticated token
+
+
+--- VerifyTOTP ---
+
+func (s *AuthService) VerifyTOTP(ctx context.Context, code string) (string, error)
+
+Called after Login returned TOTPRequired: true. Validates the 6-digit code against
+the stored secret and issues the full session token. Returns ErrTOTPNotEnabled if
+called when TOTP was never set up.
+
+
+--- SetUpTOTP ---
+
+func (s *AuthService) SetUpTOTP(ctx context.Context) (secret, keyURI string, err error)
+
+First step of 2FA enrollment. Generates a fresh secret and otpauth:// URI. Returns
+both — nothing is written to the DB yet. The frontend uses the URI to render a QR code.
+
+
+--- EnableTOTP ---
+
+func (s *AuthService) EnableTOTP(ctx context.Context, secret, code string) error
+
+Second step of 2FA enrollment. Validates the first code the user got from their app —
+proves they scanned correctly. Only then saves the secret to DB. Prevents locking the
+owner out with a broken secret.
+
+
+--- DisableTOTP ---
+
+func (s *AuthService) DisableTOTP(ctx context.Context) error
+
+Sets owner_totp_secret to NULL in settings. After this, Login will no longer require
+a TOTP step.
+
+
+--- SetPassword ---
+
+func (s *AuthService) SetPassword(ctx context.Context, password string) error
+
+Hashes the password with bcrypt (DefaultCost = 10 rounds) and saves it. Used for
+initial setup and password changes.
+
+
+--- ParseToken ---
+
+func (s *AuthService) ParseToken(tokenStr string) (*Claims, error)
+
+Used by middleware. Parses and validates the JWT string — checks signature and expiry.
+The signing method check prevents algorithm-switching attacks (where an attacker tries
+to use alg: none). Returns the decoded Claims on success.
+
+
+--- issueToken (private) ---
+
+func (s *AuthService) issueToken(stage string, ttl time.Duration) (string, error)
+
+Internal helper. Builds the Claims, sets IssuedAt and ExpiresAt, signs with
+HMAC-SHA256. Called by Login and VerifyTOTP. Private because nothing outside the
+service should issue tokens.

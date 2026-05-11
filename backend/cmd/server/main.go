@@ -190,6 +190,7 @@ func main() {
 		r.Get("/deals/{id}/documents", documentHandler.ListByDeal)
 
 		// Referrals
+		r.Get("/referrals", referralHandler.List)
 		r.Post("/deals/{dealID}/referrals", referralHandler.Create)
 		r.Get("/deals/{dealID}/referrals", referralHandler.ListByDeal)
 		r.Get("/referrals/{id}", referralHandler.Get)

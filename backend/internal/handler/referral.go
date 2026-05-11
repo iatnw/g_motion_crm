@@ -63,6 +63,16 @@ func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toReferralResponse(referral))
 }
 
+func (h *ReferralHandler) List(w http.ResponseWriter, r *http.Request) {
+	referrals, err := h.referral.ListAll(r.Context())
+	if err != nil {
+		slog.Error("list all referrals", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, toReferralWithDealResponses(referrals))
+}
+
 func (h *ReferralHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
 	dealID, err := uuid.Parse(chi.URLParam(r, "dealID"))
 	if err != nil {

@@ -111,6 +111,73 @@ func (q *Queries) GetReferral(ctx context.Context, id pgtype.UUID) (Referral, er
 	return i, err
 }
 
+const listAllReferrals = `-- name: ListAllReferrals :many
+SELECT
+    r.id,
+    r.deal_id,
+    r.first_name,
+    r.last_name,
+    r.phone,
+    r.amount,
+    r.status,
+    r.paid_date,
+    r.notes,
+    r.created_at,
+    r.updated_at,
+    d.deal_number
+FROM referrals r
+JOIN deals d ON d.id = r.deal_id
+ORDER BY r.created_at DESC
+`
+
+type ListAllReferralsRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	DealID     pgtype.UUID        `json:"deal_id"`
+	FirstName  string             `json:"first_name"`
+	LastName   string             `json:"last_name"`
+	Phone      pgtype.Text        `json:"phone"`
+	Amount     pgtype.Numeric     `json:"amount"`
+	Status     ReferralStatus     `json:"status"`
+	PaidDate   pgtype.Date        `json:"paid_date"`
+	Notes      pgtype.Text        `json:"notes"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	DealNumber pgtype.Text        `json:"deal_number"`
+}
+
+func (q *Queries) ListAllReferrals(ctx context.Context) ([]ListAllReferralsRow, error) {
+	rows, err := q.db.Query(ctx, listAllReferrals)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllReferralsRow
+	for rows.Next() {
+		var i ListAllReferralsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DealID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Phone,
+			&i.Amount,
+			&i.Status,
+			&i.PaidDate,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DealNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReferralsByDeal = `-- name: ListReferralsByDeal :many
 SELECT id, deal_id, first_name, last_name, phone, amount, status, paid_date, notes, created_at, updated_at FROM referrals
 WHERE deal_id = $1

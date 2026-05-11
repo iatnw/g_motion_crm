@@ -50,10 +50,21 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
 
   const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
   const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
+  const [allReferralContacts, setAllReferralContacts] = useState<Referral[]>([]);
 
   useEffect(() => {
-    if (!deal) return;
-    referralsApi.listByDeal(deal.id).then(setExistingReferrals).catch(() => {});
+    if (deal) {
+      referralsApi.listByDeal(deal.id).then(setExistingReferrals).catch(() => {});
+    }
+    referralsApi.list().then((data) => {
+      // Deduplicate by full name, keeping latest entry per person
+      const seen = new Map<string, Referral>();
+      for (const r of (data ?? [])) {
+        const key = `${r.first_name.trim().toLowerCase()} ${r.last_name.trim().toLowerCase()}`;
+        if (!seen.has(key)) seen.set(key, r);
+      }
+      setAllReferralContacts(Array.from(seen.values()));
+    }).catch(() => {});
   }, [deal]);
 
   function set(field: string, value: string) {
@@ -426,6 +437,31 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               <div className="space-y-2">
                 {newReferrals.map((ref, i) => (
                   <div key={i} className="grid grid-cols-2 gap-2 bg-[#111213] border border-[#252628] rounded-lg p-3">
+                    {allReferralContacts.length > 0 && (
+                      <div className="col-span-2">
+                        <FieldLabel>Existing Referral</FieldLabel>
+                        <select
+                          defaultValue=""
+                          onChange={(e) => {
+                            const contact = allReferralContacts.find((c) => c.id === e.target.value);
+                            if (contact) {
+                              setNewReferrals((prev) => prev.map((r, idx) => idx === i
+                                ? { ...r, first_name: contact.first_name, last_name: contact.last_name, phone: contact.phone ?? "" }
+                                : r
+                              ));
+                            }
+                          }}
+                          className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none"
+                        >
+                          <option value="">— Select existing or fill in below —</option>
+                          {allReferralContacts.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.first_name} {c.last_name}{c.phone ? ` · ${c.phone}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <FieldLabel>First Name</FieldLabel>
                       <input

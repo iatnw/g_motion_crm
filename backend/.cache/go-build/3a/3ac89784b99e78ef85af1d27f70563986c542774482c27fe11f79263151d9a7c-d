@@ -1,0 +1,12 @@
+./audit_log.sql.go
+./brokers.sql.go
+./clients.sql.go
+./dashboard.sql.go
+./db.go
+./dealers.sql.go
+./deals.sql.go
+./documents.sql.go
+./models.go
+./querier.go
+./referrals.sql.go
+./settings.sql.go

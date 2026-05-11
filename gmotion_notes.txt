@@ -1,0 +1,669 @@
+================================================================================
+  G MOTION CRM — PROJECT NOTES & DOCUMENTATION
+================================================================================
+
+PURPOSE
+-------
+G Motion CRM is a single-owner CRM tool for an automotive financing broker.
+The owner uses it to manage their clients, track financing deals, coordinate
+with brokers and dealers, store documents, and monitor commissions and payments.
+There is no multi-user support — the app has one authenticated owner.
+
+
+================================================================================
+  TECH STACK
+================================================================================
+
+Backend:
+  - Language:    Go 1.26.1
+  - Router:      Chi v5 (lightweight HTTP router with middleware support)
+  - Database:    PostgreSQL 16
+  - Queries:     sqlc v1.30.0 (SQL-first, generates type-safe Go from .sql files)
+  - Migrations:  Goose v3 (runs automatically on server startup)
+  - Auth:        JWT (golang-jwt/jwt v5) + TOTP (pquerna/otp)
+  - Passwords:   bcrypt (golang.org/x/crypto)
+  - Hot-reload:  Air (watches *.go, rebuilds to ./tmp/main)
+
+Frontend:
+  - Framework:   Next.js 16.2.1 with App Router
+  - Language:    TypeScript 5
+  - Styling:     Tailwind CSS 4
+  - Node:        20
+
+Infrastructure:
+  - Docker Compose (postgres + backend + frontend services)
+  - PostgreSQL 16 Alpine with health checks
+  - .env file for all environment configuration
+
+
+================================================================================
+  PROJECT STRUCTURE
+================================================================================
+
+g_motion_crm/
+├── backend/
+│   ├── cmd/server/main.go              # Entry point
+│   ├── internal/
+│   │   ├── config/config.go            # Config loading from env
+│   │   ├── db/                         # sqlc-generated layer
+│   │   │   ├── models.go               # Struct models + enum types
+│   │   │   ├── querier.go              # Interface for all DB queries
+│   │   │   ├── db.go                   # DB connection init
+│   │   │   └── *.sql.go                # Generated query implementations
+│   │   ├── handler/
+│   │   │   └── auth.go                 # HTTP handlers for auth endpoints
+│   │   ├── middleware/
+│   │   │   └── auth.go                 # JWT validation middleware
+│   │   ├── service/
+│   │   │   └── auth.go                 # Auth business logic
+│   │   ├── storage/                    # Placeholder (S3 planned)
+│   │   └── worker/                     # Placeholder (background jobs planned)
+│   ├── migrations/                     # Goose SQL migration files
+│   ├── queries/                        # Raw SQL query definitions for sqlc
+│   ├── sqlc.yaml                       # sqlc code generation config
+│   ├── .air.toml                       # Air hot-reload config
+│   └── Dockerfile
+├── frontend/
+│   ├── app/                            # Next.js App Router (boilerplate only)
+│   └── Dockerfile
+├── docker-compose.yml
+└── .env
+
+
+================================================================================
+  ENVIRONMENT CONFIGURATION
+================================================================================
+
+File: .env (loaded by godotenv if APP_ENV is not set in environment)
+File: backend/internal/config/config.go
+
+Required variables (server fails to start if missing):
+  DATABASE_URL   — PostgreSQL connection string
+  APP_PORT       — Port the HTTP server listens on (e.g. 8080)
+  JWT_SECRET     — 64-char hex string used to sign/verify JWTs
+
+Optional variables:
+  APP_ENV        — "development" or "production"
+  APP_BASE_URL   — Base URL of the app
+  TOTP_ISSUER    — Label shown in authenticator apps (e.g. "GMotionCRM")
+  ENCRYPTION_KEY — Placeholder, not yet used
+
+Planned / not yet implemented:
+  AWS_*          — S3 document storage
+  TWILIO_*       — SMS notifications
+  TALLY_*        — Form integration
+
+Config struct groups: AppConfig, DatabaseConfig, AuthConfig, AWSConfig (empty),
+TwilioConfig (empty), TallyConfig (empty).
+
+
+================================================================================
+  DATABASE SCHEMA
+================================================================================
+
+Migrations are in backend/migrations/ and run automatically via Goose on startup.
+sqlc reads the migrations as schema and generates Go code from queries/ SQL files.
+
+--- TABLE: settings ---
+Single-row table. Holds owner credentials.
+  id                  SERIAL PRIMARY KEY
+  owner_password_hash TEXT NOT NULL          -- bcrypt hash
+  owner_totp_secret   TEXT                   -- NULL when TOTP is disabled
+  created_at          TIMESTAMPTZ
+  updated_at          TIMESTAMPTZ
+
+--- TABLE: clients ---
+End customers of the broker. Extended with full credit application fields (migration 009).
+  id                       UUID PRIMARY KEY
+  first_name               TEXT NOT NULL
+  last_name                TEXT NOT NULL
+  phone                    TEXT NOT NULL UNIQUE
+  email                    TEXT NOT NULL UNIQUE
+  source                   clients_source enum (nullable)
+  status                   client_status enum NOT NULL DEFAULT 'active'
+  notes                    TEXT (nullable)
+  -- Credit application fields (populated via Tally webhook)
+  date_of_birth            DATE (nullable)
+  address                  TEXT (nullable)
+  city                     TEXT (nullable)
+  state                    TEXT (nullable)
+  zip                      TEXT (nullable)
+  ssn                      TEXT (nullable)  ← stored as AES-256-GCM encrypted base64
+  housing_status           TEXT (nullable)  -- e.g. own / rent / family
+  housing_duration         TEXT (nullable)
+  housing_monthly_payment  NUMERIC(8,2) (nullable)
+  employer_name            TEXT (nullable)
+  employer_address         TEXT (nullable)
+  employer_city            TEXT (nullable)
+  employer_state           TEXT (nullable)
+  employer_zip             TEXT (nullable)
+  occupation               TEXT (nullable)
+  employer_phone           TEXT (nullable)
+  employment_status        employment_status enum (nullable)
+  employment_duration      TEXT (nullable)
+  gross_monthly_income     NUMERIC(8,2) (nullable)
+  other_monthly_income     NUMERIC(8,2) (nullable)
+  other_income_source      TEXT (nullable)
+  created_at               TIMESTAMPTZ
+  updated_at               TIMESTAMPTZ
+
+  Enum client_status:      active | closed | no_deal
+  Enum clients_source:     instagram | telegram | referall | organic | repeat_client
+  Enum employment_status:  self_employed | full_time | part_time
+
+--- TABLE: brokers ---
+Third-party brokers the owner works with.
+  id              UUID PRIMARY KEY
+  first_name      TEXT NOT NULL
+  last_name       TEXT NOT NULL
+  phone           TEXT (nullable)
+  email           TEXT (nullable)
+  notes           TEXT (nullable)
+  created_at      TIMESTAMPTZ
+  updated_at      TIMESTAMPTZ
+
+--- TABLE: dealers ---
+Car dealerships involved in deals.
+  id              UUID PRIMARY KEY
+  name            TEXT NOT NULL
+  contact_person  TEXT (nullable)
+  phone           TEXT (nullable)
+  address         TEXT (nullable)
+  notes           TEXT (nullable)
+  created_at      TIMESTAMPTZ
+  updated_at      TIMESTAMPTZ
+
+--- TABLE: deals ---
+Core table. Represents a financing deal linking a client to a broker and dealer.
+deal_status was removed (migration 010) — client_status on the clients table is sufficient.
+  id                          UUID PRIMARY KEY
+  client_id                   UUID FK → clients
+  broker_id                   UUID FK → brokers (nullable)
+  dealer_id                   UUID FK → dealers (nullable)
+  deal_date                   DATE (nullable)
+  deal_number                 TEXT (nullable)
+  vin                         TEXT (nullable)
+  make                        TEXT (nullable)
+  model                       TEXT (nullable)
+  trim_level                  TEXT (nullable)
+  down_payment                NUMERIC (nullable)
+  down_payment_method         down_payment_method enum (nullable)
+  monthly_payment             NUMERIC (nullable)
+  broker_fee                  NUMERIC (nullable)
+  broker_percent              NUMERIC (nullable)
+  broker_commission           NUMERIC (nullable)
+  broker_commission_status    payment_status enum (nullable)
+  broker_commission_paid_date DATE (nullable)
+  referral_amount             NUMERIC (nullable)
+  your_net                    NUMERIC (nullable)
+  broker_fee_status           payment_status enum (nullable)
+  broker_fee_paid_date        DATE (nullable)
+  referral_status             referral_status enum (nullable)
+  referral_paid_date          DATE (nullable)
+  created_at                  TIMESTAMPTZ
+  updated_at                  TIMESTAMPTZ
+
+  Enum down_payment_method: cash | card
+  Enum payment_status:     paid | not_paid
+  Enum referral_status:    none | paid | not_paid
+
+--- TABLE: documents ---
+Tracks files uploaded to S3, linked to a deal and/or client.
+  id               UUID PRIMARY KEY
+  deal_id          UUID FK → deals (nullable)
+  client_id        UUID FK → clients (nullable)
+  s3_key           TEXT NOT NULL        -- S3 object key
+  file_name        TEXT NOT NULL        -- original file name
+  file_size_bytes  INT (nullable)
+  document_type    document_type enum NOT NULL
+  uploaded_at      TIMESTAMPTZ
+
+  Enum document_type: credit_app_pdf | driver_license | insurance |
+                      broker_agreement | dealer_docs | check_copy | other
+
+--- TABLE: audit_logs ---
+Tracks changes to entities over time.
+  id              BIGSERIAL PRIMARY KEY
+  entity_type     TEXT NOT NULL         -- e.g. "client", "deal"
+  entity_id       UUID NOT NULL
+  action          TEXT NOT NULL         -- e.g. "create", "update", "delete"
+  changed_fields  JSONB (nullable)      -- JSON diff of what changed
+  ip_address      TEXT (nullable)
+  user_agent      TEXT (nullable)
+  created_at      TIMESTAMPTZ
+
+
+================================================================================
+  DATABASE QUERY LAYER (sqlc)
+================================================================================
+
+File: backend/internal/db/querier.go
+File: backend/internal/db/models.go
+Files: backend/internal/db/*.sql.go  (generated, DO NOT edit manually)
+Source SQL: backend/queries/*.sql
+
+The Querier interface defines all available DB operations. Implemented by
+the generated *Queries struct. This interface-based design allows easy mocking
+in tests.
+
+Available query methods (all accept context.Context as first arg):
+
+  Settings:
+    GetSetting()                         — fetch the single settings row
+    CreateSetting(params)                — initial setup only
+    UpdateOwnerPassword(hash)            — change bcrypt hash
+    UpdateOwnerTOTP(secret NullString)   — set or clear TOTP secret
+
+  Clients:
+    CreateClient(params)
+    GetClient(id)
+    GetClientByPhone(phone)
+    ListClients()
+    UpdateClient(params)
+
+  Brokers:
+    CreateBroker(params)
+    GetBroker(id)
+    ListBrokers()
+    UpdateBroker(params)
+
+  Dealers:
+    CreateDealer(params)
+    GetDealer(id)
+    ListDealers()
+    UpdateDealer(params)
+
+  Deals:
+    CreateDeal(params)
+    GetDeal(id)
+    ListDeals()
+    ListDealsByClient(clientID)
+    UpdateDeal(params)
+    UpdateDealBrokerCommissionStatus(params)
+    UpdateDealBrokerFeeStatus(params)
+    UpdateDealReferralStatus(params)
+
+  Documents:
+    CreateDocument(params)
+    GetDocument(id)
+    ListDocumentsByDeal(dealID)
+    ListDocumentsByClient(clientID)
+    DeleteDocument(id)
+
+  Audit Logs:
+    CreateAuditLog(params)
+    ListAuditLogsByEntity(params)        — filter by entity_type + entity_id
+
+
+================================================================================
+  SERVER ENTRY POINT
+================================================================================
+
+File: backend/cmd/server/main.go
+
+--- STARTUP SEQUENCE ---
+
+1. config.Load()
+   Reads .env (only if APP_ENV not set in environment), validates required vars.
+   Fails fast if DATABASE_URL, APP_PORT or JWT_SECRET are missing.
+
+2. pgxpool.New()
+   Opens a PostgreSQL connection pool. The pool manages multiple concurrent
+   connections. stdlib.OpenDBFromPool wraps it into a *sql.DB for Goose and sqlc.
+
+3. goose.Up(sqlDB, "migrations")
+   Runs all pending migrations from the migrations/ folder on every startup.
+   Guarantees the DB schema is always up to date when the server starts.
+
+4. Dependency wiring — in strict order:
+     db.New(sqlDB)             → queries       (sqlc layer, talks to DB)
+     service.NewAuth(queries)  → authService
+     service.NewBroker(queries)→ brokerService
+     service.NewDeal(queries)  → dealService
+     service.NewClient(queries)→ clientService
+     handler.New*(service)     → handlers      (HTTP layer, talks to services)
+
+   Each layer only knows about the layer directly below it.
+   Handlers never touch the DB. Services never touch HTTP.
+
+5. Chi router setup
+   Global middleware applied to all routes:
+     chimiddleware.Logger    — logs every incoming request
+     chimiddleware.Recoverer — catches panics, returns 500 instead of crashing
+
+6. Route registration — three access tiers:
+
+   Public (no token required):
+     GET  /health           — liveness check
+     POST /auth/login       — password login
+
+   totp_pending group (middleware.Auth with stage "totp_pending"):
+     POST /auth/totp/verify — completes 2FA login, issues authenticated token
+     Only accepts the short-lived totp_pending JWT issued after password login.
+
+   authenticated group (middleware.Auth with stage "authenticated"):
+     All auth management routes (totp setup/enable/disable, password)
+     All CRUD routes: /clients, /brokers, /deals
+
+7. http.ListenAndServe on APP_PORT — fatal if it fails to bind.
+
+
+================================================================================
+  AUTHENTICATION
+================================================================================
+
+Files:
+  backend/internal/service/auth.go    — business logic
+  backend/internal/handler/auth.go    — HTTP layer
+  backend/internal/middleware/auth.go — request guard
+
+The app has one owner account. No registration flow — the owner account is
+seeded via CreateSetting with an initial bcrypt-hashed password.
+
+--- JWT Token Stages ---
+Tokens carry a custom "stage" claim. The middleware enforces that only
+"authenticated" stage tokens can access protected routes.
+
+  "totp_pending"   — issued after correct password when TOTP is enabled
+                     TTL: 5 minutes. Can only be used with /auth/totp/verify.
+  "authenticated"  — issued after full login (no TOTP) or after TOTP verify
+                     TTL: 24 hours. Required for all protected endpoints.
+
+Signing: HMAC-SHA256 using JWT_SECRET.
+
+--- Login Flow (no TOTP) ---
+  POST /auth/login  { "password": "..." }
+  → validates password against bcrypt hash in settings
+  → returns { "token": "<authenticated JWT>", "totp_required": false }
+
+--- Login Flow (TOTP enabled) ---
+  POST /auth/login  { "password": "..." }
+  → validates password
+  → returns { "token": "<totp_pending JWT>", "totp_required": true }
+
+  POST /auth/totp/verify  { "code": "123456" }
+  → validates TOTP code against stored secret
+  → returns { "token": "<authenticated JWT>" }
+
+--- TOTP Setup Flow ---
+  POST /auth/totp/setup   (requires: authenticated token, TOTP not yet enabled)
+  → generates new TOTP secret via pquerna/otp
+  → returns { "secret": "BASE32SECRET", "key_uri": "otpauth://..." }
+  → secret is NOT yet saved — owner must confirm with a code first
+
+  POST /auth/totp/enable  { "secret": "...", "code": "..." }
+  → validates the TOTP code against the provided secret
+  → if valid, saves secret to settings (enables TOTP for future logins)
+  → returns 204 No Content
+
+  POST /auth/totp/disable (requires: authenticated token)
+  → sets owner_totp_secret to NULL in settings
+  → returns 204 No Content
+
+--- Password Change ---
+  POST /auth/password  { "password": "newpassword" }   (requires: authenticated)
+  → bcrypt-hashes the new password
+  → updates settings.owner_password_hash
+  → returns 204 No Content
+
+--- Auth Middleware ---
+  File: backend/internal/middleware/auth.go
+  - Reads Authorization header, expects "Bearer <token>"
+  - Calls AuthService.ParseToken to validate and decode JWT
+  - Rejects if stage != "authenticated"
+  - Stores *Claims in request context under key "claims"
+  - GetClaims(ctx) helper retrieves claims from context in handlers
+
+
+================================================================================
+  HANDLER LAYER — BROKER & DEAL
+================================================================================
+
+Files:
+  backend/internal/handler/broker.go
+  backend/internal/handler/deal.go
+
+--- GENERAL FLOW (applies to all handlers) ---
+
+Every handler follows this sequence:
+  1. Parse inputs (URL params, request body)
+  2. Validate required fields
+  3. Call service method
+  4. Handle errors (404 vs 500)
+  5. Write JSON response
+
+--- REQUEST TYPES ---
+
+Optional fields use *string in request structs. This distinguishes between
+a field being absent (nil → NULL in DB) and an empty string ("" → stored as-is).
+Required fields use plain string.
+
+  brokerRequest  — first_name, last_name required; phone, email, notes optional
+  dealRequest    — client_id required; all other fields optional
+
+--- UUID HANDLING ---
+
+Two helper functions in the handler package:
+
+  nullUUID(s *string) (uuid.NullUUID, error)
+    — nil input    → uuid.NullUUID{Valid: false}  (stored as NULL)
+    — valid string → uuid.NullUUID{UUID: parsed, Valid: true}
+    — invalid UUID → returns error → handler responds 400
+
+  nullString(s *string) sql.NullString   (defined in broker.go, shared across package)
+    — nil input    → sql.NullString{Valid: false}
+    — non-nil      → sql.NullString{String: *s, Valid: true}
+
+--- DATE HANDLING ---
+
+  nullTime(s *string) (sql.NullTime, error)
+    — nil input            → sql.NullTime{Valid: false}
+    — "YYYY-MM-DD" string  → sql.NullTime{Time: parsed, Valid: true}
+    — wrong format         → returns error → handler responds 400
+
+  dateLayout const = "2006-01-02"
+    Go's time.Parse uses a reference time to define format, not placeholders.
+    The reference year is 2006 — using any other year silently breaks parsing.
+
+--- ENUM HANDLING ---
+
+Enum fields arrive as plain strings and are cast to their db types:
+  nullDownPaymentMethod(*string) db.NullDownPaymentMethod
+  nullPaymentStatus(*string)     db.NullPaymentStatus
+  nullReferralStatus(*string)    db.NullReferralStatus
+
+No validation of enum values at the handler level — invalid values will
+cause a DB error which surfaces as 500. Enum validation can be added later.
+
+--- ERROR RESPONSES ---
+
+  sql.ErrNoRows  → 404 Not Found   (get/update on non-existent record)
+  any other err  → 500 Internal Server Error
+
+--- STATUS UPDATE ENDPOINTS ---
+
+UpdateBrokerFeeStatus, UpdateBrokerCommissionStatus, UpdateReferralStatus
+all follow the same minimal pattern:
+  Body: { "status": "paid" | "not_paid" }   (referral also accepts "none")
+  The paid_date column is automatically set/cleared by the SQL query itself
+  (CASE WHEN status = 'paid' THEN CURRENT_DATE ELSE NULL END)
+  so no date handling is needed in the handler or service.
+
+--- LIST WITH FILTER ---
+
+GET /deals accepts optional ?client_id= query param.
+  - If present and valid UUID → calls ListByClient
+  - If present and invalid UUID → 400
+  - If absent → calls List (returns all deals)
+
+
+================================================================================
+  API ROUTES
+================================================================================
+
+Public:
+  GET  /health                 — liveness check, returns "ok" with 200
+
+  POST /auth/login             — password login
+       Body: { "password": string }
+       Response: { "token": string, "totp_required": bool }
+
+  POST /auth/totp/verify       — verify TOTP code after login
+       Body: { "code": string }
+       Response: { "token": string }
+
+Protected (requires Authorization: Bearer <authenticated token>):
+  POST /auth/totp/setup        — generate new TOTP secret
+       Response: { "secret": string, "key_uri": string }
+
+  POST /auth/totp/enable       — confirm and enable TOTP
+       Body: { "secret": string, "code": string }
+       Response: 204
+
+  POST /auth/totp/disable      — turn off TOTP
+       Response: 204
+
+  POST /auth/password          — update owner password
+       Body: { "password": string }
+       Response: 204
+
+Protected (requires Authorization: Bearer <authenticated token>):
+  GET    /brokers             — list all brokers
+  POST   /brokers             — create broker
+  GET    /brokers/{id}        — get broker by id
+  PUT    /brokers/{id}        — update broker
+
+  GET    /deals               — list all deals
+  GET    /deals?client_id=    — list deals filtered by client UUID
+  POST   /deals               — create deal
+  GET    /deals/{id}          — get deal by id
+  PUT    /deals/{id}          — update deal
+  PATCH  /deals/{id}/broker-fee-status        — update broker fee payment status
+  PATCH  /deals/{id}/broker-commission-status — update broker commission payment status
+  PATCH  /deals/{id}/referral-status          — update referral payment status
+
+Protected (requires Authorization: Bearer <authenticated token>):
+  GET    /clients            — list all clients
+  POST   /clients            — create client
+  GET    /clients/{id}       — get client by id
+  PUT    /clients/{id}       — update client
+
+Not yet implemented:
+  CRUD for: /dealers, /documents
+
+
+================================================================================
+  SSN ENCRYPTION
+================================================================================
+
+Files:
+  backend/internal/service/crypto.go    — encrypt / decrypt helpers
+  backend/internal/service/client.go    — encryption wired into client service
+  backend/internal/config/config.go     — ENCRYPTION_KEY loaded from env
+  backend/cmd/server/main.go            — key decoded and passed to NewClient
+
+SSN is sensitive PII. It is encrypted at rest using AES-256-GCM (field-level
+encryption). The raw SSN string never touches the database.
+
+--- How it works ---
+
+  encrypt(key, plaintext) → base64 string
+    1. Creates AES-256 cipher block from the 32-byte key
+    2. Wraps it in GCM mode (authenticated encryption — detects tampering)
+    3. Generates a fresh random 12-byte nonce for every call
+    4. Seals the plaintext: output = nonce + ciphertext + auth tag
+    5. Base64-encodes the whole thing → safe for TEXT column storage
+
+  decrypt(key, base64string) → plaintext string
+    1. Base64-decodes the stored value
+    2. Splits off the first 12 bytes as the nonce
+    3. Opens (decrypts + verifies auth tag) the remaining bytes
+    4. Returns the original plaintext SSN
+
+  A new nonce is generated on every encrypt call, so two encryptions of the
+  same SSN produce different ciphertext. This is correct and expected behavior.
+
+--- Service layer integration ---
+
+  ClientService holds encryptionKey []byte (32 bytes, passed at construction).
+
+  Create — if Ssn is present, encrypt before writing to DB
+  Update — if Ssn is present, encrypt before writing to DB
+  Get    — if Ssn is present in DB row, decrypt before returning
+  List   — decrypt SSN on every row before returning
+
+  The decryptSSN helper handles the NULL case — if SSN is not set, it's a no-op.
+  Callers always receive plaintext SSN. Encryption is fully internal to the service.
+
+--- Key management ---
+
+  ENCRYPTION_KEY in .env must be a 64-character hex string (32 bytes).
+  Generate a key:
+    openssl rand -hex 32
+
+  On startup main.go decodes the hex string and validates it is exactly 32 bytes.
+  Server refuses to start if the key is missing, invalid hex, or wrong length.
+
+--- Limitations / future ---
+
+  - Key rotation is not yet implemented. To rotate: re-encrypt all SSN values
+    in a migration using the old key → re-encrypt with new key → update env.
+  - No search on SSN (encrypted values are not queryable). Lookup is by id/phone.
+
+
+================================================================================
+  PLANNED / NOT YET IMPLEMENTED
+================================================================================
+
+Backend:
+  - CRUD HTTP endpoints for clients, dealers, documents
+  - Document upload/download via AWS S3
+  - Audit log writes when entities are created/updated/deleted
+  - Background worker (storage/ and worker/ packages are empty placeholders)
+  - SMS notifications via Twilio
+  - Tally form integration
+
+Frontend:
+  - Everything (currently stock Next.js boilerplate)
+  - Auth pages (login, TOTP entry)
+  - Dashboard
+  - Clients, Deals, Brokers, Dealers management views
+  - Document upload UI
+
+Tests:
+  - None exist yet for backend or frontend
+
+
+================================================================================
+  CHANGELOG
+================================================================================
+
+[2026-03-30]
+  - Initial documentation created
+  - Covers: config, database schema, sqlc query layer, server entry point,
+    auth system (service + handler + middleware), API routes
+
+  - Migration 009: extended clients table with 21 credit application fields
+    (dob, address, ssn, housing info, employment info, income info)
+    Added employment_status enum: self_employed | full_time | part_time
+    NOTE: SSN stored as plain text for now — encrypt with ENCRYPTION_KEY later
+
+  - Migration 010: removed deal_status column and deal_status enum from deals
+    Rationale: client_status on clients table is sufficient for the owner's workflow
+
+  - sqlc regenerated — models.go, querier.go, clients.sql.go, deals.sql.go updated
+
+  - service/broker.go, service/deal.go, service/client.go implemented
+  - handler/broker.go, handler/deal.go, handler/client.go implemented
+  - handler/helpers.go created — all null* helper functions centralized here
+  - main.go wired up — all services, handlers, and routes registered
+  - Backend compiles cleanly, all routes active
+
+[2026-04-02]
+  - SSN encryption implemented (AES-256-GCM, field-level)
+    service/crypto.go: encrypt() and decrypt() helpers
+    service/client.go: ClientService now holds encryptionKey []byte
+      — encrypts SSN on Create/Update, decrypts on Get/List
+    main.go: decodes ENCRYPTION_KEY hex at startup, validates 32 bytes
+
+================================================================================

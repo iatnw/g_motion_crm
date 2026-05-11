@@ -1,0 +1,59 @@
+G MOTION CRM - Dev Commands
+============================
+
+DOCKER
+------
+docker compose up --build          # build and start all containers
+docker compose up                  # start all containers (no rebuild)
+docker compose down                # stop and remove containers
+docker compose down -v             # stop, remove containers AND volumes
+docker compose config              # show resolved config with env vars substituted
+docker ps                          # list running containers
+docker volume ls                   # list all volumes
+docker volume rm <volume_name>     # remove a specific volume
+docker exec <container> <command>  # run command inside container
+
+
+POSTGRES - CONNECTING
+---------------------
+psql -h 127.0.0.1 -p 5432 -U gmotion -d gmotion_crm -W
+
+# or full connection string:
+psql "host=127.0.0.1 port=5432 dbname=gmotion_crm user=gmotion password=gmotionpassword sslmode=disable"
+
+
+POSTGRES - INSIDE PSQL
+-----------------------
+\du        # list roles/users
+\dt        # list tables
+\d <table> # describe table structure
+\q         # quit
+
+
+PORT CONFLICTS
+--------------
+lsof -i :5432                      # see what's using port 5432
+sudo kill <PID>                    # kill a process by PID
+launchctl list | grep postgres     # find postgres launchctl services
+brew services stop postgresql@15   # stop local Postgres (version 15)
+
+
+GOOSE - MIGRATIONS
+------------------
+# Connection string shorthand:
+# postgres://gmotion:gmotionpassword@127.0.0.1:5432/gmotion_crm?sslmode=disable
+
+goose -dir migrations postgres "<connection_string>" status   # check migration status
+goose -dir migrations postgres "<connection_string>" up       # apply pending migrations
+goose -dir migrations postgres "<connection_string>" down     # rollback last migration
+goose -dir migrations postgres "<connection_string>" create <name> sql  # create new migration file
+
+
+SQLC
+----
+sqlc generate    # generate Go code from queries (run from backend/)
+
+
+CONNECTION STRING
+-----------------
+postgres://gmotion:gmotionpassword@127.0.0.1:5432/gmotion_crm?sslmode=disable

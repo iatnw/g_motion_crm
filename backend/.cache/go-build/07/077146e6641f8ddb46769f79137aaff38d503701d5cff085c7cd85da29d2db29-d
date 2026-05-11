@@ -1,0 +1,13 @@
+./auth.go
+./broker.go
+./client.go
+./dashboard.go
+./deal.go
+./dealer.go
+./document.go
+./helpers.go
+./referral.go
+./response.go
+./tally.go
+./dashboard_test.go
+./helpers_test.go

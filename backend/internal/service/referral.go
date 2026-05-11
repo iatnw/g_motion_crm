@@ -43,6 +43,10 @@ func (s *ReferralService) List(ctx context.Context, id uuid.UUID) ([]db.Referral
 	return s.q.ListReferralsByDeal(ctx, toUUID(id))
 }
 
+func (s *ReferralService) ListAll(ctx context.Context) ([]db.ListAllReferralsRow, error) {
+	return s.q.ListAllReferrals(ctx)
+}
+
 type UpdateReferralInput struct {
 	ID        uuid.UUID
 	FirstName string

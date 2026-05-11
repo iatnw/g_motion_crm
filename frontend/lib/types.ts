@@ -125,6 +125,7 @@ export interface Referral {
   notes?: string;
   created_at: string;
   updated_at: string;
+  deal_number?: string;
 }
 
 export interface DealShow {
