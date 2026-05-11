@@ -1,0 +1,154 @@
+package integration_test
+
+import (
+	"net/http"
+	"testing"
+)
+
+func createDealForReferral(t *testing.T, cookie *http.Cookie) string {
+	t.Helper()
+	clientRes := do(t, http.MethodPost, "/clients", map[string]any{
+		"first_name": "Ref",
+		"last_name":  "Client",
+		"phone":      "555-9000",
+		"email":      "ref@example.com",
+	}, cookie)
+	if clientRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create client: got %d, want 201", clientRes.StatusCode)
+	}
+	var client map[string]any
+	decodeJSON(t, clientRes, &client)
+
+	dealRes := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": client["id"],
+	}, cookie)
+	if dealRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create deal: got %d, want 201", dealRes.StatusCode)
+	}
+	var deal map[string]any
+	decodeJSON(t, dealRes, &deal)
+	return deal["id"].(string)
+}
+
+func TestListAllReferrals(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+
+	// Create two referrals on the same deal
+	res1 := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Alice",
+		"last_name":  "Smith",
+		"phone":      "555-1111",
+		"amount":     200,
+	}, cookie)
+	res1.Body.Close()
+	if res1.StatusCode != http.StatusCreated {
+		t.Fatalf("create referral 1: got %d, want 201", res1.StatusCode)
+	}
+
+	res2 := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Bob",
+		"last_name":  "Jones",
+		"phone":      "555-2222",
+		"amount":     300,
+	}, cookie)
+	res2.Body.Close()
+	if res2.StatusCode != http.StatusCreated {
+		t.Fatalf("create referral 2: got %d, want 201", res2.StatusCode)
+	}
+
+	// GET /referrals must return both with deal_number
+	listRes := do(t, http.MethodGet, "/referrals", nil, cookie)
+	var got []map[string]any
+	decodeJSON(t, listRes, &got)
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 referrals, got %d", len(got))
+	}
+	for _, r := range got {
+		if r["deal_number"] == nil || r["deal_number"] == "" {
+			t.Errorf("referral missing deal_number: %v", r)
+		}
+	}
+}
+
+func TestListAllReferralsRequiresAuth(t *testing.T) {
+	res := do(t, http.MethodGet, "/referrals", nil, nil)
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("got %d, want 401", res.StatusCode)
+	}
+}
+
+func TestCreateReferralManually(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+
+	res := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Carol",
+		"last_name":  "White",
+		"phone":      "555-3333",
+		"amount":     500,
+	}, cookie)
+	var ref map[string]any
+	decodeJSON(t, res, &ref)
+
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("got %d, want 201", res.StatusCode)
+	}
+	if ref["first_name"] != "Carol" {
+		t.Errorf("first_name = %v, want Carol", ref["first_name"])
+	}
+	if ref["deal_id"] != dealID {
+		t.Errorf("deal_id = %v, want %s", ref["deal_id"], dealID)
+	}
+}
+
+func TestCreateReferralMissingName(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+
+	res := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "",
+		"last_name":  "",
+	}, cookie)
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", res.StatusCode)
+	}
+}
+
+func TestDeleteReferral(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+
+	createRes := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Dave",
+		"last_name":  "Brown",
+	}, cookie)
+	var ref map[string]any
+	decodeJSON(t, createRes, &ref)
+
+	delRes := do(t, http.MethodDelete, "/referrals/"+ref["id"].(string), nil, cookie)
+	defer delRes.Body.Close()
+	if delRes.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete: got %d, want 204", delRes.StatusCode)
+	}
+
+	// Must not appear in the list anymore
+	listRes := do(t, http.MethodGet, "/referrals", nil, cookie)
+	var got []map[string]any
+	decodeJSON(t, listRes, &got)
+	if len(got) != 0 {
+		t.Fatalf("expected 0 referrals after delete, got %d", len(got))
+	}
+}

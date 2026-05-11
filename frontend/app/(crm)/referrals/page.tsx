@@ -1,22 +1,75 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { referrals as referralsApi } from "@/lib/api";
-import type { Referral } from "@/lib/types";
+import { referrals as referralsApi, deals as dealsApi } from "@/lib/api";
+import type { Referral, Deal } from "@/lib/types";
+
+interface ReferralForm {
+  deal_id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  amount: string;
+}
+
+const emptyForm: ReferralForm = { deal_id: "", first_name: "", last_name: "", phone: "", amount: "" };
 
 export default function ReferralsPage() {
   const [list, setList] = useState<Referral[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState<ReferralForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    referralsApi.list().then((data) => setList(data ?? [])).finally(() => setLoading(false));
+    Promise.all([
+      referralsApi.list(),
+      dealsApi.list(),
+    ]).then(([refs, ds]) => {
+      setList(refs ?? []);
+      setDeals(ds ?? []);
+    }).finally(() => setLoading(false));
   }, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.deal_id) { setError("Select a deal"); return; }
+    if (!form.first_name || !form.last_name) { setError("First and last name are required"); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const ref = await referralsApi.create(form.deal_id, {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        phone: form.phone || undefined,
+        amount: form.amount ? parseFloat(form.amount) : undefined,
+      });
+      const deal = deals.find((d) => d.id === form.deal_id);
+      setList((prev) => [{ ...ref, deal_number: deal?.deal_number }, ...prev]);
+      setModal(false);
+      setForm(emptyForm);
+    } catch (err: any) {
+      setError(err.message || "Failed to create referral");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Referrals</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{list.length} total</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Referrals</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{list.length} total</p>
+        </div>
+        <button
+          onClick={() => { setForm(emptyForm); setError(""); setModal(true); }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          + Create Referral
+        </button>
       </div>
 
       {loading ? (
@@ -65,6 +118,95 @@ export default function ReferralsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {modal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f1011] rounded-2xl border border-[#252628] w-full max-w-md p-6">
+            <h2 className="text-base font-semibold text-white mb-5">Create Referral</h2>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Deal</label>
+                <select
+                  value={form.deal_id}
+                  onChange={(e) => setForm((p) => ({ ...p, deal_id: e.target.value }))}
+                  required
+                  className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
+                >
+                  <option value="">Select a deal…</option>
+                  {deals.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.deal_number ?? d.id.slice(0, 8)} — {d.make ?? ""} {d.model ?? ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">First Name</label>
+                  <input
+                    type="text"
+                    value={form.first_name}
+                    onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))}
+                    required
+                    className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
+                    placeholder="First name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Last Name</label>
+                  <input
+                    type="text"
+                    value={form.last_name}
+                    onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))}
+                    required
+                    className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
+                    placeholder="Last name"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Phone</label>
+                  <input
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                    className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Commission ($)</label>
+                  <input
+                    type="number"
+                    value={form.amount}
+                    onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+                    className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setModal(false)}
+                  className="px-4 py-2 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  {saving ? "Saving…" : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
