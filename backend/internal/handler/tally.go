@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
@@ -53,6 +54,7 @@ func (h *TallyHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.tally.ProcessSubmission(r.Context(), payload); err != nil {
+		slog.Error("tally process submission", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
