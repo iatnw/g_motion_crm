@@ -383,7 +383,8 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 	}
 
 	var req struct {
-		Status string `json:"status"`
+		Status        string  `json:"status"`
+		PaymentMethod *string `json:"payment_method"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -399,8 +400,13 @@ func (h *DealHandler) UpdateBrokerCommissionStatus(w http.ResponseWriter, r *htt
 		http.Error(w, "invalid broker commission status", http.StatusBadRequest)
 		return
 	}
+	method, err := nullBrokerPaymentMethod(req.PaymentMethod)
+	if err != nil {
+		http.Error(w, "invalid payment_method", http.StatusBadRequest)
+		return
+	}
 
-	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, status.PaymentStatus)
+	deal, err := h.deal.UpdateBrokerCommissionStatus(r.Context(), id, status.PaymentStatus, method)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)

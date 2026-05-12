@@ -600,18 +600,20 @@ SET
     broker_commission_status    = $2,
     broker_commission_paid_date = CASE WHEN $2::payment_status = 'paid'
                                   THEN CURRENT_DATE ELSE NULL END,
+    broker_payment_method       = $3,
     updated_at                  = NOW()
 WHERE id = $1
 RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type UpdateDealBrokerCommissionStatusParams struct {
-	ID                     pgtype.UUID       `json:"id"`
-	BrokerCommissionStatus NullPaymentStatus `json:"broker_commission_status"`
+	ID                     pgtype.UUID             `json:"id"`
+	BrokerCommissionStatus NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerPaymentMethod    NullBrokerPaymentMethod `json:"broker_payment_method"`
 }
 
 func (q *Queries) UpdateDealBrokerCommissionStatus(ctx context.Context, arg UpdateDealBrokerCommissionStatusParams) (Deal, error) {
-	row := q.db.QueryRow(ctx, updateDealBrokerCommissionStatus, arg.ID, arg.BrokerCommissionStatus)
+	row := q.db.QueryRow(ctx, updateDealBrokerCommissionStatus, arg.ID, arg.BrokerCommissionStatus, arg.BrokerPaymentMethod)
 	var i Deal
 	err := row.Scan(
 		&i.ID,

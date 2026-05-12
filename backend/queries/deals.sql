@@ -182,6 +182,7 @@ SET
     broker_commission_status    = $2,
     broker_commission_paid_date = CASE WHEN $2::payment_status = 'paid'
                                   THEN CURRENT_DATE ELSE NULL END,
+    broker_payment_method       = $3,
     updated_at                  = NOW()
 WHERE id = $1
 RETURNING *;

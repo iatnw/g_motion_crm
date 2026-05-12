@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { deals, clients, brokers, dealers } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealStatus, PaymentStatus } from "@/lib/types";
+import type { Deal, Client, Broker, Dealer, DealStatus, BrokerPaymentMethod } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
@@ -61,8 +61,9 @@ export default function DealsPage() {
     });
   }
 
-  async function handleCommissionStatus(deal: Deal, status: PaymentStatus) {
-    const updated = await deals.updateBrokerCommissionStatus(deal.id, status);
+  async function handleCommissionMethod(deal: Deal, method: BrokerPaymentMethod | "") {
+    const status = method ? "paid" : "pending";
+    const updated = await deals.updateBrokerCommissionStatus(deal.id, status, method || undefined);
     setAllDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
   }
 
@@ -143,7 +144,7 @@ export default function DealsPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-slate-600 text-sm">No deals found</div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {filtered.map((d) => {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
@@ -222,8 +223,8 @@ export default function DealsPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
                         <select
-                          value={d.broker_commission_status ?? "pending"}
-                          onChange={(e) => handleCommissionStatus(d, e.target.value as PaymentStatus)}
+                          value={d.broker_commission_status === "paid" ? (d.broker_payment_method ?? "paid_unknown") : ""}
+                          onChange={(e) => handleCommissionMethod(d, e.target.value as BrokerPaymentMethod | "")}
                           onClick={(e) => e.stopPropagation()}
                           className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
                             d.broker_commission_status === "paid"
@@ -232,8 +233,10 @@ export default function DealsPage() {
                           }`}
                           style={{ backgroundColor: "transparent" }}
                         >
-                          <option value="pending">Not Paid</option>
-                          <option value="paid">Paid</option>
+                          <option value="">Not Paid</option>
+                          <option value="zelle_gmotion">Zelle GMotion</option>
+                          <option value="zelle_personal">Zelle Personal</option>
+                          <option value="cash">Cash</option>
                         </select>
                       </div>
                     </div>

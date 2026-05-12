@@ -213,10 +213,11 @@ func (s *DealService) UpdateBrokerFeeStatus(ctx context.Context, id uuid.UUID, s
 	})
 }
 
-func (s *DealService) UpdateBrokerCommissionStatus(ctx context.Context, id uuid.UUID, status db.PaymentStatus) (db.Deal, error) {
+func (s *DealService) UpdateBrokerCommissionStatus(ctx context.Context, id uuid.UUID, status db.PaymentStatus, method db.NullBrokerPaymentMethod) (db.Deal, error) {
 	return s.q.UpdateDealBrokerCommissionStatus(ctx, db.UpdateDealBrokerCommissionStatusParams{
 		ID:                     toUUID(id),
 		BrokerCommissionStatus: db.NullPaymentStatus{PaymentStatus: status, Valid: true},
+		BrokerPaymentMethod:    method,
 	})
 }
 

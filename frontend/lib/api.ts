@@ -134,10 +134,10 @@ export const deals = {
       `/deals/${id}/broker-fee-status`,
       { method: "PATCH", body: JSON.stringify({ status }) }
     ),
-  updateBrokerCommissionStatus: (id: string, status: string) =>
+  updateBrokerCommissionStatus: (id: string, status: string, payment_method?: string) =>
     request<import("./types").Deal>(
       `/deals/${id}/broker-commission-status`,
-      { method: "PATCH", body: JSON.stringify({ status }) }
+      { method: "PATCH", body: JSON.stringify({ status, payment_method }) }
     ),
   markPaymentReminderEmailSent: (id: string) =>
     request<import("./types").Deal>(
