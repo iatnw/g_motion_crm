@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { deals, clients, brokers, dealers, referrals } from "@/lib/api";
 import type { Deal, Client, Broker, Dealer, DealShow, DealStatus, Referral } from "@/lib/types";
@@ -154,9 +154,8 @@ export default function DealsPage() {
                   const isLoading = expandedLoading === d.id;
                   const data = expandedData[d.id];
                   return (
-                    <>
+                    <Fragment key={d.id}>
                       <tr
-                        key={d.id}
                         className={`transition-colors group cursor-pointer ${isExpanded ? "bg-blue-500/5" : "hover:bg-blue-500/5"}`}
                         onClick={() => toggleExpand(d.id)}
                       >
@@ -221,7 +220,7 @@ export default function DealsPage() {
                       </tr>
 
                       {isExpanded && (
-                        <tr key={`${d.id}-expand`} className="bg-[#08080f]">
+                        <tr className="bg-[#08080f]">
                           <td colSpan={10} className="px-6 py-5">
                             {isLoading || !data ? (
                               <div className="text-center py-4 text-slate-600 text-sm">Loading…</div>
@@ -276,7 +275,7 @@ export default function DealsPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
