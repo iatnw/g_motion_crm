@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const collectionPct = grossRev > 0 ? Math.round((paidRev / grossRev) * 100) : 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>

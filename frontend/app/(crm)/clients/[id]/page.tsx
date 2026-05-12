@@ -96,7 +96,7 @@ export default function ClientDetailPage() {
 
   if (id === "new" || editing) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
+      <div className="p-6">
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => id === "new" ? router.push("/clients") : setEditing(false)}
@@ -120,7 +120,7 @@ export default function ClientDetailPage() {
   if (!client) return null;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
