@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { deals, clients, brokers, dealers } from "@/lib/api";
 import type { Deal, Client, Broker, Dealer, DealStatus } from "@/lib/types";
@@ -69,6 +69,7 @@ export default function DealsPage() {
 
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Deals</h1>
@@ -85,6 +86,7 @@ export default function DealsPage() {
         </button>
       </div>
 
+      {/* Search */}
       <div className="relative mb-5">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -94,123 +96,90 @@ export default function DealsPage() {
           placeholder="Search by client, car, VIN, deal #…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors"
+          className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
         />
       </div>
 
       {loading ? (
         <div className="text-center py-12 text-slate-600 text-sm">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-slate-600 text-sm">No deals found</div>
       ) : (
-        <div className="bg-[#0b0c0d] rounded-xl border border-[#252628] overflow-hidden">
-          {filtered.length === 0 ? (
-            <div className="text-center py-12 text-slate-600 text-sm">No deals found</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-[#252628]">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Client</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Deal #</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Vehicle</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Broker</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Dealer</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Revenue</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Net</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((d) => {
-                  const client = clientMap[d.client_id];
-                  const details: { label: string; value: string }[] = [];
-                  if (d.trim_level)      details.push({ label: "Trim", value: d.trim_level });
-                  if (d.vin)             details.push({ label: "VIN", value: d.vin });
-                  if (d.collect_amount != null) details.push({ label: "Collect", value: money(d.collect_amount)! });
-                  if (d.doc_fee != null) details.push({ label: "Doc Fee", value: money(d.doc_fee)! });
-                  if (d.broker_percent != null) details.push({ label: "Broker %", value: `${d.broker_percent}%` });
-                  if (d.broker_commission != null) details.push({ label: "Broker Commission", value: money(d.broker_commission)! });
-                  if (d.notes)           details.push({ label: "Notes", value: d.notes });
+        <div className="space-y-3">
+          {filtered.map((d) => {
+            const client = clientMap[d.client_id];
+            const vehicle = [d.make, d.model].filter(Boolean).join(" ");
 
-                  return (
-                    <Fragment key={d.id}>
-                      {/* Primary row */}
-                      <tr className="hover:bg-blue-500/5 transition-colors border-t border-[#1e1f20] first:border-t-0">
-                        <td className="px-4 pt-3 pb-1">
-                          {client ? (
-                            <Link href={`/clients/${d.client_id}`} className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                              {client.first_name} {client.last_name}
-                            </Link>
-                          ) : (
-                            <span className="text-slate-600">Unknown</span>
-                          )}
-                        </td>
-                        <td className="px-4 pt-3 pb-1 text-slate-400">
-                          {d.deal_number ? `#${d.deal_number}` : "–"}
-                        </td>
-                        <td className="px-4 pt-3 pb-1 text-slate-300">
-                          {[d.make, d.model].filter(Boolean).join(" ") || "–"}
-                        </td>
-                        <td className="px-4 pt-3 pb-1 text-slate-400">
-                          {d.broker_id ? brokerMap[d.broker_id] ?? "–" : "–"}
-                        </td>
-                        <td className="px-4 pt-3 pb-1 text-slate-400">
-                          {d.dealer_id ? dealerMap[d.dealer_id] ?? "–" : "–"}
-                        </td>
-                        <td className="px-4 pt-3 pb-1">
-                          {d.broker_fee != null
-                            ? <span className="font-semibold text-green-400">{money(d.broker_fee)}</span>
-                            : <span className="text-slate-600">–</span>}
-                        </td>
-                        <td className="px-4 pt-3 pb-1">
-                          {d.your_net != null
-                            ? <span className="font-semibold text-blue-400">{money(d.your_net)}</span>
-                            : <span className="text-slate-600">–</span>}
-                        </td>
-                        <td className="px-4 pt-3 pb-1">
-                          <DealStatusSelect
-                            value={d.deal_status}
-                            days={d.pending_payment_days}
-                            bucket={d.pending_payment_bucket}
-                            onChange={(status) => handleStatusChange(d, status)}
-                          />
-                        </td>
-                        <td className="px-4 pt-3 pb-1 text-slate-600">
-                          {d.deal_date ? new Date(d.deal_date).toLocaleDateString() : "–"}
-                        </td>
-                        <td className="px-4 pt-3 pb-1 text-right">
-                          <button
-                            onClick={() => setModal({ open: true, deal: d })}
-                            className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
+            return (
+              <div key={d.id} className="bg-[#0b0c0d] border border-[#252628] rounded-xl hover:border-[#333436] transition-colors">
+                {/* Top bar: client, deal#, status, date, edit */}
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1e1f20]">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div>
+                      {client ? (
+                        <Link href={`/clients/${d.client_id}`} className="text-white font-semibold hover:text-blue-400 transition-colors">
+                          {client.first_name} {client.last_name}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-600 font-semibold">Unknown</span>
+                      )}
+                    </div>
+                    {d.deal_number && (
+                      <span className="text-xs font-mono bg-[#111213] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
+                        #{d.deal_number}
+                      </span>
+                    )}
+                    {vehicle && (
+                      <span className="text-slate-400 text-sm">{vehicle}</span>
+                    )}
+                    {(d.trim_level || d.vin) && (
+                      <span className="text-slate-600 text-xs hidden lg:inline">
+                        {[d.trim_level, d.vin].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    {d.deal_date && (
+                      <span className="text-slate-600 text-xs hidden sm:inline">
+                        {new Date(d.deal_date).toLocaleDateString()}
+                      </span>
+                    )}
+                    <DealStatusSelect
+                      value={d.deal_status}
+                      days={d.pending_payment_days}
+                      bucket={d.pending_payment_bucket}
+                      onChange={(status) => handleStatusChange(d, status)}
+                    />
+                    <button
+                      onClick={() => setModal({ open: true, deal: d })}
+                      className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
 
-                      {/* Details row */}
-                      <tr className="hover:bg-blue-500/5 transition-colors">
-                        <td colSpan={10} className="px-4 pb-3 pt-0">
-                          {details.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {details.map(({ label, value }) => (
-                                <span key={label} className="inline-flex items-center gap-1 bg-[#111213] border border-[#252628] rounded-md px-2 py-0.5">
-                                  <span className="text-slate-600 text-xs">{label}:</span>
-                                  <span className="text-slate-300 text-xs font-medium">{value}</span>
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="h-1" />
-                          )}
-                        </td>
-                      </tr>
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+                {/* Bottom bar: all financial + metadata stats */}
+                <div className="px-5 py-3 flex flex-wrap gap-x-6 gap-y-2">
+                  <Stat label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
+                  <Stat label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
+                  <StatDivider />
+                  <Stat label="Revenue" value={money(d.broker_fee)} highlight="green" />
+                  <Stat label="Net" value={money(d.your_net)} highlight="blue" />
+                  <Stat label="Collect" value={money(d.collect_amount)} />
+                  <Stat label="Doc Fee" value={money(d.doc_fee)} />
+                  {d.broker_percent != null && <Stat label="Broker %" value={`${d.broker_percent}%`} />}
+                  {d.broker_commission != null && <Stat label="Commission" value={money(d.broker_commission)} />}
+                  {d.notes && (
+                    <>
+                      <StatDivider />
+                      <Stat label="Notes" value={d.notes} />
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -234,4 +203,23 @@ export default function DealsPage() {
 
 function money(value?: number) {
   return value != null ? `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : undefined;
+}
+
+function StatDivider() {
+  return <div className="w-px bg-[#252628] self-stretch" />;
+}
+
+function Stat({ label, value, highlight }: { label: string; value?: string; highlight?: "green" | "blue" }) {
+  if (!value) return null;
+  const valueClass = highlight === "green"
+    ? "text-green-400 font-semibold"
+    : highlight === "blue"
+    ? "text-blue-400 font-semibold"
+    : "text-slate-300";
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-slate-600 uppercase tracking-wider">{label}</span>
+      <span className={`text-sm ${valueClass}`}>{value}</span>
+    </div>
+  );
 }
