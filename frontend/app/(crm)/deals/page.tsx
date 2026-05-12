@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { deals, clients, brokers, dealers } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealStatus } from "@/lib/types";
+import { deals, clients, brokers, dealers, referrals as referralsApi } from "@/lib/api";
+import type { Deal, Client, Broker, Dealer, DealStatus, Referral, ReferralStatus } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
@@ -26,13 +26,22 @@ export default function DealsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
+  const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
 
   useEffect(() => {
-    Promise.all([deals.list(), clients.list(), brokers.list(), dealers.list()])
-      .then(([d, c, b, dl]) => {
+    Promise.all([deals.list(), clients.list(), brokers.list(), dealers.list(), referralsApi.list()])
+      .then(([d, c, b, dl, refs]) => {
         setAllDeals(d ?? []);
         setAllClients(c ?? []);
         setClientMap(Object.fromEntries((c ?? []).map((x) => [x.id, x])));
+        const map: Record<string, Referral[]> = {};
+        for (const r of refs ?? []) {
+          if (r.deal_id) {
+            if (!map[r.deal_id]) map[r.deal_id] = [];
+            map[r.deal_id].push(r);
+          }
+        }
+        setReferralMap(map);
         setAllBrokers(b ?? []);
         setAllDealers(dl ?? []);
         setBrokerMap(Object.fromEntries((b ?? []).map((x) => [x.id, `${x.first_name} ${x.last_name}`])));
@@ -64,6 +73,17 @@ export default function DealsPage() {
   async function handleCommissionMethod(deal: Deal, status: "paid" | "pending") {
     const updated = await deals.updateBrokerCommissionStatus(deal.id, status);
     setAllDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+  }
+
+  async function handleReferralStatus(ref: Referral, status: ReferralStatus) {
+    const updated = await referralsApi.updateStatus(ref.id, status);
+    setReferralMap((prev) => {
+      if (!ref.deal_id) return prev;
+      return {
+        ...prev,
+        [ref.deal_id]: (prev[ref.deal_id] ?? []).map((r) => (r.id === ref.id ? { ...r, ...updated } : r)),
+      };
+    });
   }
 
   const counts = {
@@ -148,6 +168,7 @@ export default function DealsPage() {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
+            const dealReferrals = referralMap[d.id] ?? [];
 
             return (
               <div key={d.id} className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}>
@@ -237,6 +258,33 @@ export default function DealsPage() {
                     </div>
                   )}
                   {d.notes && <StatCell label="Notes" value={d.notes} />}
+                  {dealReferrals.map((ref) => (
+                    <div key={ref.id} className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs text-slate-600 uppercase tracking-wider">
+                        Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-300 truncate">
+                          {[ref.first_name, ref.last_name].filter(Boolean).join(" ")}
+                        </span>
+                        <select
+                          value={ref.status}
+                          onChange={(e) => handleReferralStatus(ref, e.target.value as ReferralStatus)}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
+                            ref.status === "paid"
+                              ? "bg-green-500/10 border-green-500/25 text-green-400"
+                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                          }`}
+                          style={{ backgroundColor: "transparent" }}
+                        >
+                          <option value="none">Not Paid</option>
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             );

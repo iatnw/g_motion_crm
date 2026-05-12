@@ -68,7 +68,7 @@ export default function ReferralsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.first_name || !form.last_name) { setError("First and last name are required"); return; }
+    if (!form.first_name) { setError("First name is required"); return; }
     setSaving(true);
     setError("");
     try {
@@ -227,9 +227,8 @@ export default function ReferralsPage() {
                     type="text"
                     value={form.last_name}
                     onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))}
-                    required
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
-                    placeholder="Last name"
+                    placeholder="Optional"
                   />
                 </div>
               </div>
