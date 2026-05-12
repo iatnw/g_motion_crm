@@ -151,10 +151,10 @@ export default function DealsPage() {
                           <span className="text-slate-600">Unknown</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-slate-300">
-                        {[d.make, d.model].filter(Boolean).join(" ") || "–"}
+                      <td className="px-4 py-3.5">
+                        <div className="text-slate-300">{[d.make, d.model].filter(Boolean).join(" ") || "–"}</div>
                         {d.deal_number && (
-                          <span className="text-slate-600 ml-1">#{d.deal_number}</span>
+                          <div className="text-xs text-slate-600 mt-0.5">#{d.deal_number}</div>
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-slate-400">
