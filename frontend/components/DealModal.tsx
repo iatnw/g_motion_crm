@@ -149,7 +149,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       const validNewReferrals = newReferrals.filter((r) => r.first_name.trim());
       await Promise.all(
         validNewReferrals.map((r) =>
-          referralsApi.create(savedDeal.id, {
+          referralsApi.create({
+            deal_id: savedDeal.id,
             first_name: r.first_name,
             last_name: r.last_name || undefined,
             phone: r.phone || undefined,
