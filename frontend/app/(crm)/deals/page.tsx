@@ -206,46 +206,40 @@ export default function DealsPage() {
                   </div>
                 </div>
 
-                {/* Stats bar — left: broker/dealer, right: financials */}
-                <div className="px-5 py-3 flex items-end justify-between gap-4 flex-wrap">
-                  {/* Left group */}
-                  <div className="flex items-end gap-6 flex-wrap">
-                    <Stat label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
-                    <Stat label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
-                    {d.notes && <Stat label="Notes" value={d.notes} />}
-                  </div>
-                  {/* Right group */}
-                  <div className="flex items-end gap-6 flex-wrap">
-                    <BigStat label="Revenue" value={money(d.broker_fee)} color="green" />
-                    <BigStat label="Net" value={money(d.your_net)} color="blue" />
-                    <Stat label="Collect" value={money(d.collect_amount)} />
-                    <Stat label="Doc Fee" value={money(d.doc_fee)} />
-                    {d.broker_percent != null && <Stat label="Broker %" value={`${d.broker_percent}%`} />}
-                    {d.broker_commission != null && (
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
-                          <select
-                            value={d.broker_commission_status === "paid" ? (d.broker_payment_method ?? "paid_unknown") : ""}
-                            onChange={(e) => handleCommissionMethod(d, e.target.value as BrokerPaymentMethod | "")}
-                            onClick={(e) => e.stopPropagation()}
-                            className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
-                              d.broker_commission_status === "paid"
-                                ? "bg-green-500/10 border-green-500/25 text-green-400"
-                                : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                            }`}
-                            style={{ backgroundColor: "transparent" }}
-                          >
-                            <option value="">Not Paid</option>
-                            <option value="zelle_gmotion">Zelle GMotion</option>
-                            <option value="zelle_personal">Zelle Personal</option>
-                            <option value="cash">Cash</option>
-                          </select>
-                        </div>
+                {/* Stats bar — each cell grows equally to fill the full row */}
+                <div className="flex divide-x divide-[#1e1f20] border-t border-[#1e1f20]">
+                  <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
+                  <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
+                  <StatCell label="Revenue" value={money(d.broker_fee)} highlight="green" />
+                  <StatCell label="Net" value={money(d.your_net)} highlight="blue" />
+                  <StatCell label="Collect" value={money(d.collect_amount)} />
+                  <StatCell label="Doc Fee" value={money(d.doc_fee)} />
+                  {d.broker_percent != null && <StatCell label="Broker %" value={`${d.broker_percent}%`} />}
+                  {d.broker_commission != null && (
+                    <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
+                        <select
+                          value={d.broker_commission_status === "paid" ? (d.broker_payment_method ?? "paid_unknown") : ""}
+                          onChange={(e) => handleCommissionMethod(d, e.target.value as BrokerPaymentMethod | "")}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
+                            d.broker_commission_status === "paid"
+                              ? "bg-green-500/10 border-green-500/25 text-green-400"
+                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                          }`}
+                          style={{ backgroundColor: "transparent" }}
+                        >
+                          <option value="">Not Paid</option>
+                          <option value="zelle_gmotion">Zelle GMotion</option>
+                          <option value="zelle_personal">Zelle Personal</option>
+                          <option value="cash">Cash</option>
+                        </select>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+                  {d.notes && <StatCell label="Notes" value={d.notes} />}
                 </div>
               </div>
             );
@@ -276,23 +270,15 @@ function money(value?: number) {
 }
 
 
-function Stat({ label, value }: { label: string; value?: string }) {
+function StatCell({ label, value, highlight }: { label: string; value?: string; highlight?: "green" | "blue" }) {
   if (!value) return null;
+  const valCls = highlight === "green" ? "text-green-400 font-bold text-base"
+    : highlight === "blue" ? "text-blue-400 font-bold text-base"
+    : "text-slate-300 text-sm";
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-slate-600 uppercase tracking-wider">{label}</span>
-      <span className="text-sm text-slate-300">{value}</span>
-    </div>
-  );
-}
-
-function BigStat({ label, value, color }: { label: string; value?: string; color: "green" | "blue" }) {
-  if (!value) return null;
-  const cls = color === "green" ? "text-green-400" : "text-blue-400";
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-slate-600 uppercase tracking-wider">{label}</span>
-      <span className={`text-base font-bold ${cls}`}>{value}</span>
+    <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+      <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">{label}</span>
+      <span className={valCls + " truncate"}>{value}</span>
     </div>
   );
 }
