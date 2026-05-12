@@ -115,7 +115,7 @@ export interface Deal {
 
 export interface Referral {
   id: string;
-  deal_id: string;
+  deal_id: string | null;
   first_name: string;
   last_name: string;
   phone?: string;

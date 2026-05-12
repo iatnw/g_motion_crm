@@ -10,6 +10,7 @@ INSERT INTO referrals (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
 ) RETURNING *;
+-- $1 is nullable: pass pgtype.UUID{} (Valid:false) when no deal
 
 -- name: GetReferral :one
 SELECT * FROM referrals
@@ -63,5 +64,5 @@ SELECT
     r.updated_at,
     d.deal_number
 FROM referrals r
-JOIN deals d ON d.id = r.deal_id
+LEFT JOIN deals d ON d.id = r.deal_id
 ORDER BY r.created_at DESC;

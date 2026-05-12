@@ -431,7 +431,7 @@ func toDocumentResponses(ds []db.Document) []DocumentResponse {
 
 type ReferralResponse struct {
 	ID        string   `json:"id"`
-	DealID    string   `json:"deal_id"`
+	DealID    *string  `json:"deal_id"`
 	FirstName string   `json:"first_name"`
 	LastName  string   `json:"last_name"`
 	Phone     *string  `json:"phone"`
@@ -446,7 +446,7 @@ type ReferralResponse struct {
 func toReferralResponse(r db.Referral) ReferralResponse {
 	return ReferralResponse{
 		ID:        pgUUID(r.ID),
-		DealID:    pgUUID(r.DealID),
+		DealID:    pgNullUUID(r.DealID),
 		FirstName: r.FirstName,
 		LastName:  r.LastName,
 		Phone:     pgText(r.Phone),
@@ -469,7 +469,7 @@ func toReferralResponses(rs []db.Referral) []ReferralResponse {
 
 type ReferralWithDealResponse struct {
 	ReferralResponse
-	DealNumber string `json:"deal_number"`
+	DealNumber *string `json:"deal_number"`
 }
 
 func toReferralWithDealResponses(rs []db.ListAllReferralsRow) []ReferralWithDealResponse {
@@ -478,7 +478,7 @@ func toReferralWithDealResponses(rs []db.ListAllReferralsRow) []ReferralWithDeal
 		out[i] = ReferralWithDealResponse{
 			ReferralResponse: ReferralResponse{
 				ID:        pgUUID(r.ID),
-				DealID:    pgUUID(r.DealID),
+				DealID:    pgNullUUID(r.DealID),
 				FirstName: r.FirstName,
 				LastName:  r.LastName,
 				Phone:     pgText(r.Phone),
@@ -489,7 +489,7 @@ func toReferralWithDealResponses(rs []db.ListAllReferralsRow) []ReferralWithDeal
 				CreatedAt: pgTimestamp(r.CreatedAt),
 				UpdatedAt: pgTimestamp(r.UpdatedAt),
 			},
-			DealNumber: r.DealNumber.String,
+			DealNumber: pgText(r.DealNumber),
 		}
 	}
 	return out

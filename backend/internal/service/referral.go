@@ -15,7 +15,7 @@ func NewReferral(q *db.Queries) *ReferralService {
 }
 
 type CreateReferralInput struct {
-	DealID    uuid.UUID
+	DealID    *uuid.UUID
 	FirstName string
 	LastName  string
 	Phone     *string
@@ -25,7 +25,7 @@ type CreateReferralInput struct {
 
 func (s *ReferralService) Create(ctx context.Context, in CreateReferralInput) (db.Referral, error) {
 	return s.q.CreateReferral(ctx, db.CreateReferralParams{
-		DealID:    toUUID(in.DealID),
+		DealID:    toNullUUID(in.DealID),
 		FirstName: in.FirstName,
 		LastName:  in.LastName,
 		Phone:     toText(in.Phone),

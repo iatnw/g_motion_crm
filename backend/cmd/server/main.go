@@ -191,6 +191,7 @@ func main() {
 
 		// Referrals
 		r.Get("/referrals", referralHandler.List)
+		r.Post("/referrals", referralHandler.CreateDirect)
 		r.Post("/deals/{dealID}/referrals", referralHandler.Create)
 		r.Get("/deals/{dealID}/referrals", referralHandler.ListByDeal)
 		r.Get("/referrals/{id}", referralHandler.Get)

@@ -151,8 +151,8 @@ export const referrals = {
   list: () => request<import("./types").Referral[]>("/referrals"),
   listByDeal: (dealId: string) =>
     request<import("./types").Referral[]>(`/deals/${dealId}/referrals`),
-  create: (dealId: string, data: object) =>
-    request<import("./types").Referral>(`/deals/${dealId}/referrals`, {
+  create: (data: object) =>
+    request<import("./types").Referral>(`/referrals`, {
       method: "POST",
       body: JSON.stringify(data),
     }),

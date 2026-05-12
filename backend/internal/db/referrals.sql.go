@@ -88,10 +88,12 @@ func (q *Queries) DeleteReferral(ctx context.Context, id pgtype.UUID) (Referral,
 }
 
 const getReferral = `-- name: GetReferral :one
+
 SELECT id, deal_id, first_name, last_name, phone, amount, status, paid_date, notes, created_at, updated_at FROM referrals
 WHERE id = $1
 `
 
+// $1 is nullable: pass pgtype.UUID{} (Valid:false) when no deal
 func (q *Queries) GetReferral(ctx context.Context, id pgtype.UUID) (Referral, error) {
 	row := q.db.QueryRow(ctx, getReferral, id)
 	var i Referral
@@ -126,7 +128,7 @@ SELECT
     r.updated_at,
     d.deal_number
 FROM referrals r
-JOIN deals d ON d.id = r.deal_id
+LEFT JOIN deals d ON d.id = r.deal_id
 ORDER BY r.created_at DESC
 `
 

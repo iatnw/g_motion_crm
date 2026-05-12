@@ -36,6 +36,7 @@ type Querier interface {
 	GetDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 	GetDealerStats(ctx context.Context, id pgtype.UUID) (DealerStat, error)
 	GetDocument(ctx context.Context, id pgtype.UUID) (Document, error)
+	// $1 is nullable: pass pgtype.UUID{} (Valid:false) when no deal
 	GetReferral(ctx context.Context, id pgtype.UUID) (Referral, error)
 	GetSetting(ctx context.Context) (Setting, error)
 	ListAllReferrals(ctx context.Context) ([]ListAllReferralsRow, error)

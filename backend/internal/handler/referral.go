@@ -21,6 +21,7 @@ func NewReferralHandler(referral *service.ReferralService) *ReferralHandler {
 }
 
 type referralRequest struct {
+	DealID    *string  `json:"deal_id"`
 	FirstName string   `json:"first_name"`
 	LastName  string   `json:"last_name"`
 	Phone     *string  `json:"phone"`
@@ -47,7 +48,7 @@ func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	referral, err := h.referral.Create(r.Context(), service.CreateReferralInput{
-		DealID:    dealID,
+		DealID:    &dealID,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Phone:     req.Phone,
@@ -56,6 +57,45 @@ func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("create referral", "deal_id", dealID, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toReferralResponse(referral))
+}
+
+func (h *ReferralHandler) CreateDirect(w http.ResponseWriter, r *http.Request) {
+	var req referralRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if req.FirstName == "" || req.LastName == "" {
+		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
+		return
+	}
+
+	var dealID *uuid.UUID
+	if req.DealID != nil && *req.DealID != "" {
+		id, err := uuid.Parse(*req.DealID)
+		if err != nil {
+			http.Error(w, "invalid deal_id", http.StatusBadRequest)
+			return
+		}
+		dealID = &id
+	}
+
+	referral, err := h.referral.Create(r.Context(), service.CreateReferralInput{
+		DealID:    dealID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Phone:     req.Phone,
+		Amount:    req.Amount,
+		Notes:     req.Notes,
+	})
+	if err != nil {
+		slog.Error("create referral", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
