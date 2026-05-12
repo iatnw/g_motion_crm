@@ -144,7 +144,7 @@ export default function DealsPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-slate-600 text-sm">No deals found</div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        <div className="space-y-3">
           {filtered.map((d) => {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
@@ -206,47 +206,46 @@ export default function DealsPage() {
                   </div>
                 </div>
 
-                {/* Stats bar */}
-                <div className="px-5 py-3 flex flex-wrap items-end gap-x-6 gap-y-2">
-                  <Stat label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
-                  <Stat label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
-                  <StatDivider />
-                  <BigStat label="Revenue" value={money(d.broker_fee)} color="green" />
-                  <BigStat label="Net" value={money(d.your_net)} color="blue" />
-                  <StatDivider />
-                  <Stat label="Collect" value={money(d.collect_amount)} />
-                  <Stat label="Doc Fee" value={money(d.doc_fee)} />
-                  {d.broker_percent != null && <Stat label="Broker %" value={`${d.broker_percent}%`} />}
-                  {d.broker_commission != null && (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
-                        <select
-                          value={d.broker_commission_status === "paid" ? (d.broker_payment_method ?? "paid_unknown") : ""}
-                          onChange={(e) => handleCommissionMethod(d, e.target.value as BrokerPaymentMethod | "")}
-                          onClick={(e) => e.stopPropagation()}
-                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
-                            d.broker_commission_status === "paid"
-                              ? "bg-green-500/10 border-green-500/25 text-green-400"
-                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                          }`}
-                          style={{ backgroundColor: "transparent" }}
-                        >
-                          <option value="">Not Paid</option>
-                          <option value="zelle_gmotion">Zelle GMotion</option>
-                          <option value="zelle_personal">Zelle Personal</option>
-                          <option value="cash">Cash</option>
-                        </select>
+                {/* Stats bar — left: broker/dealer, right: financials */}
+                <div className="px-5 py-3 flex items-end justify-between gap-4 flex-wrap">
+                  {/* Left group */}
+                  <div className="flex items-end gap-6 flex-wrap">
+                    <Stat label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
+                    <Stat label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
+                    {d.notes && <Stat label="Notes" value={d.notes} />}
+                  </div>
+                  {/* Right group */}
+                  <div className="flex items-end gap-6 flex-wrap">
+                    <BigStat label="Revenue" value={money(d.broker_fee)} color="green" />
+                    <BigStat label="Net" value={money(d.your_net)} color="blue" />
+                    <Stat label="Collect" value={money(d.collect_amount)} />
+                    <Stat label="Doc Fee" value={money(d.doc_fee)} />
+                    {d.broker_percent != null && <Stat label="Broker %" value={`${d.broker_percent}%`} />}
+                    {d.broker_commission != null && (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
+                          <select
+                            value={d.broker_commission_status === "paid" ? (d.broker_payment_method ?? "paid_unknown") : ""}
+                            onChange={(e) => handleCommissionMethod(d, e.target.value as BrokerPaymentMethod | "")}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
+                              d.broker_commission_status === "paid"
+                                ? "bg-green-500/10 border-green-500/25 text-green-400"
+                                : "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                            }`}
+                            style={{ backgroundColor: "transparent" }}
+                          >
+                            <option value="">Not Paid</option>
+                            <option value="zelle_gmotion">Zelle GMotion</option>
+                            <option value="zelle_personal">Zelle Personal</option>
+                            <option value="cash">Cash</option>
+                          </select>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {d.notes && (
-                    <>
-                      <StatDivider />
-                      <Stat label="Notes" value={d.notes} />
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -276,9 +275,6 @@ function money(value?: number) {
   return value != null ? `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : undefined;
 }
 
-function StatDivider() {
-  return <div className="w-px self-stretch bg-[#1e1f20] mx-1" />;
-}
 
 function Stat({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
