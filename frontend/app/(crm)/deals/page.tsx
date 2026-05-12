@@ -7,6 +7,8 @@ import type { Deal, Client, Broker, Dealer, DealShow, DealStatus, Referral } fro
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
+type ExpandedData = { deal: DealShow; refs: Referral[] };
+
 export default function DealsPage() {
   const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
@@ -18,7 +20,9 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
-  const [show, setShow] = useState<{ open: boolean; loading?: boolean; deal?: DealShow; dealReferrals?: Referral[] }>({ open: false });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedData, setExpandedData] = useState<Record<string, ExpandedData>>({});
+  const [expandedLoading, setExpandedLoading] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([deals.list(), clients.list(), brokers.list(), dealers.list()])
@@ -56,16 +60,23 @@ export default function DealsPage() {
     });
   }
 
-  const openShow = useCallback(async (id: string) => {
-    setShow({ open: true, loading: true });
+  const toggleExpand = useCallback(async (id: string) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (expandedData[id]) return;
+    setExpandedLoading(id);
     try {
       const [data, refs] = await Promise.all([deals.getShow(id), referrals.listByDeal(id)]);
-      setShow({ open: true, deal: data, dealReferrals: refs });
+      setExpandedData((prev) => ({ ...prev, [id]: { deal: data, refs } }));
     } catch {
-      setShow({ open: false });
-      alert("Failed to load deal");
+      setExpandedId(null);
+    } finally {
+      setExpandedLoading(null);
     }
-  }, []);
+  }, [expandedId, expandedData]);
 
   const filtered = allDeals.filter((d) => {
     if (!search) return true;
@@ -124,6 +135,7 @@ export default function DealsPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-[#252628]">
                 <tr>
+                  <th className="w-6 px-4 py-3" />
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Client</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Deal #</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Vehicle</th>
@@ -132,73 +144,139 @@ export default function DealsPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Revenue</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-3"></th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e1f20]">
                 {filtered.map((d) => {
                   const client = clientMap[d.client_id];
+                  const isExpanded = expandedId === d.id;
+                  const isLoading = expandedLoading === d.id;
+                  const data = expandedData[d.id];
                   return (
-                    <tr key={d.id} className="hover:bg-blue-500/5 transition-colors group">
-                      <td className="px-4 py-3.5">
-                        {client ? (
-                          <Link
-                            href={`/clients/${d.client_id}`}
-                            className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                    <>
+                      <tr
+                        key={d.id}
+                        className={`transition-colors group cursor-pointer ${isExpanded ? "bg-blue-500/5" : "hover:bg-blue-500/5"}`}
+                        onClick={() => toggleExpand(d.id)}
+                      >
+                        <td className="px-4 py-3.5 text-slate-600">
+                          <svg
+                            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                            className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
                           >
-                            {client.first_name} {client.last_name}
-                          </Link>
-                        ) : (
-                          <span className="text-slate-600">Unknown</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-400">
-                        {d.deal_number ? `#${d.deal_number}` : "–"}
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-300">
-                        {[d.make, d.model].filter(Boolean).join(" ") || "–"}
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-400">
-                        {d.broker_id ? brokerMap[d.broker_id] ?? "–" : "–"}
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-400">
-                        {d.dealer_id ? dealerMap[d.dealer_id] ?? "–" : "–"}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {d.broker_fee != null ? (
-                          <span className="font-semibold text-green-400">{money(d.broker_fee)}</span>
-                        ) : (
-                          <span className="text-slate-600">–</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <DealStatusSelect
-                          value={d.deal_status}
-                          days={d.pending_payment_days}
-                          bucket={d.pending_payment_bucket}
-                          onChange={(status) => handleStatusChange(d, status)}
-                        />
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-600">
-                        {d.deal_date ? new Date(d.deal_date).toLocaleDateString() : "–"}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex justify-end gap-3">
-                          <button
-                            onClick={() => openShow(d.id)}
-                            className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
-                          >
-                            View
-                          </button>
+                            <path d="m9 18 6-6-6-6" />
+                          </svg>
+                        </td>
+                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          {client ? (
+                            <Link
+                              href={`/clients/${d.client_id}`}
+                              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                            >
+                              {client.first_name} {client.last_name}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-600">Unknown</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-400">
+                          {d.deal_number ? `#${d.deal_number}` : "–"}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-300">
+                          {[d.make, d.model].filter(Boolean).join(" ") || "–"}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-400">
+                          {d.broker_id ? brokerMap[d.broker_id] ?? "–" : "–"}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-400">
+                          {d.dealer_id ? dealerMap[d.dealer_id] ?? "–" : "–"}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {d.broker_fee != null ? (
+                            <span className="font-semibold text-green-400">{money(d.broker_fee)}</span>
+                          ) : (
+                            <span className="text-slate-600">–</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <DealStatusSelect
+                            value={d.deal_status}
+                            days={d.pending_payment_days}
+                            bucket={d.pending_payment_bucket}
+                            onChange={(status) => handleStatusChange(d, status)}
+                          />
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600">
+                          {d.deal_date ? new Date(d.deal_date).toLocaleDateString() : "–"}
+                        </td>
+                        <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setModal({ open: true, deal: d })}
                             className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
                           >
                             Edit
                           </button>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr key={`${d.id}-expand`} className="bg-[#08080f]">
+                          <td colSpan={10} className="px-6 py-5">
+                            {isLoading || !data ? (
+                              <div className="text-center py-4 text-slate-600 text-sm">Loading…</div>
+                            ) : (
+                              <div className="space-y-4">
+                                {/* Financial grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                                  <InfoCell label="Trim" value={data.deal.trim} />
+                                  <InfoCell label="VIN" value={data.deal.vin} />
+                                  <InfoCell label="Collect" value={money(data.deal.collect_amount)} />
+                                  <InfoCell label="Doc Fee" value={money(data.deal.doc_fee)} />
+                                  <InfoCell label="Referral Total" value={money(data.deal.referral_total)} />
+                                  <InfoCell label="Broker %" value={data.deal.broker_percent != null ? `${data.deal.broker_percent}%` : undefined} />
+                                  <InfoCell label="Broker Profit" value={money(data.deal.broker_profit)} />
+                                  <InfoCell label="Net" value={money(data.deal.company_net)} highlight />
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  <InfoCell label="Payment Type" value={labelize(data.deal.broker_payment_type)} />
+                                  <InfoCell label="Check Status" value={data.deal.check_status} />
+                                  <InfoCell label="Broker Paid" value={data.deal.broker_paid_status} />
+                                  <InfoCell label="Notes" value={data.deal.notes} />
+                                </div>
+
+                                {/* Referrals */}
+                                {data.refs.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Referrals</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {data.refs.map((ref) => (
+                                        <div key={ref.id} className="flex items-center gap-3 bg-[#111213] border border-[#252628] rounded-lg px-3 py-2">
+                                          <div>
+                                            <p className="text-sm text-slate-200">{ref.first_name} {ref.last_name}</p>
+                                            {ref.phone && <p className="text-xs text-slate-600">{ref.phone}</p>}
+                                          </div>
+                                          {ref.amount != null && (
+                                            <span className="text-sm font-semibold text-slate-300">${Number(ref.amount).toLocaleString()}</span>
+                                          )}
+                                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                                            ref.status === "paid" ? "bg-green-500/10 border-green-500/25 text-green-400"
+                                            : ref.status === "pending" ? "bg-yellow-500/10 border-yellow-500/25 text-yellow-400"
+                                            : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500"
+                                          }`}>
+                                            {ref.status}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
@@ -221,107 +299,23 @@ export default function DealsPage() {
           }
         />
       )}
-
-      {show.open && (
-        <DealShowModal
-          loading={!!show.loading}
-          deal={show.deal}
-          dealReferrals={show.dealReferrals}
-          onClose={() => setShow({ open: false })}
-        />
-      )}
     </div>
   );
 }
 
 function money(value?: number) {
-  return `$${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-}
-
-function DealShowModal({ loading, deal, dealReferrals, onClose }: { loading: boolean; deal?: DealShow; dealReferrals?: Referral[]; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-[#252628] shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
-          <div>
-            <h2 className="text-base font-semibold text-white">Deal Info</h2>
-            {deal && <p className="text-xs text-slate-500 mt-0.5">{deal.client_name}</p>}
-          </div>
-          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
-        </div>
-        {loading || !deal ? (
-          <div className="py-16 text-center text-sm text-slate-600">Loading...</div>
-        ) : (
-          <div className="p-6 space-y-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <ShowField label="Date" value={deal.date} />
-              <ShowField label="Name" value={deal.client_name} />
-              <ShowField label="Make" value={deal.make} />
-              <ShowField label="Model" value={deal.model} />
-              <ShowField label="Trim" value={deal.trim} />
-              <ShowField label="VIN" value={deal.vin} />
-              <ShowField label="Dealer" value={deal.dealer_name} />
-              <ShowField label="Broker" value={deal.broker_name} />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <ShowField label="Broker fee" value={money(deal.broker_fee)} />
-              <ShowField label="Collect" value={money(deal.collect_amount)} />
-              <ShowField label="Doc fee" value={money(deal.doc_fee)} />
-              <ShowField label="Referral total" value={money(deal.referral_total)} />
-              <ShowField label="Broker percent" value={deal.broker_percent == null ? undefined : `${deal.broker_percent}%`} />
-              <ShowField label="Broker profit" value={money(deal.broker_profit)} />
-              <ShowField label="Net" value={money(deal.company_net)} highlight />
-              <ShowField label="Payment type" value={labelize(deal.broker_payment_type)} />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <ShowField label="Check status" value={deal.check_status} />
-              <ShowField label="Broker paid/not paid" value={deal.broker_paid_status} />
-              <ShowField label="Notes" value={deal.notes} />
-            </div>
-
-            {dealReferrals && dealReferrals.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Referrals</p>
-                <div className="space-y-2">
-                  {dealReferrals.map((ref) => (
-                    <div key={ref.id} className="flex items-center gap-3 bg-[#111213] border border-[#252628] rounded-lg px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-200">{ref.first_name} {ref.last_name}</p>
-                        {ref.phone && <p className="text-xs text-slate-600 mt-0.5">{ref.phone}</p>}
-                      </div>
-                      {ref.amount != null && (
-                        <span className="text-sm font-semibold text-slate-300">${Number(ref.amount).toLocaleString()}</span>
-                      )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                        ref.status === "paid"
-                          ? "bg-green-500/10 border-green-500/25 text-green-400"
-                          : ref.status === "pending"
-                            ? "bg-yellow-500/10 border-yellow-500/25 text-yellow-400"
-                            : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500"
-                      }`}>
-                        {ref.status ?? "none"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ShowField({ label, value, highlight }: { label: string; value?: string; highlight?: boolean }) {
-  return (
-    <div className="bg-[#08080f] border border-[#252628] rounded-lg p-3 min-h-[72px]">
-      <p className="text-xs text-slate-600 uppercase tracking-wider">{label}</p>
-      <p className={`text-sm mt-1 break-words ${highlight ? "text-green-400 font-semibold" : "text-slate-200"}`}>{value || "–"}</p>
-    </div>
-  );
+  return value != null ? `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : undefined;
 }
 
 function labelize(value?: string) {
   return value ? value.replaceAll("_", " ") : undefined;
+}
+
+function InfoCell({ label, value, highlight }: { label: string; value?: string; highlight?: boolean }) {
+  return (
+    <div className="bg-[#0b0c0d] border border-[#1e1f20] rounded-lg px-3 py-2.5">
+      <p className="text-xs text-slate-600 uppercase tracking-wider">{label}</p>
+      <p className={`text-sm mt-0.5 font-medium ${highlight ? "text-green-400" : "text-slate-300"}`}>{value || "–"}</p>
+    </div>
+  );
 }
