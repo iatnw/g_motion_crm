@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { deals, clients, brokers, dealers } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealStatus, BrokerPaymentMethod } from "@/lib/types";
+import type { Deal, Client, Broker, Dealer, DealStatus } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
@@ -61,9 +61,8 @@ export default function DealsPage() {
     });
   }
 
-  async function handleCommissionMethod(deal: Deal, method: BrokerPaymentMethod | "") {
-    const status = method ? "paid" : "pending";
-    const updated = await deals.updateBrokerCommissionStatus(deal.id, status, method || undefined);
+  async function handleCommissionMethod(deal: Deal, status: "paid" | "pending") {
+    const updated = await deals.updateBrokerCommissionStatus(deal.id, status);
     setAllDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
   }
 
@@ -221,8 +220,8 @@ export default function DealsPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
                         <select
-                          value={d.broker_commission_status === "paid" ? (d.broker_payment_method ?? "paid_unknown") : ""}
-                          onChange={(e) => handleCommissionMethod(d, e.target.value as BrokerPaymentMethod | "")}
+                          value={d.broker_commission_status ?? "pending"}
+                          onChange={(e) => handleCommissionMethod(d, e.target.value as "paid" | "pending")}
                           onClick={(e) => e.stopPropagation()}
                           className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
                             d.broker_commission_status === "paid"
@@ -231,10 +230,8 @@ export default function DealsPage() {
                           }`}
                           style={{ backgroundColor: "transparent" }}
                         >
-                          <option value="">Not Paid</option>
-                          <option value="zelle_gmotion">Zelle GMotion</option>
-                          <option value="zelle_personal">Zelle Personal</option>
-                          <option value="cash">Cash</option>
+                          <option value="pending">Not Paid</option>
+                          <option value="paid">Paid</option>
                         </select>
                       </div>
                     </div>
