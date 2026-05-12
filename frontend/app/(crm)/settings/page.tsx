@@ -26,8 +26,8 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      setError(err.message || "Failed to change password");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to change password");
     } finally {
       setLoading(false);
     }

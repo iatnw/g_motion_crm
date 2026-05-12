@@ -50,8 +50,8 @@ export default function ReferralsPage() {
       setList((prev) => [{ ...ref, deal_number: deal?.deal_number }, ...prev]);
       setModal(false);
       setForm(emptyForm);
-    } catch (err: any) {
-      setError(err.message || "Failed to create referral");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create referral");
     } finally {
       setSaving(false);
     }

@@ -36,6 +36,10 @@ tmp/
 # Go build cache
 backend/.cache/
 
+# SSH keys / certificates
+*.pem
+*.key
+
 # Next.js
 node_modules/
 .next/

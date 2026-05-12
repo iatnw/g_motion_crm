@@ -30,8 +30,8 @@ export default function LoginPage() {
       await auth.setup(password);
       setSetupRequired(false);
       setPassword("");
-    } catch (err: any) {
-      setError(err.message || "Failed to set password");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to set password");
     } finally {
       setLoading(false);
     }
