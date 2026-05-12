@@ -1,13 +1,11 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { deals, clients, brokers, dealers, referrals } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealShow, DealStatus, Referral } from "@/lib/types";
+import { deals, clients, brokers, dealers } from "@/lib/api";
+import type { Deal, Client, Broker, Dealer, DealStatus } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
-
-type ExpandedData = { deal: DealShow; refs: Referral[] };
 
 export default function DealsPage() {
   const [allDeals, setAllDeals] = useState<Deal[]>([]);
@@ -20,9 +18,6 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedData, setExpandedData] = useState<Record<string, ExpandedData>>({});
-  const [expandedLoading, setExpandedLoading] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([deals.list(), clients.list(), brokers.list(), dealers.list()])
@@ -53,30 +48,10 @@ export default function DealsPage() {
   async function handleStatusChange(deal: Deal, status: DealStatus) {
     const updated = await deals.updateStatus(deal.id, status);
     setAllDeals((prev) => {
-      if (updated.deal_status === "cancelled") {
-        return prev.filter((d) => d.id !== updated.id);
-      }
+      if (updated.deal_status === "cancelled") return prev.filter((d) => d.id !== updated.id);
       return prev.map((d) => (d.id === updated.id ? updated : d));
     });
   }
-
-  const toggleExpand = useCallback(async (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(id);
-    if (expandedData[id]) return;
-    setExpandedLoading(id);
-    try {
-      const [data, refs] = await Promise.all([deals.getShow(id), referrals.listByDeal(id)]);
-      setExpandedData((prev) => ({ ...prev, [id]: { deal: data, refs } }));
-    } catch {
-      setExpandedId(null);
-    } finally {
-      setExpandedLoading(null);
-    }
-  }, [expandedId, expandedData]);
 
   const filtered = allDeals.filter((d) => {
     if (!search) return true;
@@ -94,7 +69,6 @@ export default function DealsPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Deals</h1>
@@ -111,7 +85,6 @@ export default function DealsPage() {
         </button>
       </div>
 
-      {/* Search */}
       <div className="relative mb-5">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -135,70 +108,66 @@ export default function DealsPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-[#252628]">
                 <tr>
-                  <th className="w-6 px-4 py-3" />
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Client</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Deal #</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Vehicle</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Broker</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Dealer</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Revenue</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Net</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Date</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1e1f20]">
+              <tbody>
                 {filtered.map((d) => {
                   const client = clientMap[d.client_id];
-                  const isExpanded = expandedId === d.id;
-                  const isLoading = expandedLoading === d.id;
-                  const data = expandedData[d.id];
+                  const details: { label: string; value: string }[] = [];
+                  if (d.trim_level)      details.push({ label: "Trim", value: d.trim_level });
+                  if (d.vin)             details.push({ label: "VIN", value: d.vin });
+                  if (d.collect_amount != null) details.push({ label: "Collect", value: money(d.collect_amount)! });
+                  if (d.doc_fee != null) details.push({ label: "Doc Fee", value: money(d.doc_fee)! });
+                  if (d.broker_percent != null) details.push({ label: "Broker %", value: `${d.broker_percent}%` });
+                  if (d.broker_commission != null) details.push({ label: "Broker Commission", value: money(d.broker_commission)! });
+                  if (d.notes)           details.push({ label: "Notes", value: d.notes });
+
                   return (
                     <Fragment key={d.id}>
-                      <tr
-                        className={`transition-colors group cursor-pointer ${isExpanded ? "bg-blue-500/5" : "hover:bg-blue-500/5"}`}
-                        onClick={() => toggleExpand(d.id)}
-                      >
-                        <td className="px-4 py-3.5 text-slate-600">
-                          <svg
-                            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                            className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
-                          >
-                            <path d="m9 18 6-6-6-6" />
-                          </svg>
-                        </td>
-                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      {/* Primary row */}
+                      <tr className="hover:bg-blue-500/5 transition-colors border-t border-[#1e1f20] first:border-t-0">
+                        <td className="px-4 pt-3 pb-1">
                           {client ? (
-                            <Link
-                              href={`/clients/${d.client_id}`}
-                              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                            >
+                            <Link href={`/clients/${d.client_id}`} className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
                               {client.first_name} {client.last_name}
                             </Link>
                           ) : (
                             <span className="text-slate-600">Unknown</span>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-400">
+                        <td className="px-4 pt-3 pb-1 text-slate-400">
                           {d.deal_number ? `#${d.deal_number}` : "–"}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-300">
+                        <td className="px-4 pt-3 pb-1 text-slate-300">
                           {[d.make, d.model].filter(Boolean).join(" ") || "–"}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-400">
+                        <td className="px-4 pt-3 pb-1 text-slate-400">
                           {d.broker_id ? brokerMap[d.broker_id] ?? "–" : "–"}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-400">
+                        <td className="px-4 pt-3 pb-1 text-slate-400">
                           {d.dealer_id ? dealerMap[d.dealer_id] ?? "–" : "–"}
                         </td>
-                        <td className="px-4 py-3.5">
-                          {d.broker_fee != null ? (
-                            <span className="font-semibold text-green-400">{money(d.broker_fee)}</span>
-                          ) : (
-                            <span className="text-slate-600">–</span>
-                          )}
+                        <td className="px-4 pt-3 pb-1">
+                          {d.broker_fee != null
+                            ? <span className="font-semibold text-green-400">{money(d.broker_fee)}</span>
+                            : <span className="text-slate-600">–</span>}
                         </td>
-                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 pt-3 pb-1">
+                          {d.your_net != null
+                            ? <span className="font-semibold text-blue-400">{money(d.your_net)}</span>
+                            : <span className="text-slate-600">–</span>}
+                        </td>
+                        <td className="px-4 pt-3 pb-1">
                           <DealStatusSelect
                             value={d.deal_status}
                             days={d.pending_payment_days}
@@ -206,10 +175,10 @@ export default function DealsPage() {
                             onChange={(status) => handleStatusChange(d, status)}
                           />
                         </td>
-                        <td className="px-4 py-3.5 text-slate-600">
+                        <td className="px-4 pt-3 pb-1 text-slate-600">
                           {d.deal_date ? new Date(d.deal_date).toLocaleDateString() : "–"}
                         </td>
-                        <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 pt-3 pb-1 text-right">
                           <button
                             onClick={() => setModal({ open: true, deal: d })}
                             className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
@@ -219,62 +188,23 @@ export default function DealsPage() {
                         </td>
                       </tr>
 
-                      {isExpanded && (
-                        <tr className="bg-[#08080f]">
-                          <td colSpan={10} className="px-6 py-5">
-                            {isLoading || !data ? (
-                              <div className="text-center py-4 text-slate-600 text-sm">Loading…</div>
-                            ) : (
-                              <div className="space-y-4">
-                                {/* Financial grid */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-                                  <InfoCell label="Trim" value={data.deal.trim} />
-                                  <InfoCell label="VIN" value={data.deal.vin} />
-                                  <InfoCell label="Collect" value={money(data.deal.collect_amount)} />
-                                  <InfoCell label="Doc Fee" value={money(data.deal.doc_fee)} />
-                                  <InfoCell label="Referral Total" value={money(data.deal.referral_total)} />
-                                  <InfoCell label="Broker %" value={data.deal.broker_percent != null ? `${data.deal.broker_percent}%` : undefined} />
-                                  <InfoCell label="Broker Profit" value={money(data.deal.broker_profit)} />
-                                  <InfoCell label="Net" value={money(data.deal.company_net)} highlight />
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                  <InfoCell label="Payment Type" value={labelize(data.deal.broker_payment_type)} />
-                                  <InfoCell label="Check Status" value={data.deal.check_status} />
-                                  <InfoCell label="Broker Paid" value={data.deal.broker_paid_status} />
-                                  <InfoCell label="Notes" value={data.deal.notes} />
-                                </div>
-
-                                {/* Referrals */}
-                                {data.refs.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Referrals</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {data.refs.map((ref) => (
-                                        <div key={ref.id} className="flex items-center gap-3 bg-[#111213] border border-[#252628] rounded-lg px-3 py-2">
-                                          <div>
-                                            <p className="text-sm text-slate-200">{ref.first_name} {ref.last_name}</p>
-                                            {ref.phone && <p className="text-xs text-slate-600">{ref.phone}</p>}
-                                          </div>
-                                          {ref.amount != null && (
-                                            <span className="text-sm font-semibold text-slate-300">${Number(ref.amount).toLocaleString()}</span>
-                                          )}
-                                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                                            ref.status === "paid" ? "bg-green-500/10 border-green-500/25 text-green-400"
-                                            : ref.status === "pending" ? "bg-yellow-500/10 border-yellow-500/25 text-yellow-400"
-                                            : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500"
-                                          }`}>
-                                            {ref.status}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
+                      {/* Details row */}
+                      <tr className="hover:bg-blue-500/5 transition-colors">
+                        <td colSpan={10} className="px-4 pb-3 pt-0">
+                          {details.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {details.map(({ label, value }) => (
+                                <span key={label} className="inline-flex items-center gap-1 bg-[#111213] border border-[#252628] rounded-md px-2 py-0.5">
+                                  <span className="text-slate-600 text-xs">{label}:</span>
+                                  <span className="text-slate-300 text-xs font-medium">{value}</span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="h-1" />
+                          )}
+                        </td>
+                      </tr>
                     </Fragment>
                   );
                 })}
@@ -304,17 +234,4 @@ export default function DealsPage() {
 
 function money(value?: number) {
   return value != null ? `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : undefined;
-}
-
-function labelize(value?: string) {
-  return value ? value.replaceAll("_", " ") : undefined;
-}
-
-function InfoCell({ label, value, highlight }: { label: string; value?: string; highlight?: boolean }) {
-  return (
-    <div className="bg-[#0b0c0d] border border-[#1e1f20] rounded-lg px-3 py-2.5">
-      <p className="text-xs text-slate-600 uppercase tracking-wider">{label}</p>
-      <p className={`text-sm mt-0.5 font-medium ${highlight ? "text-green-400" : "text-slate-300"}`}>{value || "–"}</p>
-    </div>
-  );
 }
