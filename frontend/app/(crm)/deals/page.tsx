@@ -125,6 +125,7 @@ export default function DealsPage() {
               <thead className="border-b border-[#252628]">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Client</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Deal #</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Vehicle</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Broker</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Dealer</th>
@@ -151,11 +152,11 @@ export default function DealsPage() {
                           <span className="text-slate-600">Unknown</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <div className="text-slate-300">{[d.make, d.model].filter(Boolean).join(" ") || "–"}</div>
-                        {d.deal_number && (
-                          <div className="text-xs text-slate-600 mt-0.5">#{d.deal_number}</div>
-                        )}
+                      <td className="px-4 py-3.5 text-slate-400">
+                        {d.deal_number ? `#${d.deal_number}` : "–"}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-300">
+                        {[d.make, d.model].filter(Boolean).join(" ") || "–"}
                       </td>
                       <td className="px-4 py-3.5 text-slate-400">
                         {d.broker_id ? brokerMap[d.broker_id] ?? "–" : "–"}
