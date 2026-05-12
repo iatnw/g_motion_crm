@@ -224,8 +224,8 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 			ID:                    clientID,
 			FirstName:             firstName,
 			LastName:              lastName,
-			Phone:                 phone,
-			Email:                 email,
+			Phone:                 strPtr(phone),
+			Email:                 strPtr(email),
 			Source:                existing.Source,
 			Status:                existing.Status,
 			Notes:                 fromText(existing.Notes),
@@ -259,8 +259,8 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 		created, err = txClient.Create(ctx, CreateClientInput{
 			FirstName:             firstName,
 			LastName:              lastName,
-			Phone:                 phone,
-			Email:                 email,
+			Phone:                 strPtr(phone),
+			Email:                 strPtr(email),
 			Source:                db.NullClientsSource{ClientsSource: db.ClientsSourceOrganic, Valid: true},
 			Status:                db.ClientStatusActive,
 			DateOfBirth:           dob,
@@ -382,7 +382,7 @@ func markTallyEventProcessed(ctx context.Context, tx pgx.Tx, eventID, submission
 
 func findExistingClient(ctx context.Context, q *db.Queries, phone, email string) (db.Client, error) {
 	if phone != "" {
-		c, err := q.GetClientByPhone(ctx, phone)
+		c, err := q.GetClientByPhone(ctx, toText(strPtr(phone)))
 		if err == nil {
 			return c, nil
 		}

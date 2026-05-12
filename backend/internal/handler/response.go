@@ -16,8 +16,8 @@ type ClientResponse struct {
 	ID                    string   `json:"id"`
 	FirstName             string   `json:"first_name"`
 	LastName              string   `json:"last_name"`
-	Phone                 string   `json:"phone"`
-	Email                 string   `json:"email"`
+	Phone                 *string  `json:"phone"`
+	Email                 *string  `json:"email"`
 	Source                *string  `json:"source"`
 	Status                string   `json:"status"`
 	Notes                 *string  `json:"notes"`
@@ -51,8 +51,8 @@ func toClientResponse(c db.Client) ClientResponse {
 		ID:                    pgUUID(c.ID),
 		FirstName:             c.FirstName,
 		LastName:              c.LastName,
-		Phone:                 c.Phone,
-		Email:                 c.Email,
+		Phone:                 pgText(c.Phone),
+		Email:                 pgText(c.Email),
 		Status:                string(c.Status),
 		Notes:                 pgText(c.Notes),
 		CreatedAt:             pgTimestamp(c.CreatedAt),

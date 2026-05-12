@@ -50,8 +50,8 @@ INSERT INTO clients(
 type CreateClientParams struct {
 	FirstName             string               `json:"first_name"`
 	LastName              string               `json:"last_name"`
-	Phone                 string               `json:"phone"`
-	Email                 string               `json:"email"`
+	Phone                 pgtype.Text          `json:"phone"`
+	Email                 pgtype.Text          `json:"email"`
 	Source                NullClientsSource    `json:"source"`
 	Status                ClientStatus         `json:"status"`
 	Notes                 pgtype.Text          `json:"notes"`
@@ -242,7 +242,7 @@ WHERE phone = $1
 LIMIT 1
 `
 
-func (q *Queries) GetClientByPhone(ctx context.Context, phone string) (Client, error) {
+func (q *Queries) GetClientByPhone(ctx context.Context, phone pgtype.Text) (Client, error) {
 	row := q.db.QueryRow(ctx, getClientByPhone, phone)
 	var i Client
 	err := row.Scan(
@@ -384,8 +384,8 @@ type UpdateClientParams struct {
 	ID                    pgtype.UUID          `json:"id"`
 	FirstName             string               `json:"first_name"`
 	LastName              string               `json:"last_name"`
-	Phone                 string               `json:"phone"`
-	Email                 string               `json:"email"`
+	Phone                 pgtype.Text          `json:"phone"`
+	Email                 pgtype.Text          `json:"email"`
 	Source                NullClientsSource    `json:"source"`
 	Status                ClientStatus         `json:"status"`
 	Notes                 pgtype.Text          `json:"notes"`

@@ -25,8 +25,8 @@ func NewClient(q *db.Queries, encryptionKey []byte) *ClientService {
 type CreateClientInput struct {
 	FirstName             string
 	LastName              string
-	Phone                 string
-	Email                 string
+	Phone                 *string
+	Email                 *string
 	Source                db.NullClientsSource
 	Status                db.ClientStatus
 	Notes                 *string
@@ -65,8 +65,8 @@ func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Cl
 	client, err := s.q.CreateClient(ctx, db.CreateClientParams{
 		FirstName:             in.FirstName,
 		LastName:              in.LastName,
-		Phone:                 in.Phone,
-		Email:                 in.Email,
+		Phone:                 toText(in.Phone),
+		Email:                 toText(in.Email),
 		Source:                in.Source,
 		Status:                in.Status,
 		Notes:                 toText(in.Notes),
@@ -115,8 +115,8 @@ type UpdateClientInput struct {
 	ID                    uuid.UUID
 	FirstName             string
 	LastName              string
-	Phone                 string
-	Email                 string
+	Phone                 *string
+	Email                 *string
 	Source                db.NullClientsSource
 	Status                db.ClientStatus
 	Notes                 *string
@@ -156,8 +156,8 @@ func (s *ClientService) Update(ctx context.Context, in UpdateClientInput) (db.Cl
 		ID:                    toUUID(in.ID),
 		FirstName:             in.FirstName,
 		LastName:              in.LastName,
-		Phone:                 in.Phone,
-		Email:                 in.Email,
+		Phone:                 toText(in.Phone),
+		Email:                 toText(in.Email),
 		Source:                in.Source,
 		Status:                in.Status,
 		Notes:                 toText(in.Notes),

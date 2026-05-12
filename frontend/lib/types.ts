@@ -25,8 +25,8 @@ export interface Client {
   id: string;
   first_name: string;
   last_name: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
   status: ClientStatus;
   source?: ClientSource;
   notes?: string;

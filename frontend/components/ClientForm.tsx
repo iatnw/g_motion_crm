@@ -79,8 +79,8 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="First Name *" value={form.first_name} onChange={(v) => set("first_name", v)} required />
           <Field label="Last Name *" value={form.last_name} onChange={(v) => set("last_name", v)} required />
-          <Field label="Phone *" value={form.phone} onChange={(v) => set("phone", v)} required />
-          <Field label="Email *" type="email" value={form.email} onChange={(v) => set("email", v)} required />
+          <Field label="Phone" value={form.phone} onChange={(v) => set("phone", v)} />
+          <Field label="Email" type="email" value={form.email} onChange={(v) => set("email", v)} />
           <Field label="Date of Birth" type="date" value={form.date_of_birth} onChange={(v) => set("date_of_birth", v)} />
           <Field label="SSN" value={form.ssn} onChange={(v) => set("ssn", v)} placeholder="123456789" />
           <SelectField

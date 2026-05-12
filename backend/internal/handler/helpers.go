@@ -12,6 +12,13 @@ import (
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
+func nullableString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

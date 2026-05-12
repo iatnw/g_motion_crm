@@ -60,8 +60,8 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.FirstName == "" || req.LastName == "" || req.Phone == "" || req.Email == "" {
-		http.Error(w, "first_name, last_name, phone and email are required", http.StatusBadRequest)
+	if req.FirstName == "" || req.LastName == "" {
+		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
 		return
 	}
 
@@ -88,8 +88,8 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 	client, err := h.client.Create(r.Context(), service.CreateClientInput{
 		FirstName:             req.FirstName,
 		LastName:              req.LastName,
-		Phone:                 req.Phone,
-		Email:                 req.Email,
+		Phone:                 nullableString(req.Phone),
+		Email:                 nullableString(req.Email),
 		Status:                db.ClientStatus(req.Status),
 		Source:                source,
 		Notes:                 req.Notes,
@@ -179,8 +179,8 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.FirstName == "" || req.LastName == "" || req.Phone == "" || req.Email == "" {
-		http.Error(w, "first_name, last_name, phone and email are required", http.StatusBadRequest)
+	if req.FirstName == "" || req.LastName == "" {
+		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
 		return
 	}
 	if req.Status == "" {
@@ -208,8 +208,8 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 		ID:                    id,
 		FirstName:             req.FirstName,
 		LastName:              req.LastName,
-		Phone:                 req.Phone,
-		Email:                 req.Email,
+		Phone:                 nullableString(req.Phone),
+		Email:                 nullableString(req.Email),
 		Status:                db.ClientStatus(req.Status),
 		Source:                source,
 		Notes:                 req.Notes,

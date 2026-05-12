@@ -28,7 +28,7 @@ type Querier interface {
 	GetBrokerStats(ctx context.Context, id pgtype.UUID) (BrokerStat, error)
 	GetClient(ctx context.Context, id pgtype.UUID) (Client, error)
 	GetClientByEmail(ctx context.Context, dollar_1 string) (Client, error)
-	GetClientByPhone(ctx context.Context, phone string) (Client, error)
+	GetClientByPhone(ctx context.Context, phone pgtype.Text) (Client, error)
 	GetDashboardAging(ctx context.Context, arg GetDashboardAgingParams) (GetDashboardAgingRow, error)
 	GetDashboardTotals(ctx context.Context, arg GetDashboardTotalsParams) (GetDashboardTotalsRow, error)
 	GetDeal(ctx context.Context, id pgtype.UUID) (Deal, error)

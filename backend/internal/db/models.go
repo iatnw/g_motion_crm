@@ -439,8 +439,8 @@ type Client struct {
 	ID                    pgtype.UUID          `json:"id"`
 	FirstName             string               `json:"first_name"`
 	LastName              string               `json:"last_name"`
-	Phone                 string               `json:"phone"`
-	Email                 string               `json:"email"`
+	Phone                 pgtype.Text          `json:"phone"`
+	Email                 pgtype.Text          `json:"email"`
 	Source                NullClientsSource    `json:"source"`
 	Status                ClientStatus         `json:"status"`
 	Notes                 pgtype.Text          `json:"notes"`
