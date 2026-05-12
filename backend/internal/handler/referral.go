@@ -169,8 +169,19 @@ func (h *ReferralHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var dealID *uuid.UUID
+	if req.DealID != nil && *req.DealID != "" {
+		parsed, err := uuid.Parse(*req.DealID)
+		if err != nil {
+			http.Error(w, "invalid deal_id", http.StatusBadRequest)
+			return
+		}
+		dealID = &parsed
+	}
+
 	referral, err := h.referral.Update(r.Context(), service.UpdateReferralInput{
 		ID:        id,
+		DealID:    dealID,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Phone:     req.Phone,

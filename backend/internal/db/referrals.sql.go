@@ -220,12 +220,12 @@ func (q *Queries) ListReferralsByDeal(ctx context.Context, dealID pgtype.UUID) (
 
 const updateReferral = `-- name: UpdateReferral :one
 UPDATE referrals
-SET 
-    first_name = $2,
-    last_name  = $3,
-    phone      = $4,
-    amount     = $5,
-    status     = $6,
+SET
+    deal_id    = $2,
+    first_name = $3,
+    last_name  = $4,
+    phone      = $5,
+    amount     = $6,
     notes      = $7,
     updated_at = NOW()
 WHERE id = $1
@@ -234,22 +234,22 @@ RETURNING id, deal_id, first_name, last_name, phone, amount, status, paid_date, 
 
 type UpdateReferralParams struct {
 	ID        pgtype.UUID    `json:"id"`
+	DealID    pgtype.UUID    `json:"deal_id"`
 	FirstName string         `json:"first_name"`
 	LastName  string         `json:"last_name"`
 	Phone     pgtype.Text    `json:"phone"`
 	Amount    pgtype.Numeric `json:"amount"`
-	Status    ReferralStatus `json:"status"`
 	Notes     pgtype.Text    `json:"notes"`
 }
 
 func (q *Queries) UpdateReferral(ctx context.Context, arg UpdateReferralParams) (Referral, error) {
 	row := q.db.QueryRow(ctx, updateReferral,
 		arg.ID,
+		arg.DealID,
 		arg.FirstName,
 		arg.LastName,
 		arg.Phone,
 		arg.Amount,
-		arg.Status,
 		arg.Notes,
 	)
 	var i Referral

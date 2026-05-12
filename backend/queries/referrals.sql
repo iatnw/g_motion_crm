@@ -23,12 +23,12 @@ ORDER BY created_at DESC;
 
 -- name: UpdateReferral :one
 UPDATE referrals
-SET 
-    first_name = $2,
-    last_name  = $3,
-    phone      = $4,
-    amount     = $5,
-    status     = $6,
+SET
+    deal_id    = $2,
+    first_name = $3,
+    last_name  = $4,
+    phone      = $5,
+    amount     = $6,
     notes      = $7,
     updated_at = NOW()
 WHERE id = $1

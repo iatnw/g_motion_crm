@@ -49,6 +49,7 @@ func (s *ReferralService) ListAll(ctx context.Context) ([]db.ListAllReferralsRow
 
 type UpdateReferralInput struct {
 	ID        uuid.UUID
+	DealID    *uuid.UUID
 	FirstName string
 	LastName  string
 	Phone     *string
@@ -59,6 +60,7 @@ type UpdateReferralInput struct {
 func (s *ReferralService) Update(ctx context.Context, in UpdateReferralInput) (db.Referral, error) {
 	return s.q.UpdateReferral(ctx, db.UpdateReferralParams{
 		ID:        toUUID(in.ID),
+		DealID:    toNullUUID(in.DealID),
 		FirstName: in.FirstName,
 		LastName:  in.LastName,
 		Phone:     toText(in.Phone),
