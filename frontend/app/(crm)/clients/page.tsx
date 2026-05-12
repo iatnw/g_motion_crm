@@ -29,8 +29,8 @@ export default function ClientsPage() {
       !q ||
       c.first_name.toLowerCase().includes(q) ||
       c.last_name.toLowerCase().includes(q) ||
-      c.phone.includes(q) ||
-      c.email.toLowerCase().includes(q);
+      c.phone?.includes(q) ||
+      c.email?.toLowerCase().includes(q);
     return matchSearch;
   });
 

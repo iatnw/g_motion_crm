@@ -130,7 +130,7 @@ export default function ClientDetailPage() {
           <h1 className="text-xl font-semibold text-white mt-1">
             {client.first_name} {client.last_name}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">{client.email} · {client.phone}</p>
+          <p className="text-slate-500 text-sm mt-0.5">{[client.email, client.phone].filter(Boolean).join(" · ") || ""}</p>
         </div>
         <div className="flex gap-2">
           <button

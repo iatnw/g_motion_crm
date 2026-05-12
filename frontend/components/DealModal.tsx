@@ -194,7 +194,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   <option value="">Select a client…</option>
                   {clients!.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.first_name} {c.last_name} — {c.phone}
+                      {c.first_name} {c.last_name}{c.phone ? ` — ${c.phone}` : ""}
                     </option>
                   ))}
                 </DarkSelect>
