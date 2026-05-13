@@ -71,7 +71,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	backupStorage, err := storage.NewBackupStorage(cfg.AWS)
+	if err != nil {
+		slog.Error("failed to init backup storage", "error", err)
+		os.Exit(1)
+	}
+
 	authService := service.NewAuth(queries, cfg.Auth)
+	backupService := service.NewBackup(backupStorage, cfg.Database.DatabaseURL)
 	brokerService := service.NewBroker(queries)
 	dealService := service.NewDeal(queries, pool)
 	clientService := service.NewClient(queries, encryptionKey)
@@ -218,6 +225,11 @@ func main() {
 	addr := fmt.Sprintf(":%s", cfg.App.Port)
 	server := &http.Server{Addr: addr, Handler: r}
 
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
+	backupService.StartScheduler(appCtx)
+
 	go func() {
 		slog.Info("server starting", "addr", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -230,10 +242,11 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
+	appCancel()
 	slog.Info("shutting down, draining in-flight requests")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
 	}
 	slog.Info("server stopped")
