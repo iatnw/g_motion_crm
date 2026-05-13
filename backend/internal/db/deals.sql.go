@@ -42,7 +42,7 @@ INSERT INTO deals (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     $16, $17, $18, $19, $20, $21,
-    CASE WHEN $21::deal_status = 'pending' THEN CURRENT_DATE ELSE NULL END,
+    CASE WHEN $21::deal_status = 'pending' THEN COALESCE($4::date, CURRENT_DATE) ELSE NULL END,
     $22, $23, $24, $25
 ) RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
