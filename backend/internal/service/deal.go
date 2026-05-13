@@ -80,7 +80,7 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		in.DealDate = &now
 	}
 
-	if err := normalizeBrokerCommission(in.BrokerFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
+	if err := normalizeBrokerCommission(in.BrokerFee, in.DocFee, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
 		return db.Deal{}, err
 	}
 
@@ -174,7 +174,7 @@ type UpdateDealInput struct {
 }
 
 func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, error) {
-	if err := normalizeBrokerCommission(in.BrokerFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
+	if err := normalizeBrokerCommission(in.BrokerFee, in.DocFee, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
 		return db.Deal{}, err
 	}
 
@@ -232,17 +232,17 @@ func (s *DealService) MarkPaymentReminderEmailSent(ctx context.Context, id uuid.
 	return s.q.MarkDealPaymentReminderEmailSent(ctx, toUUID(id))
 }
 
-func normalizeBrokerCommission(brokerFee *float64, collectAmount *float64, brokerPercent **float64, brokerCommission **float64, yourNet **float64) error {
+func normalizeBrokerCommission(brokerFee *float64, docFee *float64, brokerPercent **float64, brokerCommission **float64, yourNet **float64) error {
 	fee := 0.0
 	if brokerFee != nil {
 		fee = *brokerFee
 	}
-	collect := 0.0
-	if collectAmount != nil {
-		collect = *collectAmount
+	doc := 0.0
+	if docFee != nil {
+		doc = *docFee
 	}
 
-	base := fee + collect
+	base := fee - doc
 
 	hasPercent := brokerPercent != nil && *brokerPercent != nil
 	hasCommission := brokerCommission != nil && *brokerCommission != nil
