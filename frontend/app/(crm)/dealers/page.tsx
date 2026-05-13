@@ -108,49 +108,35 @@ export default function DealersPage() {
 
       {loading ? (
         <div className="text-center py-12 text-slate-600 text-sm">Loading…</div>
+      ) : list.length === 0 ? (
+        <div className="text-center py-12 text-slate-600 text-sm">No dealers yet</div>
       ) : (
-        <div className="bg-[#0b0c0d] rounded-xl border border-[#252628] overflow-hidden">
-          {list.length === 0 ? (
-            <div className="text-center py-12 text-slate-600 text-sm">No dealers yet</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-[#252628]">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Phone</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Address</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1e1f20]">
-                {list.map((d) => (
-                  <tr key={d.id} className="hover:bg-blue-500/5 transition-colors group">
-                    <td className="px-4 py-3.5 font-medium text-slate-200">{d.name}</td>
-                    <td className="px-4 py-3.5 text-slate-400">{d.contact_person ?? "–"}</td>
-                    <td className="px-4 py-3.5 text-slate-400">{d.phone ?? "–"}</td>
-                    <td className="px-4 py-3.5 text-slate-400 truncate max-w-xs">{d.address ?? "–"}</td>
-                    <td className="px-4 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => openEdit(d)}
-                          className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(d)}
-                          className="text-slate-600 hover:text-red-400 text-sm font-medium transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="space-y-4">
+          {groupByBrand(list).map(({ brand, dealers }) => (
+            <div key={brand} className="bg-[#0b0c0d] rounded-xl border border-[#252628] overflow-hidden">
+              <div className="px-4 py-2 bg-[#111213] border-b border-[#252628]">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{brand}</span>
+              </div>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-[#1e1f20]">
+                  {dealers.map((d) => (
+                    <tr key={d.id} className="hover:bg-blue-500/5 transition-colors">
+                      <td className="px-4 py-3.5 font-medium text-slate-200">{d.name}</td>
+                      <td className="px-4 py-3.5 text-slate-400">{d.contact_person ?? "–"}</td>
+                      <td className="px-4 py-3.5 text-slate-400">{d.phone ?? "–"}</td>
+                      <td className="px-4 py-3.5 text-slate-400 truncate max-w-xs">{d.address ?? "–"}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <button onClick={() => openEdit(d)} className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors">Edit</button>
+                          <button onClick={() => handleDelete(d)} className="text-slate-600 hover:text-red-400 text-sm font-medium transition-colors">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       )}
 
@@ -201,6 +187,23 @@ export default function DealersPage() {
       )}
     </div>
   );
+}
+
+function extractBrand(name: string): string {
+  return name.trim().split(/\s+/)[0].toUpperCase();
+}
+
+function groupByBrand(dealers: Dealer[]): { brand: string; dealers: Dealer[] }[] {
+  const map = new Map<string, Dealer[]>();
+  const sorted = [...dealers].sort((a, b) => a.name.localeCompare(b.name));
+  for (const d of sorted) {
+    const brand = extractBrand(d.name);
+    if (!map.has(brand)) map.set(brand, []);
+    map.get(brand)!.push(d);
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([brand, dealers]) => ({ brand, dealers }));
 }
 
 function FormField({
