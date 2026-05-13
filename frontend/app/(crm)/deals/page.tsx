@@ -249,7 +249,6 @@ export default function DealsPage() {
                       </select>
                     </div>
                   </div>
-                  <StatCell label="Notes" value={d.notes} />
                   {dealReferrals.map((ref) => (
                     <div key={ref.id} className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
                       <span className="text-xs text-slate-600 uppercase tracking-wider">
