@@ -139,6 +139,10 @@ export const deals = {
   nextNumber: () => request<{ deal_number: string }>("/deals/next-number").then((r) => r.deal_number),
   list: () => fetchAll<import("./types").Deal>("/deals"),
   listByClient: (clientId: string) => fetchAll<import("./types").Deal>("/deals", { client_id: clientId }),
+  listByBrokerPaged: (brokerId: string, limit: number, offset: number) => {
+    const qs = new URLSearchParams({ broker_id: brokerId, limit: String(limit), offset: String(offset) });
+    return request<PaginatedResponse<import("./types").Deal>>(`/deals?${qs}`);
+  },
   get: (id: string) => request<import("./types").Deal>(`/deals/${id}`),
   getShow: (id: string) => request<import("./types").DealShow>(`/deals/${id}/show`),
   create: (data: object) =>

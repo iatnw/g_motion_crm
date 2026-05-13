@@ -146,6 +146,14 @@ func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID, limit, off
 	})
 }
 
+func (s *DealService) ListByBroker(ctx context.Context, id uuid.UUID, limit, offset int32) ([]db.Deal, error) {
+	return s.q.ListDealsByBroker(ctx, db.ListDealsByBrokerParams{
+		BrokerID: toNullUUID(&id),
+		Limit:    limit,
+		Offset:   offset,
+	})
+}
+
 type UpdateDealInput struct {
 	ID                     uuid.UUID
 	ClientID               uuid.UUID

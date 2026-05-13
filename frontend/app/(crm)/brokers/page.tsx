@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { brokers as brokersApi } from "@/lib/api";
 import type { Broker } from "@/lib/types";
 
@@ -122,7 +123,11 @@ export default function BrokersPage() {
               <tbody className="divide-y divide-[#1e1f20]">
                 {list.map((b) => (
                   <tr key={b.id} className="hover:bg-blue-500/5 transition-colors group">
-                    <td className="px-4 py-3.5 font-medium text-slate-200">{b.first_name} {b.last_name}</td>
+                    <td className="px-4 py-3.5 font-medium">
+                      <Link href={`/brokers/${b.id}`} className="text-slate-200 hover:text-blue-400 transition-colors">
+                        {b.first_name} {b.last_name}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3.5 text-slate-400">{b.phone ?? "–"}</td>
                     <td className="px-4 py-3.5 text-slate-400">{b.email ?? "–"}</td>
                     <td className="px-4 py-3.5 text-right">

@@ -321,6 +321,28 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if brokerIDStr := r.URL.Query().Get("broker_id"); brokerIDStr != "" {
+		brokerID, err := uuid.Parse(brokerIDStr)
+		if err != nil {
+			http.Error(w, "invalid broker id", http.StatusBadRequest)
+			return
+		}
+		deals, err := h.deal.ListByBroker(r.Context(), brokerID, limit+1, offset)
+		if err != nil {
+			slog.Error("list deals by broker", "broker_id", brokerID, "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		deals, hasMore := paginate(deals, limit)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"data":     toDealResponses(deals),
+			"limit":    limit,
+			"offset":   offset,
+			"has_more": hasMore,
+		})
+		return
+	}
+
 	deals, err := h.deal.List(r.Context(), limit+1, offset)
 	if err != nil {
 		slog.Error("list deals", "error", err)
