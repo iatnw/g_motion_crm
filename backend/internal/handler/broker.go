@@ -35,8 +35,8 @@ func (h *BrokerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.FirstName == "" || req.LastName == "" {
-		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
+	if req.FirstName == "" {
+		http.Error(w, "first_name is required", http.StatusBadRequest)
 		return
 	}
 
@@ -148,8 +148,8 @@ func (h *BrokerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.FirstName == "" || req.LastName == "" {
-		http.Error(w, "first_name and last_name are required", http.StatusBadRequest)
+	if req.FirstName == "" {
+		http.Error(w, "first_name is required", http.StatusBadRequest)
 		return
 	}
 
