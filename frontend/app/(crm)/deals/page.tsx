@@ -221,7 +221,7 @@ export default function DealsPage() {
                   </div>
                 </div>
 
-                {/* Stats bar — each cell grows equally to fill the full row */}
+                {/* Stats bar */}
                 <div className="flex divide-x divide-[#1e1f20] border-t border-[#1e1f20]">
                   <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
                   <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
@@ -230,32 +230,6 @@ export default function DealsPage() {
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
                   <StatCell label="Broker %" value={d.broker_percent != null ? `${d.broker_percent}%` : undefined} />
-                  {dealReferrals.map((ref) => (
-                    <div key={ref.id} className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
-                      <span className="text-xs text-slate-600 uppercase tracking-wider">
-                        Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-300 truncate">
-                          {[ref.first_name, ref.last_name].filter(Boolean).join(" ")}
-                        </span>
-                        <select
-                          value={ref.status}
-                          onChange={(e) => handleReferralStatus(ref, e.target.value as ReferralStatus)}
-                          onClick={(e) => e.stopPropagation()}
-                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
-                            ref.status === "paid"
-                              ? "bg-green-500/10 border-green-500/25 text-green-400"
-                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                          }`}
-                          style={{ backgroundColor: "transparent" }}
-                        >
-                          <option value="none">NOT PAID</option>
-                          <option value="paid">PAID</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
                   <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
                     <div className="flex items-center gap-2">
@@ -277,6 +251,37 @@ export default function DealsPage() {
                     </div>
                   </div>
                 </div>
+                {/* Referrals row — separate so it doesn't affect stats layout */}
+                {dealReferrals.length > 0 && (
+                  <div className="flex divide-x divide-[#1e1f20] border-t border-[#1e1f20]">
+                    {dealReferrals.map((ref) => (
+                      <div key={ref.id} className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+                        <span className="text-xs text-slate-600 uppercase tracking-wider">
+                          Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-slate-300 truncate">
+                            {[ref.first_name, ref.last_name].filter(Boolean).join(" ")}
+                          </span>
+                          <select
+                            value={ref.status}
+                            onChange={(e) => handleReferralStatus(ref, e.target.value as ReferralStatus)}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
+                              ref.status === "paid"
+                                ? "bg-green-500/10 border-green-500/25 text-green-400"
+                                : "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                            }`}
+                            style={{ backgroundColor: "transparent" }}
+                          >
+                            <option value="none">NOT PAID</option>
+                            <option value="paid">PAID</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
