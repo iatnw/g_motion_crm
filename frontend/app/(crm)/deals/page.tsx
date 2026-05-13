@@ -99,13 +99,15 @@ export default function DealsPage() {
     if (!search) return true;
     const q = search.toLowerCase();
     const client = clientMap[d.client_id];
+    const broker = d.broker_id ? brokerMap[d.broker_id] : "";
     return (
       d.make?.toLowerCase().includes(q) ||
       d.model?.toLowerCase().includes(q) ||
       d.vin?.toLowerCase().includes(q) ||
       d.deal_number?.toLowerCase().includes(q) ||
       client?.first_name.toLowerCase().includes(q) ||
-      client?.last_name.toLowerCase().includes(q)
+      client?.last_name.toLowerCase().includes(q) ||
+      broker?.toLowerCase().includes(q)
     );
   });
 
@@ -151,7 +153,7 @@ export default function DealsPage() {
           </svg>
           <input
             type="text"
-            placeholder="Search by client, car, VIN, deal #…"
+            placeholder="Search by client, broker, car, VIN, deal #…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
