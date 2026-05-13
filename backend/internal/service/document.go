@@ -86,7 +86,7 @@ func (s *DocumentService) UploadFromURL(
 		return db.Document{}, fmt.Errorf("only Tally URLs are supported")
 	}
 
-	client := http.Client{Timeout: 30 * time.Second}
+	client := http.Client{Timeout: 90 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
 	if err != nil {
 		return db.Document{}, fmt.Errorf("create request: %w", err)
@@ -101,7 +101,7 @@ func (s *DocumentService) UploadFromURL(
 		return db.Document{}, fmt.Errorf("download file: unexpected status %d", resp.StatusCode)
 	}
 
-	const maxDownloadSize = 20 * 1024 * 1024 // 20 MB
+	const maxDownloadSize = 50 * 1024 * 1024 // 50 MB
 
 	// Read maxDownloadSize+1 bytes so we can detect bodies that exceed the limit,
 	// including cases where Content-Length is missing or misreported.
