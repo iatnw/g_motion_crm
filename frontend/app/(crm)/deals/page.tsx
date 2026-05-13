@@ -225,33 +225,31 @@ export default function DealsPage() {
                   <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
                   <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
                   <StatCell label="Revenue" value={money(d.broker_fee)} highlight="green" />
-                  <StatCell label="Net" value={base > 0 ? money(computedNet) : undefined} highlight="blue" />
+                  <StatCell label="Net" value={money(computedNet)} highlight="blue" />
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
-                  {d.broker_percent != null && <StatCell label="Broker %" value={`${d.broker_percent}%`} />}
-                  {d.broker_commission != null && (
-                    <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
-                      <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-300">{money(d.broker_commission)}</span>
-                        <select
-                          value={d.broker_commission_status ?? "pending"}
-                          onChange={(e) => handleCommissionMethod(d, e.target.value as "paid" | "pending")}
-                          onClick={(e) => e.stopPropagation()}
-                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
-                            d.broker_commission_status === "paid"
-                              ? "bg-green-500/10 border-green-500/25 text-green-400"
-                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                          }`}
-                          style={{ backgroundColor: "transparent" }}
-                        >
-                          <option value="pending">NOT PAID</option>
-                          <option value="paid">PAID</option>
-                        </select>
-                      </div>
+                  <StatCell label="Broker %" value={d.broker_percent != null ? `${d.broker_percent}%` : undefined} />
+                  <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+                    <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-300">{money(d.broker_commission) ?? "—"}</span>
+                      <select
+                        value={d.broker_commission_status ?? "pending"}
+                        onChange={(e) => handleCommissionMethod(d, e.target.value as "paid" | "pending")}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
+                          d.broker_commission_status === "paid"
+                            ? "bg-green-500/10 border-green-500/25 text-green-400"
+                            : "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                        }`}
+                        style={{ backgroundColor: "transparent" }}
+                      >
+                        <option value="pending">NOT PAID</option>
+                        <option value="paid">PAID</option>
+                      </select>
                     </div>
-                  )}
-                  {d.notes && <StatCell label="Notes" value={d.notes} />}
+                  </div>
+                  <StatCell label="Notes" value={d.notes} />
                   {dealReferrals.map((ref) => (
                     <div key={ref.id} className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
                       <span className="text-xs text-slate-600 uppercase tracking-wider">
@@ -309,14 +307,13 @@ function money(value?: number) {
 
 
 function StatCell({ label, value, highlight }: { label: string; value?: string; highlight?: "green" | "blue" }) {
-  if (!value) return null;
   const valCls = highlight === "green" ? "text-green-400 font-bold text-base"
     : highlight === "blue" ? "text-blue-400 font-bold text-base"
     : "text-slate-300 text-sm";
   return (
     <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
       <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">{label}</span>
-      <span className={valCls + " truncate"}>{value}</span>
+      <span className={value ? valCls + " truncate" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
     </div>
   );
 }
