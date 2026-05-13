@@ -21,19 +21,18 @@ export default function DealStatusSelect({ value = "pending", disabled, days, bu
   const suffix = value === "pending" && days != null ? ` · ${days}d ${bucket ?? ""}` : "";
 
   return (
-    <label className="relative inline-flex items-center">
+    <label>
       <span className="sr-only">Deal status</span>
       <select
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as DealStatus)}
-        className={`appearance-none cursor-pointer rounded-md border px-2 py-1 pr-6 text-xs font-medium outline-none transition-colors disabled:cursor-wait disabled:opacity-60 ${color}`}
+        className={`appearance-none cursor-pointer rounded-md border px-2 py-1 text-xs font-medium outline-none transition-colors disabled:cursor-wait disabled:opacity-60 ${color}`}
       >
         <option value="pending">pending{suffix}</option>
         <option value="paid">paid</option>
         <option value="cancelled">cancelled</option>
       </select>
-      <span className="pointer-events-none absolute right-2 text-current text-[10px]">⌄</span>
     </label>
   );
 }
