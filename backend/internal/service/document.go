@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,12 +21,13 @@ import (
 )
 
 type DocumentService struct {
-	q  *db.Queries
-	s3 *storage.S3Client
+	q             *db.Queries
+	s3            *storage.S3Client
+	encryptionKey []byte
 }
 
-func NewDocument(q *db.Queries, s3 *storage.S3Client) *DocumentService {
-	return &DocumentService{q: q, s3: s3}
+func NewDocument(q *db.Queries, s3 *storage.S3Client, encryptionKey []byte) *DocumentService {
+	return &DocumentService{q: q, s3: s3, encryptionKey: encryptionKey}
 }
 
 // Upload saves a file from an io.Reader to S3 and records it in the DB.
@@ -39,7 +41,8 @@ func (s *DocumentService) Upload(
 	dealID uuid.NullUUID,
 	docType db.DocumentType,
 ) (db.Document, error) {
-	key := buildKey(clientID, dealID, filename)
+	folder, label := s.resolveLabel(ctx, clientID, dealID)
+	key := buildKey(folder, label, filename)
 
 	if err := s.s3.Upload(ctx, key, r, size, contentType); err != nil {
 		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
@@ -114,7 +117,8 @@ func (s *DocumentService) UploadFromURL(
 		return db.Document{}, fmt.Errorf("file too large: body exceeds %d bytes", maxDownloadSize)
 	}
 
-	key := buildKey(clientID, dealID, filename)
+	folder, label := s.resolveLabel(ctx, clientID, dealID)
+	key := buildKey(folder, label, filename)
 	if err := s.s3.Upload(ctx, key, bytes.NewReader(buf), int64(len(buf)), resp.Header.Get("Content-Type")); err != nil {
 		return db.Document{}, fmt.Errorf("s3 upload: %w", err)
 	}
@@ -148,7 +152,8 @@ func (s *DocumentService) PresignUpload(
 	clientID uuid.NullUUID,
 	dealID uuid.NullUUID,
 ) (uploadURL string, s3Key string, err error) {
-	key := buildKey(clientID, dealID, filename)
+	folder, label := s.resolveLabel(ctx, clientID, dealID)
+	key := buildKey(folder, label, filename)
 	uploadURL, err = s.s3.PresignedUploadURL(ctx, key, contentType, 15*time.Minute)
 	return uploadURL, key, err
 }
@@ -202,20 +207,49 @@ func (s *DocumentService) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-func buildKey(clientID uuid.NullUUID, dealID uuid.NullUUID, filename string) string {
-	ext := filepath.Ext(filename)
-	base := strings.TrimSuffix(filename, ext)
-	ts := time.Now().Unix()
-	unique := uuid.New().String()[:8]
-	name := fmt.Sprintf("%s_%d_%s%s", base, ts, unique, ext)
-
+// resolveLabel returns an S3 folder and human-readable label for the upload.
+// For deals it uses the deal number; for clients it decrypts the name.
+func (s *DocumentService) resolveLabel(ctx context.Context, clientID, dealID uuid.NullUUID) (folder, label string) {
 	if dealID.Valid {
-		return fmt.Sprintf("deals/%s/%s", dealID.UUID, name)
+		deal, err := s.q.GetDeal(ctx, toUUID(dealID.UUID))
+		if err == nil && deal.DealNumber.Valid {
+			return "deals", sanitizeName(deal.DealNumber.String)
+		}
+		return "deals", dealID.UUID.String()[:8]
 	}
 	if clientID.Valid {
-		return fmt.Sprintf("clients/%s/%s", clientID.UUID, name)
+		client, err := s.q.GetClient(ctx, toUUID(clientID.UUID))
+		if err == nil {
+			first, _ := decrypt(s.encryptionKey, client.FirstName)
+			last, _ := decrypt(s.encryptionKey, client.LastName)
+			name := strings.TrimSpace(first + "-" + last)
+			if name != "-" {
+				return "clients", sanitizeName(name)
+			}
+		}
+		return "clients", clientID.UUID.String()[:8]
 	}
-	return fmt.Sprintf("documents/%s", name)
+	return "documents", "misc"
+}
+
+func buildKey(folder, label, filename string) string {
+	ext := filepath.Ext(filename)
+	base := sanitizeName(strings.TrimSuffix(filepath.Base(filename), ext))
+	date := time.Now().UTC().Format("2006-01-02")
+	unique := uuid.New().String()[:6]
+	return fmt.Sprintf("%s/%s/%s_%s_%s%s", folder, label, date, base, unique, ext)
+}
+
+var reSanitize = regexp.MustCompile(`[^a-z0-9]+`)
+
+func sanitizeName(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = reSanitize.ReplaceAllString(s, "-")
+	s = strings.Trim(s, "-")
+	if len(s) > 60 {
+		s = s[:60]
+	}
+	return s
 }
 
 func nullUUIDToPg(id uuid.NullUUID) pgtype.UUID {

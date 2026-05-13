@@ -83,7 +83,7 @@ func main() {
 	dealService := service.NewDeal(queries, pool)
 	clientService := service.NewClient(queries, encryptionKey)
 	dealerService := service.NewDealer(queries)
-	documentService := service.NewDocument(queries, s3Client)
+	documentService := service.NewDocument(queries, s3Client, encryptionKey)
 	dashboardService := service.NewDashboard(queries)
 	tallyService := service.NewTally(clientService, documentService, dealService, queries, pool)
 	referralService := service.NewReferral(queries)
