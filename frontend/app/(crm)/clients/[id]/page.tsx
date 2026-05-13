@@ -9,6 +9,7 @@ import DealModal from "@/components/DealModal";
 import DocumentsTab from "@/components/DocumentsTab";
 import ClientForm from "@/components/ClientForm";
 import DealStatusSelect from "@/components/DealStatusSelect";
+import { fmtDate } from "@/lib/utils";
 
 type Tab = "profile" | "documents" | "deals";
 
@@ -329,7 +330,7 @@ function DealsTab({
               </p>
               <p className="text-slate-600 text-xs mt-0.5">
                 {deal.deal_number && `#${deal.deal_number} · `}
-                {deal.deal_date && new Date(deal.deal_date).toLocaleDateString()}
+                {fmtDate(deal.deal_date)}
                 {deal.vin && ` · VIN: ${deal.vin}`}
               </p>
             </div>
@@ -436,7 +437,7 @@ function StatusButton({
       <span>{paid ? "✓" : "○"}</span>
       <span>{label}{amount ? ` $${amount}` : ""}</span>
       {paid && paidDate && (
-        <span className="text-green-600 opacity-80">{new Date(paidDate).toLocaleDateString()}</span>
+        <span className="text-green-600 opacity-80">{fmtDate(paidDate)}</span>
       )}
     </button>
   );

@@ -6,6 +6,7 @@ import { deals, clients, brokers, dealers, referrals as referralsApi } from "@/l
 import type { Deal, Client, Broker, Dealer, DealStatus, Referral, ReferralStatus } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
+import { fmtDate } from "@/lib/utils";
 
 type FilterTab = "all" | "pending" | "paid";
 
@@ -210,7 +211,7 @@ export default function DealsPage() {
                   <div className="flex items-center gap-4 flex-shrink-0 ml-4">
                     {d.deal_date && (
                       <span className="text-slate-600 text-xs hidden sm:inline">
-                        {new Date(d.deal_date).toLocaleDateString()}
+                        {fmtDate(d.deal_date)}
                       </span>
                     )}
                     <DealStatusSelect

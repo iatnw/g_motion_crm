@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { referrals as referralsApi, deals as dealsApi } from "@/lib/api";
 import type { Referral, Deal, ReferralStatus } from "@/lib/types";
+import { fmtDate } from "@/lib/utils";
 
 interface ReferralForm {
   deal_id: string;
@@ -177,7 +178,7 @@ export default function ReferralsPage() {
                     </select>
                   </td>
                   <td className="px-4 py-3 text-slate-500">
-                    {ref.paid_date ? new Date(ref.paid_date).toLocaleDateString() : "—"}
+                    {ref.paid_date ? fmtDate(ref.paid_date) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

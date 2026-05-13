@@ -83,7 +83,7 @@ WHERE d.id = $1;
 -- name: ListDeals :many
 SELECT deals.* FROM deals
 WHERE deals.deal_status IN ('pending', 'paid')
-ORDER BY deals.created_at DESC
+ORDER BY COALESCE(deals.deal_date, deals.created_at::date) DESC, deals.created_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: UpdateDeal :one
