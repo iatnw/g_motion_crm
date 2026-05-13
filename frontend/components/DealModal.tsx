@@ -71,24 +71,6 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function toggleStatus(field: "broker_fee_status" | "broker_commission_status") {
-    if (!currentDeal) return;
-    try {
-      let updated: Deal;
-      if (field === "broker_fee_status") {
-        const next = currentDeal.broker_fee_status === "paid" ? "pending" : "paid";
-        updated = await dealsApi.updateBrokerFeeStatus(currentDeal.id, next);
-      } else {
-        const next = currentDeal.broker_commission_status === "paid" ? "pending" : "paid";
-        updated = await dealsApi.updateBrokerCommissionStatus(currentDeal.id, next);
-      }
-      setCurrentDeal(updated);
-      onStatusChange?.(updated);
-    } catch {
-      setError("Failed to update status");
-    }
-  }
-
   async function toggleReferralStatus(ref: Referral) {
     const next = ref.status === "paid" ? "pending" : "paid";
     try {
@@ -355,33 +337,6 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             </div>
           </section>
 
-          {/* Payment statuses — only when editing */}
-          {currentDeal && (
-            <section>
-              <SectionLabel>Payment Status</SectionLabel>
-              <div className="flex gap-3 flex-wrap">
-                <StatusButton
-                  label="Broker Fee"
-                  amount={currentDeal.broker_fee}
-                  status={currentDeal.broker_fee_status}
-                  paidDate={currentDeal.broker_fee_paid_date}
-                  onClick={() => toggleStatus("broker_fee_status")}
-                />
-                <StatusButton
-                  label="Commission"
-                  amount={currentDeal.broker_commission}
-                  status={currentDeal.broker_commission_status}
-                  paidDate={currentDeal.broker_commission_paid_date}
-                  onClick={() => toggleStatus("broker_commission_status")}
-                />
-              </div>
-              {currentDeal.pending_payment_days != null && (
-                <p className="text-xs text-slate-500 mt-3">
-                  Pending {currentDeal.pending_payment_days} days · {currentDeal.pending_payment_bucket}
-                </p>
-              )}
-            </section>
-          )}
 
           {/* Referrals */}
           <section>
@@ -605,37 +560,3 @@ function commissionBase(brokerFee: string, collectAmount: string) {
   return (isNaN(fee) ? 0 : fee) + (isNaN(collect) ? 0 : collect);
 }
 
-function StatusButton({
-  label,
-  amount,
-  status,
-  paidDate,
-  onClick,
-}: {
-  label: string;
-  amount?: number;
-  status?: string;
-  paidDate?: string;
-  onClick: () => void;
-}) {
-  const paid = status === "paid";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-        paid
-          ? "bg-green-500/10 border-green-500/25 text-green-400 hover:bg-green-500/15 glow-green-sm"
-          : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500 hover:text-slate-300 hover:border-slate-600"
-      }`}
-    >
-      <span>{paid ? "✓" : "○"}</span>
-      <span>{label}{amount ? ` $${amount}` : ""}</span>
-      {paid && paidDate && (
-        <span className="text-green-600 opacity-80">
-          {new Date(paidDate).toLocaleDateString()}
-        </span>
-      )}
-    </button>
-  );
-}
