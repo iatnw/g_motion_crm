@@ -36,7 +36,7 @@ services:
       context: ./frontend/
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:${APP_PORT}
+      NEXT_PUBLIC_API_URL: https://gmotioncrm.com/api
     ports:
       - "3000:3000"
     volumes:
