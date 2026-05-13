@@ -29,9 +29,9 @@ export default function DealStatusSelect({ value = "pending", disabled, days, bu
         onChange={(e) => onChange(e.target.value as DealStatus)}
         className={`appearance-none cursor-pointer rounded-md border px-2 py-1 text-xs font-medium outline-none transition-colors disabled:cursor-wait disabled:opacity-60 ${color}`}
       >
-        <option value="pending">pending{suffix}</option>
-        <option value="paid">paid</option>
-        <option value="cancelled">cancelled</option>
+        <option value="pending">NOT FUNDED{suffix}</option>
+        <option value="paid">FUNDED</option>
+        <option value="cancelled">CANCELLED</option>
       </select>
     </label>
   );

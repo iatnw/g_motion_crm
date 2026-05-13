@@ -244,8 +244,8 @@ export default function DealsPage() {
                           }`}
                           style={{ backgroundColor: "transparent" }}
                         >
-                          <option value="pending">Not Paid</option>
-                          <option value="paid">Paid</option>
+                          <option value="pending">NOT PAID</option>
+                          <option value="paid">PAID</option>
                         </select>
                       </div>
                     </div>
@@ -271,9 +271,9 @@ export default function DealsPage() {
                           }`}
                           style={{ backgroundColor: "transparent" }}
                         >
-                          <option value="none">Not Paid</option>
-                          <option value="pending">Pending</option>
-                          <option value="paid">Paid</option>
+                          <option value="none">NOT PAID</option>
+                          <option value="pending">PENDING</option>
+                          <option value="paid">PAID</option>
                         </select>
                       </div>
                     </div>

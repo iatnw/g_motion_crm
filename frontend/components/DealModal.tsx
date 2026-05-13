@@ -316,8 +316,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 <div>
                   <FieldLabel>Deal Status</FieldLabel>
                   <DarkSelect value={form.deal_status} onChange={(e) => set("deal_status", e.target.value)}>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
+                    <option value="pending">NOT PAID</option>
+                    <option value="paid">PAID</option>
                     <option value="cancelled">Cancelled</option>
                   </DarkSelect>
                 </div>

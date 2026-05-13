@@ -172,9 +172,9 @@ export default function ReferralsPage() {
                       onChange={(e) => handleStatusChange(ref, e.target.value as ReferralStatus)}
                       className={`text-xs font-medium px-2 py-0.5 rounded-full border bg-transparent cursor-pointer focus:outline-none ${statusStyles[ref.status]}`}
                     >
-                      <option value="none">None</option>
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
+                      <option value="none">NOT PAID</option>
+                      <option value="pending">PENDING</option>
+                      <option value="paid">PAID</option>
                     </select>
                   </td>
                   <td className="px-4 py-3 text-slate-500">
@@ -270,9 +270,9 @@ export default function ReferralsPage() {
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as ReferralStatus }))}
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                   >
-                    <option value="none">None</option>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
+                    <option value="none">NOT PAID</option>
+                    <option value="pending">PENDING</option>
+                    <option value="paid">PAID</option>
                   </select>
                 </div>
               )}
