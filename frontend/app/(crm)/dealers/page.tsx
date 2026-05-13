@@ -189,8 +189,42 @@ export default function DealersPage() {
   );
 }
 
+const BRANDS: { label: string; keywords: string[] }[] = [
+  { label: "Acura",          keywords: ["acura"] },
+  { label: "Audi",           keywords: ["audi"] },
+  { label: "BMW",            keywords: ["bmw"] },
+  { label: "Buick",          keywords: ["buick"] },
+  { label: "Cadillac",       keywords: ["cadillac"] },
+  { label: "Chevrolet",      keywords: ["chevrolet", "chevy"] },
+  { label: "Chrysler",       keywords: ["chrysler"] },
+  { label: "Dodge",          keywords: ["dodge"] },
+  { label: "Ford",           keywords: ["ford"] },
+  { label: "Genesis",        keywords: ["genesis"] },
+  { label: "GMC",            keywords: ["gmc"] },
+  { label: "Honda",          keywords: ["honda"] },
+  { label: "Hyundai",        keywords: ["hyundai"] },
+  { label: "Infiniti",       keywords: ["infiniti"] },
+  { label: "Jeep",           keywords: ["jeep"] },
+  { label: "Kia",            keywords: ["kia"] },
+  { label: "Lexus",          keywords: ["lexus"] },
+  { label: "Lincoln",        keywords: ["lincoln"] },
+  { label: "Mazda",          keywords: ["mazda"] },
+  { label: "Mercedes-Benz",  keywords: ["mercedes", "mercedes-benz", "benz"] },
+  { label: "Nissan",         keywords: ["nissan"] },
+  { label: "RAM",            keywords: ["ram"] },
+  { label: "Subaru",         keywords: ["subaru"] },
+  { label: "Tesla",          keywords: ["tesla"] },
+  { label: "Toyota",         keywords: ["toyota"] },
+  { label: "Volkswagen",     keywords: ["volkswagen", "vw"] },
+  { label: "Volvo",          keywords: ["volvo"] },
+];
+
 function extractBrand(name: string): string {
-  return name.trim().split(/\s+/)[0].toUpperCase();
+  const lower = name.toLowerCase();
+  for (const b of BRANDS) {
+    if (b.keywords.some((kw) => lower.includes(kw))) return b.label;
+  }
+  return "Other";
 }
 
 function groupByBrand(dealers: Dealer[]): { brand: string; dealers: Dealer[] }[] {
@@ -202,7 +236,7 @@ function groupByBrand(dealers: Dealer[]): { brand: string; dealers: Dealer[] }[]
     map.get(brand)!.push(d);
   }
   return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b))
     .map(([brand, dealers]) => ({ brand, dealers }));
 }
 

@@ -113,6 +113,16 @@ export default function ReferralsPage() {
     }
   }
 
+  async function handleDelete(ref: Referral) {
+    if (!confirm(`Delete referral for ${ref.first_name} ${ref.last_name}?`)) return;
+    try {
+      await referralsApi.delete(ref.id);
+      setList((prev) => prev.filter((r) => r.id !== ref.id));
+    } catch {
+      alert("Failed to delete referral");
+    }
+  }
+
   async function handleStatusChange(ref: Referral, status: ReferralStatus) {
     try {
       const updated = await referralsApi.updateStatus(ref.id, status);
@@ -180,12 +190,20 @@ export default function ReferralsPage() {
                     {ref.paid_date ? fmtDate(ref.paid_date) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => openEdit(ref)}
-                      className="text-slate-600 hover:text-blue-400 text-xs transition-colors"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => openEdit(ref)}
+                        className="text-slate-600 hover:text-blue-400 text-xs transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(ref)}
+                        className="text-slate-600 hover:text-red-400 text-xs transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
