@@ -38,6 +38,13 @@ export default function ReferralsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Referral | null>(null);
   const [modal, setModal] = useState(false);
+
+  useEffect(() => {
+    if (!modal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setModal(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [modal]);
   const [form, setForm] = useState<ReferralForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -188,8 +195,8 @@ export default function ReferralsPage() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0f1011] rounded-2xl border border-[#252628] w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setModal(false)}>
+          <div className="bg-[#0f1011] rounded-2xl border border-[#252628] w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-base font-semibold text-white mb-5">
               {editing ? "Edit Referral" : "Create Referral"}
             </h2>

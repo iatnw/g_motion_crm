@@ -20,6 +20,12 @@ type ReferralDraft = { first_name: string; last_name: string; phone: string; amo
 
 export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose, onStatusChange }: Props) {
   const [currentDeal, setCurrentDeal] = useState<Deal | undefined>(deal);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
   const [form, setForm] = useState({
     client_id: clientId ?? deal?.client_id ?? "",
     deal_date: deal?.deal_date?.slice(0, 10) ?? formatDateInput(),
@@ -152,8 +158,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const showClientSelector = !clientId && !!clients;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-[#252628] shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-[#252628] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
           <h2 className="text-base font-semibold text-white">

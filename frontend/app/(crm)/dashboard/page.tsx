@@ -331,9 +331,16 @@ function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, 
 }) {
   const tone = bucket === "green" ? "text-green-400" : bucket === "yellow" ? "text-yellow-400" : "text-red-400";
   const borderColor = bucket === "green" ? "border-l-green-500" : bucket === "yellow" ? "border-l-amber-500" : "border-l-red-500";
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628] shrink-0">
           <div>
             <h2 className="text-base font-semibold text-white">Pending deals</h2>

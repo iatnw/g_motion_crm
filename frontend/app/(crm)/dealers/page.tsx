@@ -19,6 +19,13 @@ export default function DealersPage() {
   const [list, setList] = useState<Dealer[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; dealer?: Dealer }>({ open: false });
+
+  useEffect(() => {
+    if (!modal.open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setModal({ open: false }); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [modal.open]);
   const [form, setForm] = useState<DealerForm>(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -148,8 +155,8 @@ export default function DealersPage() {
       )}
 
       {modal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-md border border-[#252628] shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setModal({ open: false })}>
+          <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-md border border-[#252628] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
               <h2 className="text-base font-semibold text-white">
                 {modal.dealer ? "Edit Dealer" : "New Dealer"}
