@@ -171,7 +171,8 @@ export default function DealsPage() {
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
             const dealReferrals = referralMap[d.id] ?? [];
             const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
-            const computedNet = (d.broker_fee ?? 0) - (d.broker_commission ?? 0) - referralTotal - (d.doc_fee ?? 0);
+            const base = (d.broker_fee ?? 0) > 0 ? (d.broker_fee ?? 0) - (d.doc_fee ?? 0) : (d.collect_amount ?? 0);
+            const computedNet = base - (d.broker_commission ?? 0) - referralTotal;
 
             return (
               <div key={d.id} className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}>
@@ -224,7 +225,7 @@ export default function DealsPage() {
                   <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
                   <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
                   <StatCell label="Revenue" value={money(d.broker_fee)} highlight="green" />
-                  <StatCell label="Net" value={d.broker_fee != null ? money(computedNet) : undefined} highlight="blue" />
+                  <StatCell label="Net" value={base > 0 ? money(computedNet) : undefined} highlight="blue" />
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
                   {d.broker_percent != null && <StatCell label="Broker %" value={`${d.broker_percent}%`} />}
