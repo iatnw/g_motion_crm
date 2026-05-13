@@ -140,6 +140,39 @@ func (s *DocumentService) UploadFromURL(
 	return doc, nil
 }
 
+// PresignUpload returns a presigned S3 PUT URL so the browser can upload directly.
+func (s *DocumentService) PresignUpload(
+	ctx context.Context,
+	filename string,
+	contentType string,
+	clientID uuid.NullUUID,
+	dealID uuid.NullUUID,
+) (uploadURL string, s3Key string, err error) {
+	key := buildKey(clientID, dealID, filename)
+	uploadURL, err = s.s3.PresignedUploadURL(ctx, key, contentType, 15*time.Minute)
+	return uploadURL, key, err
+}
+
+// ConfirmUpload creates the DB record after the browser has uploaded directly to S3.
+func (s *DocumentService) ConfirmUpload(
+	ctx context.Context,
+	s3Key string,
+	filename string,
+	size int64,
+	clientID uuid.NullUUID,
+	dealID uuid.NullUUID,
+	docType db.DocumentType,
+) (db.Document, error) {
+	return s.q.CreateDocument(ctx, db.CreateDocumentParams{
+		ClientID:      nullUUIDToPg(clientID),
+		DealID:        nullUUIDToPg(dealID),
+		S3Key:         s3Key,
+		FileName:      filename,
+		FileSizeBytes: int64ToInt4(size),
+		DocumentType:  docType,
+	})
+}
+
 // PresignedURL returns a time-limited download URL for a document.
 func (s *DocumentService) PresignedURL(ctx context.Context, id uuid.UUID) (string, error) {
 	doc, err := s.q.GetDocument(ctx, toUUID(id))

@@ -39,6 +39,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [selectedType, setSelectedType] = useState<DocumentType>("other");
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
@@ -75,13 +76,14 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadPct(0);
     setError("");
     try {
       let doc: Document;
       if (clientId) {
-        doc = await documents.uploadForClient(clientId, file, selectedType);
+        doc = await documents.uploadForClient(clientId, file, selectedType, setUploadPct);
       } else {
-        doc = await documents.uploadForDeal(dealId!, file, selectedType);
+        doc = await documents.uploadForDeal(dealId!, file, selectedType, setUploadPct);
       }
       setDocs((prev) => [doc, ...prev]);
     } catch {
@@ -119,7 +121,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
             ))}
           </select>
           <label className={`cursor-pointer px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${uploading ? "bg-slate-800 text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white glow-blue-sm"}`}>
-            {uploading ? "Uploading…" : "Choose File"}
+            {uploading ? `Uploading… ${uploadPct}%` : "Choose File"}
             <input
               type="file"
               className="hidden"
@@ -129,6 +131,11 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
             />
           </label>
         </div>
+        {uploading && (
+          <div className="mt-3 h-1.5 bg-[#1e1f20] rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 transition-all duration-300 rounded-full" style={{ width: `${uploadPct}%` }} />
+          </div>
+        )}
         {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
       </div>
 

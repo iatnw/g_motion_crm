@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -145,6 +146,99 @@ func (h *DocumentHandler) ListByDeal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, toDocumentResponses(docs))
+}
+
+// PresignUpload returns a presigned S3 PUT URL for direct browser upload.
+// GET /documents/presign?filename=&content_type=&document_type=&client_id=&deal_id=
+func (h *DocumentHandler) PresignUpload(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	filename := q.Get("filename")
+	contentType := q.Get("content_type")
+	if filename == "" {
+		http.Error(w, "filename is required", http.StatusBadRequest)
+		return
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	var clientID, dealID uuid.NullUUID
+	if id := q.Get("client_id"); id != "" {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			http.Error(w, "invalid client_id", http.StatusBadRequest)
+			return
+		}
+		clientID = uuid.NullUUID{UUID: parsed, Valid: true}
+	}
+	if id := q.Get("deal_id"); id != "" {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			http.Error(w, "invalid deal_id", http.StatusBadRequest)
+			return
+		}
+		dealID = uuid.NullUUID{UUID: parsed, Valid: true}
+	}
+
+	uploadURL, s3Key, err := h.doc.PresignUpload(r.Context(), filename, contentType, clientID, dealID)
+	if err != nil {
+		slog.Error("presign upload", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"upload_url": uploadURL, "key": s3Key})
+}
+
+// ConfirmUpload creates the DB record after browser has uploaded directly to S3.
+// POST /documents/confirm
+func (h *DocumentHandler) ConfirmUpload(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Key          string `json:"key"`
+		Filename     string `json:"filename"`
+		Size         int64  `json:"size"`
+		DocumentType string `json:"document_type"`
+		ClientID     string `json:"client_id"`
+		DealID       string `json:"deal_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	if req.Key == "" || req.Filename == "" {
+		http.Error(w, "key and filename are required", http.StatusBadRequest)
+		return
+	}
+	if req.DocumentType == "" {
+		req.DocumentType = string(db.DocumentTypeOther)
+	}
+
+	var clientID, dealID uuid.NullUUID
+	if req.ClientID != "" {
+		parsed, err := uuid.Parse(req.ClientID)
+		if err != nil {
+			http.Error(w, "invalid client_id", http.StatusBadRequest)
+			return
+		}
+		clientID = uuid.NullUUID{UUID: parsed, Valid: true}
+	}
+	if req.DealID != "" {
+		parsed, err := uuid.Parse(req.DealID)
+		if err != nil {
+			http.Error(w, "invalid deal_id", http.StatusBadRequest)
+			return
+		}
+		dealID = uuid.NullUUID{UUID: parsed, Valid: true}
+	}
+
+	doc, err := h.doc.ConfirmUpload(r.Context(), req.Key, req.Filename, req.Size, clientID, dealID, db.DocumentType(req.DocumentType))
+	if err != nil {
+		slog.Error("confirm upload", "key", req.Key, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toDocumentResponse(doc))
 }
 
 // Delete removes a document from S3 and DB.

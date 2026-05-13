@@ -200,6 +200,8 @@ func main() {
 		r.Delete("/referrals/{id}", referralHandler.Delete)
 
 		// Documents
+		r.Get("/documents/presign", documentHandler.PresignUpload)
+		r.Post("/documents/confirm", documentHandler.ConfirmUpload)
 		r.Get("/documents/{id}/url", documentHandler.GetURL)
 		r.Delete("/documents/{id}", documentHandler.Delete)
 	})

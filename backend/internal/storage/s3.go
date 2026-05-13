@@ -53,6 +53,18 @@ func (s *S3Client) Upload(ctx context.Context, key string, body io.Reader, size 
 	return err
 }
 
+func (s *S3Client) PresignedUploadURL(ctx context.Context, key, contentType string, expiry time.Duration) (string, error) {
+	req, err := s.presign.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
+	}, s3.WithPresignExpires(expiry))
+	if err != nil {
+		return "", err
+	}
+	return req.URL, nil
+}
+
 func (s *S3Client) PresignedURL(ctx context.Context, key string, expiry time.Duration) (string, error) {
 	req, err := s.presign.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),

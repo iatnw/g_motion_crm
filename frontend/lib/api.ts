@@ -76,6 +76,33 @@ export const auth = {
 
 type PaginatedResponse<T> = { data: T[]; limit: number; offset: number; has_more: boolean };
 
+async function presignedUpload(
+  file: File,
+  documentType: string,
+  onProgress: ((pct: number) => void) | undefined,
+  ids: { client_id?: string; deal_id?: string },
+): Promise<import("./types").Document> {
+  const qs = new URLSearchParams({ filename: file.name, content_type: file.type || "application/octet-stream" });
+  if (ids.client_id) qs.set("client_id", ids.client_id);
+  if (ids.deal_id) qs.set("deal_id", ids.deal_id);
+  const { upload_url, key } = await request<{ upload_url: string; key: string }>(
+    `/documents/presign?${qs}`
+  );
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", upload_url);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    if (onProgress) xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`S3 upload failed: ${xhr.status}`)));
+    xhr.onerror = () => reject(new Error("S3 upload network error"));
+    xhr.send(file);
+  });
+  return request<import("./types").Document>("/documents/confirm", {
+    method: "POST",
+    body: JSON.stringify({ key, filename: file.name, size: file.size, document_type: documentType, ...ids }),
+  });
+}
+
 // fetchAll pages a paginated endpoint until has_more is false.
 async function fetchAll<T>(path: string, params: Record<string, string> = {}): Promise<T[]> {
   const results: T[] = [];
@@ -227,22 +254,8 @@ export const documents = {
     request<{ url: string }>(`/documents/${id}/url`),
   delete: (id: string) =>
     request<void>(`/documents/${id}`, { method: "DELETE" }),
-  uploadForClient: (clientId: string, file: File, documentType: string) => {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("document_type", documentType);
-    return request<import("./types").Document>(
-      `/clients/${clientId}/documents`,
-      { method: "POST", body: form }
-    );
-  },
-  uploadForDeal: (dealId: string, file: File, documentType: string) => {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("document_type", documentType);
-    return request<import("./types").Document>(
-      `/deals/${dealId}/documents`,
-      { method: "POST", body: form }
-    );
-  },
+  uploadForClient: (clientId: string, file: File, documentType: string, onProgress?: (pct: number) => void) =>
+    presignedUpload(file, documentType, onProgress, { client_id: clientId }),
+  uploadForDeal: (dealId: string, file: File, documentType: string, onProgress?: (pct: number) => void) =>
+    presignedUpload(file, documentType, onProgress, { deal_id: dealId }),
 };
