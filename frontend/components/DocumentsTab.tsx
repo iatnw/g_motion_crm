@@ -125,7 +125,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
               className="hidden"
               disabled={uploading}
               onChange={handleUpload}
-              accept="image/*,application/pdf,.doc,.docx"
+              accept="image/*,.dng,.raw,.cr2,.cr3,.arw,.nef,.orf,.raf,application/pdf,.doc,.docx"
             />
           </label>
         </div>

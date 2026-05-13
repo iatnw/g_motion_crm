@@ -12,7 +12,7 @@ import (
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
 
-const maxUploadSize = 20 << 20 // 20 MB
+const maxUploadSize = 50 << 20 // 50 MB
 
 type DocumentHandler struct {
 	doc *service.DocumentService
