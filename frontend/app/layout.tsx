@@ -13,7 +13,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-full bg-gray-50 font-sans antialiased">{children}</body>
+      <head>
+        {/* Apply saved theme before first paint to avoid flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})()` }} />
+      </head>
+      <body className="h-full font-sans antialiased">{children}</body>
     </html>
   );
 }

@@ -34,3 +34,53 @@ input:focus, select:focus, textarea:focus, button:focus {
 .border-glow {
   box-shadow: inset 0 0 0 1px rgba(38, 122, 214, 0.2), 0 0 15px rgba(38, 122, 214, 0.06);
 }
+
+/* ── Light theme ── */
+[data-theme="light"] html,
+[data-theme="light"] body,
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+[data-theme="light"] .bg-\[\#0b0c0d\]  { background-color: #ffffff !important; }
+[data-theme="light"] .bg-\[\#0f1011\]  { background-color: #ffffff !important; }
+[data-theme="light"] .bg-\[\#111213\]  { background-color: #f9fafb !important; }
+[data-theme="light"] .bg-\[\#08080f\]  { background-color: #f3f4f6 !important; }
+[data-theme="light"] .bg-\[\#0a0a1e\]  { background-color: #eff6ff !important; }
+[data-theme="light"] .bg-\[\#1a1b1d\]  { background-color: #e5e7eb !important; }
+[data-theme="light"] .bg-\[\#1e1f20\]  { background-color: #e5e7eb !important; }
+[data-theme="light"] .bg-\[\#1e1f21\]  { background-color: #e5e7eb !important; }
+
+[data-theme="light"] .border-\[\#252628\] { border-color: #d1d5db !important; }
+[data-theme="light"] .border-\[\#1e1f20\] { border-color: #e5e7eb !important; }
+[data-theme="light"] .border-\[\#1e1f21\] { border-color: #e5e7eb !important; }
+[data-theme="light"] .border-\[\#1e1e45\] { border-color: #bfdbfe !important; }
+[data-theme="light"] .border-\[\#333436\] { border-color: #9ca3af !important; }
+
+[data-theme="light"] .text-white        { color: #111827 !important; }
+[data-theme="light"] .text-slate-200    { color: #1f2937 !important; }
+[data-theme="light"] .text-slate-300    { color: #374151 !important; }
+[data-theme="light"] .text-slate-400    { color: #4b5563 !important; }
+[data-theme="light"] .text-slate-500    { color: #6b7280 !important; }
+[data-theme="light"] .text-slate-600    { color: #9ca3af !important; }
+[data-theme="light"] .text-slate-700    { color: #d1d5db !important; }
+
+[data-theme="light"] .divide-\[\#1e1f20\] > * + * { border-color: #e5e7eb !important; }
+[data-theme="light"] .divide-\[\#252628\] > * + * { border-color: #d1d5db !important; }
+
+[data-theme="light"] .glow-blue    { box-shadow: 0 0 20px rgba(38,122,214,0.2); }
+[data-theme="light"] .glow-blue-sm { box-shadow: 0 0 8px rgba(38,122,214,0.15); }
+[data-theme="light"] .glow-green-sm { box-shadow: none; }
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  color: #111827;
+}
+
+[data-theme="light"] option {
+  background-color: #ffffff;
+  color: #111827;
+}
