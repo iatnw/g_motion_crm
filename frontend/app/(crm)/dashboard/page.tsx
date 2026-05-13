@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { dashboard, deals, clients } from "@/lib/api";
-import type { DealStatus, DashboardSummary, Deal, Client, PendingPaymentBucket } from "@/lib/types";
+import { dashboard, deals, clients, brokers, dealers, referrals as referralsApi } from "@/lib/api";
+import type { DealStatus, DashboardSummary, Deal, Client, PendingPaymentBucket, Referral } from "@/lib/types";
 import DealStatusSelect from "@/components/DealStatusSelect";
 
 type RangeMode = "all" | "month" | "custom";
@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client> } | null>(null);
+  const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client>; brokerMap: Record<string, string>; dealerMap: Record<string, string>; referralMap: Record<string, Referral[]> } | null>(null);
   const [bucketLoading, setBucketLoading] = useState(false);
 
   const params = useMemo(() => {
@@ -44,10 +44,18 @@ export default function DashboardPage() {
   async function openBucket(bucket: PendingPaymentBucket) {
     setBucketLoading(true);
     try {
-      const [allDeals, allClients] = await Promise.all([deals.list(), clients.list()]);
+      const [allDeals, allClients, allBrokers, allDealers, allReferrals] = await Promise.all([
+        deals.list(), clients.list(), brokers.list(), dealers.list(), referralsApi.list(),
+      ]);
       const filtered = (allDeals ?? []).filter((d) => d.deal_status === "pending" && d.pending_payment_bucket === bucket);
       const clientMap = Object.fromEntries((allClients ?? []).map((c) => [c.id, c]));
-      setBucketModal({ bucket, deals: filtered, clientMap });
+      const brokerMap = Object.fromEntries((allBrokers ?? []).map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
+      const dealerMap = Object.fromEntries((allDealers ?? []).map((d) => [d.id, d.name]));
+      const referralMap: Record<string, Referral[]> = {};
+      for (const r of allReferrals ?? []) {
+        if (r.deal_id) { if (!referralMap[r.deal_id]) referralMap[r.deal_id] = []; referralMap[r.deal_id].push(r); }
+      }
+      setBucketModal({ bucket, deals: filtered, clientMap, brokerMap, dealerMap, referralMap });
     } finally {
       setBucketLoading(false);
     }
@@ -231,6 +239,9 @@ export default function DashboardPage() {
           bucket={bucketModal?.bucket}
           deals={bucketModal?.deals ?? []}
           clientMap={bucketModal?.clientMap ?? {}}
+          brokerMap={bucketModal?.brokerMap ?? {}}
+          dealerMap={bucketModal?.dealerMap ?? {}}
+          referralMap={bucketModal?.referralMap ?? {}}
           onClose={() => setBucketModal(null)}
         />
       )}
@@ -286,17 +297,21 @@ function AgingCard({ title, count, amount, tone, badge, onClick }: { title: stri
 
 const bucketLabel: Record<string, string> = { green: "0–31 days", yellow: "32–40 days", red: "41+ days" };
 
-function BucketModal({ loading, bucket, deals, clientMap, onClose }: {
+function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, referralMap, onClose }: {
   loading: boolean;
   bucket?: string;
   deals: Deal[];
   clientMap: Record<string, Client>;
+  brokerMap: Record<string, string>;
+  dealerMap: Record<string, string>;
+  referralMap: Record<string, Referral[]>;
   onClose: () => void;
 }) {
   const tone = bucket === "green" ? "text-green-400" : bucket === "yellow" ? "text-yellow-400" : "text-red-400";
+  const borderColor = bucket === "green" ? "border-l-green-500" : bucket === "yellow" ? "border-l-amber-500" : "border-l-red-500";
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl">
+      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628] shrink-0">
           <div>
             <h2 className="text-base font-semibold text-white">Pending deals</h2>
@@ -304,46 +319,61 @@ function BucketModal({ loading, bucket, deals, clientMap, onClose }: {
           </div>
           <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
         </div>
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 p-4 space-y-2">
           {loading ? (
             <div className="py-16 text-center text-sm text-slate-600">Loading...</div>
           ) : deals.length === 0 ? (
             <div className="py-16 text-center text-sm text-slate-600">No deals in this range</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-[#252628] sticky top-0 bg-[#0b0c0d]">
-                <tr>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Deal #</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Client</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Vehicle</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Days</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1e1f20]">
-                {deals.map((d) => {
-                  const client = clientMap[d.client_id];
-                  return (
-                    <tr key={d.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-5 py-3.5 text-slate-400">{d.deal_number ?? "—"}</td>
-                      <td className="px-5 py-3.5">
-                        {client ? (
-                          <Link href={`/clients/${d.client_id}`} onClick={onClose} className="text-blue-400 hover:text-blue-300 transition-colors">
-                            {client.first_name} {client.last_name}
-                          </Link>
-                        ) : "—"}
-                      </td>
-                      <td className="px-5 py-3.5 text-slate-300">{[d.make, d.model].filter(Boolean).join(" ") || "—"}</td>
-                      <td className={`px-5 py-3.5 font-medium ${tone}`}>{d.pending_payment_days ?? "—"}d</td>
-                      <td className="px-5 py-3.5 text-slate-300">{money(d.broker_fee)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+          ) : deals.map((d) => {
+            const client = clientMap[d.client_id];
+            const vehicle = [d.make, d.model].filter(Boolean).join(" ");
+            const dealReferrals = referralMap[d.id] ?? [];
+            const referralTotal = dealReferrals.reduce((s, r) => s + (r.amount ?? 0), 0);
+            const computedNet = d.broker_fee != null ? (d.broker_fee ?? 0) - (d.broker_commission ?? 0) - referralTotal - (d.doc_fee ?? 0) : null;
+            return (
+              <div key={d.id} className={`bg-[#111213] border border-[#252628] border-l-4 ${borderColor} rounded-xl`}>
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1f20]">
+                  <div className="flex items-center gap-3 flex-wrap min-w-0">
+                    <span className="text-white font-semibold">
+                      {client ? `${client.first_name} ${client.last_name}` : "Unknown"}
+                    </span>
+                    {d.deal_number && (
+                      <span className="text-xs font-mono bg-[#0b0c0d] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
+                        #{d.deal_number}
+                      </span>
+                    )}
+                    {vehicle && <span className="text-slate-300 text-sm">{vehicle}</span>}
+                  </div>
+                  <span className={`text-sm font-semibold ${tone} shrink-0 ml-3`}>
+                    {d.pending_payment_days ?? "—"}d pending
+                  </span>
+                </div>
+                {/* Stats */}
+                <div className="flex divide-x divide-[#1e1f20]">
+                  {d.broker_id && <BucketStat label="Broker" value={brokerMap[d.broker_id]} />}
+                  {d.dealer_id && <BucketStat label="Dealer" value={dealerMap[d.dealer_id]} />}
+                  {d.broker_fee != null && <BucketStat label="Revenue" value={money(d.broker_fee)} highlight="green" />}
+                  {computedNet != null && <BucketStat label="Net" value={money(computedNet)} highlight="blue" />}
+                  {d.broker_commission != null && <BucketStat label="Commission" value={money(d.broker_commission)} />}
+                  {d.doc_fee != null && <BucketStat label="Doc Fee" value={money(d.doc_fee)} />}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function BucketStat({ label, value, highlight }: { label: string; value?: string; highlight?: "green" | "blue" }) {
+  if (!value) return null;
+  const cls = highlight === "green" ? "text-green-400 font-bold" : highlight === "blue" ? "text-blue-400 font-bold" : "text-slate-300";
+  return (
+    <div className="flex-1 px-3 py-2 flex flex-col gap-0.5 min-w-0">
+      <span className="text-xs text-slate-600 uppercase tracking-wider">{label}</span>
+      <span className={`text-sm truncate ${cls}`}>{value}</span>
     </div>
   );
 }
