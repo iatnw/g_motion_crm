@@ -197,16 +197,6 @@ export default function DealsPage() {
                         {[d.trim_level, d.vin].filter(Boolean).join(" · ")}
                       </span>
                     )}
-                    {/* Pending days badge */}
-                    {d.deal_status === "pending" && d.pending_payment_days != null && d.pending_payment_days > 0 && (
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                        d.pending_payment_days >= 14
-                          ? "bg-red-500/10 border-red-500/25 text-red-400"
-                          : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                      }`}>
-                        {d.pending_payment_days}d pending
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-4 flex-shrink-0 ml-4">
                     {d.deal_date && (
