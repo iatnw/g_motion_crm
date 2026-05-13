@@ -5,6 +5,7 @@ import Link from "next/link";
 import { dashboard, deals, clients, brokers, dealers, referrals as referralsApi } from "@/lib/api";
 import type { DealStatus, DashboardSummary, Deal, Client, PendingPaymentBucket, Referral } from "@/lib/types";
 import DealStatusSelect from "@/components/DealStatusSelect";
+import DealModal from "@/components/DealModal";
 
 type RangeMode = "all" | "month" | "custom";
 
@@ -16,8 +17,9 @@ export default function DashboardPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client>; brokerMap: Record<string, string>; dealerMap: Record<string, string>; referralMap: Record<string, Referral[]> } | null>(null);
+  const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client>; brokerMap: Record<string, string>; dealerMap: Record<string, string>; referralMap: Record<string, Referral[]>; allClients: Client[]; allBrokers: import("@/lib/types").Broker[]; allDealers: import("@/lib/types").Dealer[] } | null>(null);
   const [bucketLoading, setBucketLoading] = useState(false);
+  const [editModal, setEditModal] = useState<{ deal: Deal } | null>(null);
 
   const params = useMemo(() => {
     if (mode === "all") return {};
@@ -55,7 +57,7 @@ export default function DashboardPage() {
       for (const r of allReferrals ?? []) {
         if (r.deal_id) { if (!referralMap[r.deal_id]) referralMap[r.deal_id] = []; referralMap[r.deal_id].push(r); }
       }
-      setBucketModal({ bucket, deals: filtered, clientMap, brokerMap, dealerMap, referralMap });
+      setBucketModal({ bucket, deals: filtered, clientMap, brokerMap, dealerMap, referralMap, allClients: allClients ?? [], allBrokers: allBrokers ?? [], allDealers: allDealers ?? [] });
     } finally {
       setBucketLoading(false);
     }
@@ -243,6 +245,25 @@ export default function DashboardPage() {
           dealerMap={bucketModal?.dealerMap ?? {}}
           referralMap={bucketModal?.referralMap ?? {}}
           onClose={() => setBucketModal(null)}
+          onEdit={(deal) => { setBucketModal(null); setEditModal({ deal }); }}
+        />
+      )}
+
+      {editModal && (
+        <DealModal
+          deal={editModal.deal}
+          clients={bucketModal?.allClients ?? []}
+          brokers={bucketModal?.allBrokers ?? []}
+          dealers={bucketModal?.allDealers ?? []}
+          onSave={async (data) => {
+            const updated = await deals.update(editModal.deal.id, data);
+            setEditModal(null);
+            const next = await dashboard.summary({ ...params, limit: 8 });
+            setSummary(next);
+            return updated;
+          }}
+          onClose={() => setEditModal(null)}
+          onStatusChange={() => {}}
         />
       )}
     </div>
@@ -297,7 +318,7 @@ function AgingCard({ title, count, amount, tone, badge, onClick }: { title: stri
 
 const bucketLabel: Record<string, string> = { green: "0–31 days", yellow: "32–40 days", red: "41+ days" };
 
-function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, referralMap, onClose }: {
+function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, referralMap, onClose, onEdit }: {
   loading: boolean;
   bucket?: string;
   deals: Deal[];
@@ -306,6 +327,7 @@ function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, 
   dealerMap: Record<string, string>;
   referralMap: Record<string, Referral[]>;
   onClose: () => void;
+  onEdit: (deal: Deal) => void;
 }) {
   const tone = bucket === "green" ? "text-green-400" : bucket === "yellow" ? "text-yellow-400" : "text-red-400";
   const borderColor = bucket === "green" ? "border-l-green-500" : bucket === "yellow" ? "border-l-amber-500" : "border-l-red-500";
@@ -345,9 +367,17 @@ function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, 
                     )}
                     {vehicle && <span className="text-slate-300 text-sm">{vehicle}</span>}
                   </div>
-                  <span className={`text-sm font-semibold ${tone} shrink-0 ml-3`}>
-                    {d.pending_payment_days ?? "—"}d pending
-                  </span>
+                  <div className="flex items-center gap-3 shrink-0 ml-3">
+                    <span className={`text-sm font-semibold ${tone}`}>
+                      {d.pending_payment_days ?? "—"}d pending
+                    </span>
+                    <button
+                      onClick={() => onEdit(d)}
+                      className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
                 {/* Stats */}
                 <div className="flex divide-x divide-[#1e1f20]">
