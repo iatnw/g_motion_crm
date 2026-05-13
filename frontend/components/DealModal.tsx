@@ -55,12 +55,18 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const [error, setError] = useState("");
 
   const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
+  const [referralAmounts, setReferralAmounts] = useState<Record<string, string>>({});
   const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
   const [allReferralContacts, setAllReferralContacts] = useState<Referral[]>([]);
 
   useEffect(() => {
     if (deal) {
-      referralsApi.listByDeal(deal.id).then(setExistingReferrals).catch(() => {});
+      referralsApi.listByDeal(deal.id).then((refs) => {
+        setExistingReferrals(refs);
+        const amounts: Record<string, string> = {};
+        for (const r of refs) amounts[r.id] = r.amount != null ? String(r.amount) : "";
+        setReferralAmounts(amounts);
+      }).catch(() => {});
     }
     referralsApi.list().then((data) => {
       // Deduplicate by full name, keeping latest entry per person
@@ -84,6 +90,18 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       setExistingReferrals((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
     } catch {
       setError("Failed to update referral status");
+    }
+  }
+
+  async function saveReferralAmount(ref: Referral) {
+    const raw = referralAmounts[ref.id] ?? "";
+    const amount = raw ? Number(raw) : undefined;
+    if (amount === ref.amount || (amount == null && ref.amount == null)) return;
+    try {
+      const updated = await referralsApi.update(ref.id, { amount });
+      setExistingReferrals((prev) => prev.map((r) => r.id === ref.id ? { ...r, amount: updated.amount } : r));
+    } catch {
+      setError("Failed to update referral amount");
     }
   }
 
@@ -369,9 +387,14 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                       <p className="text-sm text-slate-200 truncate">{ref.first_name} {ref.last_name}</p>
                       {ref.phone && <p className="text-xs text-slate-600">{ref.phone}</p>}
                     </div>
-                    {ref.amount != null && (
-                      <span className="text-sm font-semibold text-slate-300 shrink-0">${Number(ref.amount).toLocaleString()}</span>
-                    )}
+                    <input
+                      type="number"
+                      value={referralAmounts[ref.id] ?? ""}
+                      onChange={(e) => setReferralAmounts((prev) => ({ ...prev, [ref.id]: e.target.value }))}
+                      onBlur={() => saveReferralAmount(ref)}
+                      placeholder="$0"
+                      className="w-20 bg-[#0b0c0d] border border-[#252628] rounded-md px-2 py-0.5 text-sm text-slate-300 focus:outline-none shrink-0"
+                    />
                     <button
                       type="button"
                       onClick={() => toggleReferralStatus(ref)}
