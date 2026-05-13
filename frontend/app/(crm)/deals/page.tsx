@@ -172,7 +172,8 @@ export default function DealsPage() {
             const dealReferrals = referralMap[d.id] ?? [];
             const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
             const base = (d.broker_fee ?? 0) > 0 ? (d.broker_fee ?? 0) - (d.doc_fee ?? 0) : (d.collect_amount ?? 0);
-            const computedNet = base - (d.broker_commission ?? 0) - referralTotal;
+            const commission = d.broker_commission ?? (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
+            const computedNet = base - commission - referralTotal;
 
             return (
               <div key={d.id} className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}>
@@ -258,7 +259,7 @@ export default function DealsPage() {
                   <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-300">{money(d.broker_commission) ?? "—"}</span>
+                      <span className="text-sm text-slate-300">{money(commission) ?? "—"}</span>
                       <select
                         value={d.broker_commission_status ?? "pending"}
                         onChange={(e) => handleCommissionMethod(d, e.target.value as "paid" | "pending")}
