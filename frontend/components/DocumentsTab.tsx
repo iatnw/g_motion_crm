@@ -214,7 +214,6 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
       {preview && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setPreview(null)}
         >
           <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
             <button
