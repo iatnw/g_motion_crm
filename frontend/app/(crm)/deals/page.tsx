@@ -173,7 +173,7 @@ export default function DealsPage() {
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
             const dealReferrals = referralMap[d.id] ?? [];
             const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
-            const base = (d.broker_fee ?? 0) > 0 ? (d.broker_fee ?? 0) - (d.doc_fee ?? 0) : (d.collect_amount ?? 0);
+            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
             const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
             const computedNet = base - commission - referralTotal;
 

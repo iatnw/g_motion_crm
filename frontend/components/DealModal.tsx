@@ -605,6 +605,6 @@ function commissionBase(brokerFee: string, collectAmount: string, docFee: string
   const fee = parseFloat(brokerFee) || 0;
   const collect = parseFloat(collectAmount) || 0;
   const doc = parseFloat(docFee) || 0;
-  return fee > 0 ? fee - doc : collect;
+  return fee + collect - doc;
 }
 

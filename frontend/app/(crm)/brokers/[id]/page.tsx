@@ -95,7 +95,7 @@ export default function BrokerDealsPage() {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
-            const base = (d.broker_fee ?? 0) > 0 ? (d.broker_fee ?? 0) - (d.doc_fee ?? 0) : (d.collect_amount ?? 0);
+            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
             const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
             const net = base - commission;
 
