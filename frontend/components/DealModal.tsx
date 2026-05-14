@@ -218,7 +218,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   <option value="">Select a client…</option>
                   {clients!.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.first_name} {c.last_name}{c.phone ? ` — ${c.phone}` : ""}
+                      {`${c.first_name} ${c.last_name}${c.phone ? ` — ${c.phone}` : ""}`.toUpperCase()}
                     </option>
                   ))}
                 </DarkSelect>
@@ -248,7 +248,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 <DarkSelect value={form.broker_id} onChange={(e) => set("broker_id", e.target.value)}>
                   <option value="">None</option>
                   {brokers.map((b) => (
-                    <option key={b.id} value={b.id}>{b.first_name} {b.last_name}</option>
+                    <option key={b.id} value={b.id}>{`${b.first_name} ${b.last_name}`.toUpperCase()}</option>
                   ))}
                 </DarkSelect>
               </div>
@@ -257,7 +257,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 <DarkSelect value={form.dealer_id} onChange={(e) => set("dealer_id", e.target.value)}>
                   <option value="">None</option>
                   {dealers.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
+                    <option key={d.id} value={d.id}>{d.name.toUpperCase()}</option>
                   ))}
                 </DarkSelect>
               </div>
@@ -459,7 +459,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                           <option value="">— Select existing or fill in below —</option>
                           {allReferralContacts.map((c) => (
                             <option key={c.id} value={c.id}>
-                              {c.first_name} {c.last_name}{c.phone ? ` · ${c.phone}` : ""}
+                              {`${c.first_name} ${c.last_name}${c.phone ? ` · ${c.phone}` : ""}`.toUpperCase()}
                             </option>
                           ))}
                         </select>
