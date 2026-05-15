@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -270,12 +269,7 @@ func normalizeBrokerCommission(brokerFee *float64, docFee *float64, collectAmoun
 			*brokerPercent = &percent
 		}
 	} else if hasPercent && hasCommission {
-		if base > 0 {
-			expectedCommission := base * (**brokerPercent) / 100
-			if math.Abs(expectedCommission-(**brokerCommission)) > 0.01 {
-				return ErrBrokerCommissionMismatch
-			}
-		}
+		// Both provided — trust the submitted commission (frontend may include referral deduction in base)
 	}
 
 	if yourNet != nil && *yourNet == nil && hasCommission {

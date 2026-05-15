@@ -56,12 +56,13 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
 
   const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
   const [referralAmounts, setReferralAmounts] = useState<Record<string, string>>({});
+  const referralTotal = existingReferrals.reduce((s, r) => s + (r.amount ?? 0), 0);
   const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
   const [allReferralContacts, setAllReferralContacts] = useState<Referral[]>([]);
 
   // Auto-correct commission/net on load if stored values don't match the current formula
   useEffect(() => {
-    const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
+    const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
     const pct = parseFloat(form.broker_percent);
     if (base > 0 && !isNaN(pct) && pct > 0) {
       const correct = base * pct / 100;
@@ -279,7 +280,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               </div>
               <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
               <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, form.collect_amount, v);
+                const base = commissionBase(form.broker_fee, form.collect_amount, v, referralTotal);
                 const pct = parseFloat(form.broker_percent);
                 setForm((prev) => {
                   const next: Partial<typeof prev> = { doc_fee: v };
@@ -295,7 +296,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Broker Fee ($)" type="number" value={form.broker_fee} onChange={(v) => {
-                const base = commissionBase(v, form.collect_amount, form.doc_fee);
+                const base = commissionBase(v, form.collect_amount, form.doc_fee, referralTotal);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
                 setForm((prev) => {
@@ -312,7 +313,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Collect ($)" type="number" value={form.collect_amount} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, v, form.doc_fee);
+                const base = commissionBase(form.broker_fee, v, form.doc_fee, referralTotal);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
                 setForm((prev) => {
@@ -329,7 +330,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Broker %" type="number" value={form.broker_percent} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
+                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
                 const pct = parseFloat(v);
                 setForm((prev) => {
                   if (!v || isNaN(pct) || base === 0) return { ...prev, broker_percent: v };
@@ -338,7 +339,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Broker Commission ($)" type="number" value={form.broker_commission} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
+                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
                 const com = parseFloat(v);
                 setForm((prev) => {
                   if (!v || isNaN(com)) return { ...prev, broker_commission: v };
@@ -601,10 +602,10 @@ function formatDateInput(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function commissionBase(brokerFee: string, collectAmount: string, docFee: string) {
+function commissionBase(brokerFee: string, collectAmount: string, docFee: string, referralTotal = 0) {
   const fee = parseFloat(brokerFee) || 0;
   const collect = parseFloat(collectAmount) || 0;
   const doc = parseFloat(docFee) || 0;
-  return fee + collect - doc;
+  return fee + collect - doc - referralTotal;
 }
 

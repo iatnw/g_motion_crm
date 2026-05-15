@@ -173,9 +173,9 @@ export default function DealsPage() {
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
             const dealReferrals = referralMap[d.id] ?? [];
             const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
-            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
+            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0) - referralTotal;
             const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
-            const computedNet = base - commission - referralTotal;
+            const computedNet = base - commission;
 
             return (
               <div key={d.id} className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}>
