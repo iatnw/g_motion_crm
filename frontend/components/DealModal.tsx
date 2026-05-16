@@ -164,8 +164,17 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
         "collect_amount",
         "doc_fee",
       ]);
+
+      // Recompute broker_percent at save time if commission is set but percent is missing/zero
+      const finalForm = { ...form };
+      const saveCom = parseFloat(finalForm.broker_commission);
+      const saveBase = commissionBase(finalForm.broker_fee, finalForm.collect_amount, finalForm.doc_fee, referralTotal);
+      if ((!finalForm.broker_percent || Number(finalForm.broker_percent) === 0) && !isNaN(saveCom) && saveCom > 0 && saveBase > 0) {
+        finalForm.broker_percent = (saveCom / saveBase * 100).toFixed(2);
+      }
+
       const payload: Record<string, string | number> = {};
-      for (const [k, v] of Object.entries(form)) {
+      for (const [k, v] of Object.entries(finalForm)) {
         if (v === "") continue;
         payload[k] = numericFields.has(k) ? Number(v) : v;
       }
