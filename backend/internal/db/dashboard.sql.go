@@ -89,6 +89,7 @@ SELECT
     COALESCE(SUM(fd.doc_fee), 0::numeric)::numeric AS total_doc_fees,
     COALESCE(SUM(
         COALESCE(fd.broker_fee, 0)
+        + COALESCE(fd.collect_amount, 0)
         - COALESCE(fd.broker_commission, 0)
         - COALESCE(drt.referral_total, 0)
         - COALESCE(fd.doc_fee, 0)
@@ -100,6 +101,7 @@ SELECT
     COALESCE(
         SUM(
             COALESCE(fd.broker_fee, 0)
+            + COALESCE(fd.collect_amount, 0)
             - COALESCE(fd.broker_commission, 0)
             - COALESCE(drt.referral_total, 0)
             - COALESCE(fd.doc_fee, 0)
@@ -114,6 +116,7 @@ SELECT
         WHEN COUNT(*) > 0
         THEN COALESCE(SUM(
             COALESCE(fd.broker_fee, 0)
+            + COALESCE(fd.collect_amount, 0)
             - COALESCE(fd.broker_commission, 0)
             - COALESCE(drt.referral_total, 0)
             - COALESCE(fd.doc_fee, 0)
@@ -191,6 +194,7 @@ SELECT
     COALESCE(SUM(fd.broker_commission), 0::numeric)::numeric AS broker_payout,
     COALESCE(SUM(
         COALESCE(fd.broker_fee, 0)
+        + COALESCE(fd.collect_amount, 0)
         - COALESCE(fd.broker_commission, 0)
         - COALESCE(drt.referral_total, 0)
         - COALESCE(fd.doc_fee, 0)
