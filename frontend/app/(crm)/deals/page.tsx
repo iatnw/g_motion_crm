@@ -175,6 +175,7 @@ export default function DealsPage() {
             const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
             const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0) - referralTotal;
             const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
+            const displayPercent = d.broker_percent || (commission > 0 && base > 0 ? commission / base * 100 : null);
             const computedNet = base - commission;
 
             return (
@@ -231,7 +232,7 @@ export default function DealsPage() {
                   <StatCell label="Net" value={money(computedNet)} highlight="blue" />
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
-                  <StatCell label="Broker %" value={d.broker_percent != null ? `${d.broker_percent}%` : undefined} />
+                  <StatCell label="Broker %" value={displayPercent ? `${Number(displayPercent).toFixed(2)}%` : undefined} />
                   <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
                     <div className="flex items-center gap-2">
