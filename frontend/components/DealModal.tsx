@@ -60,29 +60,21 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
   const [allReferralContacts, setAllReferralContacts] = useState<Referral[]>([]);
 
-  // Auto-correct commission/net on load if stored values don't match the current formula
+  // Auto-correct on load: only fill in missing values, never overwrite both
   useEffect(() => {
     const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
     const pct = parseFloat(form.broker_percent);
     const com = parseFloat(form.broker_commission);
-    if (base > 0 && !isNaN(pct) && pct > 0) {
-      // Percent is set — correct commission from percent
-      const correct = base * pct / 100;
-      const stored = parseFloat(form.broker_commission) || 0;
-      if (Math.abs(correct - stored) > 0.02) {
-        setForm((prev) => ({
-          ...prev,
-          broker_commission: correct.toFixed(2),
-          your_net: (base - correct).toFixed(2),
-        }));
-      }
-    } else if (base > 0 && !isNaN(com) && com > 0 && (!pct || pct === 0)) {
-      // Commission is set but percent is missing — derive percent from commission
-      setForm((prev) => ({
-        ...prev,
-        broker_percent: (com / base * 100).toFixed(2),
-        your_net: (base - com).toFixed(2),
-      }));
+    const hasPct = !isNaN(pct) && pct > 0;
+    const hasCom = !isNaN(com) && com > 0;
+
+    if (base > 0 && hasPct && !hasCom) {
+      // Only percent stored — compute commission
+      const commission = base * pct / 100;
+      setForm((prev) => ({ ...prev, broker_commission: commission.toFixed(2), your_net: (base - commission).toFixed(2) }));
+    } else if (base > 0 && hasCom && !hasPct) {
+      // Only commission stored — compute percent
+      setForm((prev) => ({ ...prev, broker_percent: (com / base * 100).toFixed(2), your_net: (base - com).toFixed(2) }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
