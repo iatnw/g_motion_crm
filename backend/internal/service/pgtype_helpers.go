@@ -1,7 +1,7 @@
 package service
 
 import (
-	"math/big"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,16 +44,9 @@ func toNumeric(f *float64) pgtype.Numeric {
 	if f == nil {
 		return pgtype.Numeric{}
 	}
-	rat := new(big.Rat).SetFloat64(*f)
-	num := rat.Num()
-	den := rat.Denom()
-	exp := int32(0)
-	d := new(big.Int).Set(den)
-	ten := big.NewInt(10)
-	for d.Cmp(big.NewInt(1)) > 0 {
-		d.Div(d, ten)
-		exp++
+	var n pgtype.Numeric
+	if err := n.Scan(fmt.Sprintf("%.10f", *f)); err != nil {
+		return pgtype.Numeric{}
 	}
-	intVal := new(big.Int).Mul(num, new(big.Int).Div(den, new(big.Int).Exp(ten, big.NewInt(int64(exp)), nil)))
-	return pgtype.Numeric{Int: intVal, Exp: -exp, Valid: true}
+	return n
 }
