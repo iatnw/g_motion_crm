@@ -213,6 +213,8 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("update deal request", "broker_percent", req.BrokerPercent, "broker_commission", req.BrokerCommission)
+
 	deal, err := h.deal.Update(r.Context(), service.UpdateDealInput{
 		ID:                     id,
 		ClientID:               clientID,
