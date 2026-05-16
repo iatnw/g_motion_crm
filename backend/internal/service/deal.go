@@ -269,7 +269,11 @@ func normalizeBrokerCommission(brokerFee *float64, docFee *float64, collectAmoun
 			*brokerPercent = &percent
 		}
 	} else if hasPercent && hasCommission {
-		// Both provided — trust the submitted commission (frontend may include referral deduction in base)
+		// If percent is 0 but commission is set, recompute percent from commission
+		if **brokerPercent == 0 && base > 0 {
+			percent := (**brokerCommission) / base * 100
+			*brokerPercent = &percent
+		}
 	}
 
 	if yourNet != nil && *yourNet == nil && hasCommission {
