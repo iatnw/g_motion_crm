@@ -14,7 +14,7 @@ deal_referral_totals AS (
 )
 SELECT
     COUNT(*)::bigint AS total_deals,
-    COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)), 0::numeric)::numeric AS gross_revenue,
+    COALESCE(SUM(fd.broker_fee), 0::numeric)::numeric AS gross_revenue,
     COALESCE(SUM(fd.broker_commission), 0::numeric)::numeric AS broker_payout,
     COALESCE(SUM(fd.doc_fee), 0::numeric)::numeric AS total_doc_fees,
     COALESCE(SUM(
@@ -24,8 +24,8 @@ SELECT
         - COALESCE(drt.referral_total, 0)
         - COALESCE(fd.doc_fee, 0)
     ), 0::numeric)::numeric AS company_profit_before_tax,
-    COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)) FILTER (WHERE fd.deal_status = 'paid'), 0::numeric)::numeric AS paid_revenue,
-    COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)) FILTER (WHERE fd.deal_status = 'pending'), 0::numeric)::numeric AS pending_revenue,
+    COALESCE(SUM(fd.broker_fee) FILTER (WHERE fd.deal_status = 'paid'), 0::numeric)::numeric AS paid_revenue,
+    COALESCE(SUM(fd.broker_fee) FILTER (WHERE fd.deal_status = 'pending'), 0::numeric)::numeric AS pending_revenue,
     COALESCE(SUM(fd.broker_commission) FILTER (WHERE fd.broker_commission_status = 'paid'), 0::numeric)::numeric AS paid_broker_payout,
     COALESCE(SUM(fd.broker_commission) FILTER (WHERE fd.broker_commission_status = 'pending'), 0::numeric)::numeric AS unpaid_broker_payout,
     COALESCE(
@@ -39,7 +39,7 @@ SELECT
         0::numeric
     )::numeric AS pending_company_profit,
     CASE
-        WHEN COUNT(*) > 0 THEN COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)), 0::numeric) / COUNT(*)
+        WHEN COUNT(*) > 0 THEN COALESCE(SUM(fd.broker_fee), 0::numeric) / COUNT(*)
         ELSE 0::numeric
     END AS avg_revenue_per_deal,
     CASE
@@ -103,7 +103,7 @@ SELECT
     b.first_name,
     b.last_name,
     COUNT(fd.id)::bigint AS deal_count,
-    COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)), 0::numeric)::numeric AS gross_revenue,
+    COALESCE(SUM(fd.broker_fee), 0::numeric)::numeric AS gross_revenue,
     COALESCE(SUM(fd.broker_commission), 0::numeric)::numeric AS broker_payout,
     COALESCE(SUM(
         COALESCE(fd.broker_fee, 0)
@@ -113,7 +113,7 @@ SELECT
         - COALESCE(fd.doc_fee, 0)
     ), 0::numeric)::numeric AS company_profit_before_tax,
     CASE
-        WHEN COUNT(fd.id) > 0 THEN COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)), 0::numeric) / COUNT(fd.id)
+        WHEN COUNT(fd.id) > 0 THEN COALESCE(SUM(fd.broker_fee), 0::numeric) / COUNT(fd.id)
         ELSE 0::numeric
     END AS avg_revenue_per_deal
 FROM brokers b
@@ -135,7 +135,7 @@ SELECT
     d.id,
     d.name,
     COUNT(fd.id)::bigint AS deal_count,
-    COALESCE(SUM(COALESCE(fd.broker_fee, 0) + COALESCE(fd.collect_amount, 0)), 0::numeric)::numeric AS gross_revenue,
+    COALESCE(SUM(fd.broker_fee), 0::numeric)::numeric AS gross_revenue,
     COALESCE(AVG(
         CASE
             WHEN fd.broker_fee_paid_date IS NOT NULL
