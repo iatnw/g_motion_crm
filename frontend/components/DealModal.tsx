@@ -64,7 +64,9 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   useEffect(() => {
     const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
     const pct = parseFloat(form.broker_percent);
+    const com = parseFloat(form.broker_commission);
     if (base > 0 && !isNaN(pct) && pct > 0) {
+      // Percent is set — correct commission from percent
       const correct = base * pct / 100;
       const stored = parseFloat(form.broker_commission) || 0;
       if (Math.abs(correct - stored) > 0.02) {
@@ -74,6 +76,13 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
           your_net: (base - correct).toFixed(2),
         }));
       }
+    } else if (base > 0 && !isNaN(com) && com > 0 && (!pct || pct === 0)) {
+      // Commission is set but percent is missing — derive percent from commission
+      setForm((prev) => ({
+        ...prev,
+        broker_percent: (com / base * 100).toFixed(2),
+        your_net: (base - com).toFixed(2),
+      }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
