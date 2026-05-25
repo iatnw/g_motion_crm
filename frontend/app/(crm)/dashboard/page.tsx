@@ -358,9 +358,9 @@ function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, 
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
             const dealReferrals = referralMap[d.id] ?? [];
             const referralTotal = dealReferrals.reduce((s, r) => s + (r.amount ?? 0), 0);
-            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0) - referralTotal;
+            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
             const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
-            const computedNet = base > 0 ? base - commission : null;
+            const computedNet = base > 0 ? base - commission - referralTotal : null;
             return (
               <div key={d.id} className={`bg-[#111213] border border-[#252628] border-l-4 ${borderColor} rounded-xl`}>
                 {/* Top bar */}
