@@ -82,6 +82,45 @@ func TestListAllReferralsRequiresAuth(t *testing.T) {
 	}
 }
 
+func TestListReferralsByDealIDs(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+	otherDealID := createDealForReferral(t, cookie)
+
+	for _, item := range []struct {
+		dealID string
+		name   string
+	}{
+		{dealID: dealID, name: "Batch"},
+		{dealID: otherDealID, name: "Other"},
+	} {
+		res := do(t, http.MethodPost, "/deals/"+item.dealID+"/referrals", map[string]any{
+			"first_name": item.name,
+			"amount":     100,
+		}, cookie)
+		res.Body.Close()
+		if res.StatusCode != http.StatusCreated {
+			t.Fatalf("create referral: got %d, want 201", res.StatusCode)
+		}
+	}
+
+	listRes := do(t, http.MethodGet, "/referrals?deal_ids="+dealID, nil, cookie)
+	var got []map[string]any
+	decodeJSON(t, listRes, &got)
+
+	if listRes.StatusCode != http.StatusOK {
+		t.Fatalf("got %d, want 200", listRes.StatusCode)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 referral, got %d", len(got))
+	}
+	if got[0]["deal_id"] != dealID {
+		t.Errorf("deal_id = %v, want %s", got[0]["deal_id"], dealID)
+	}
+}
+
 func TestCreateReferralManually(t *testing.T) {
 	t.Cleanup(truncateData)
 	cookie := login(t)
@@ -105,6 +144,49 @@ func TestCreateReferralManually(t *testing.T) {
 	}
 	if ref["deal_id"] != dealID {
 		t.Errorf("deal_id = %v, want %s", ref["deal_id"], dealID)
+	}
+	if ref["status"] != "none" {
+		t.Errorf("status = %v, want none", ref["status"])
+	}
+}
+
+func TestCreateReferralWithStatus(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+
+	res := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Dana",
+		"last_name":  "Paid",
+		"amount":     250,
+		"status":     "paid",
+	}, cookie)
+	var ref map[string]any
+	decodeJSON(t, res, &ref)
+
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("got %d, want 201", res.StatusCode)
+	}
+	if ref["status"] != "paid" {
+		t.Errorf("status = %v, want paid", ref["status"])
+	}
+}
+
+func TestCreateReferralRejectsInvalidStatus(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+
+	res := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Evan",
+		"status":     "unknown",
+	}, cookie)
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", res.StatusCode)
 	}
 }
 

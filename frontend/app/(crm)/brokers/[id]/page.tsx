@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { brokers as brokersApi, deals as dealsApi, clients, dealers, referrals as referralsApi } from "@/lib/api";
 import type { Broker, Deal, Client, Dealer, Referral } from "@/lib/types";
-import { fmtDate } from "@/lib/utils";
+import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
 import DealModal from "@/components/DealModal";
 
 const PAGE_SIZE = 20;
@@ -173,14 +173,4 @@ function Cell({ label, value, green, blue }: { label: string; value?: string; gr
       <span className={value ? cls + " truncate" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
     </div>
   );
-}
-
-function groupReferralsByDeal(referrals: Referral[]) {
-  const map: Record<string, Referral[]> = {};
-  for (const ref of referrals) {
-    if (!ref.deal_id) continue;
-    if (!map[ref.deal_id]) map[ref.deal_id] = [];
-    map[ref.deal_id].push(ref);
-  }
-  return map;
 }

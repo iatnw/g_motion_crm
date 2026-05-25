@@ -218,6 +218,44 @@ func (q *Queries) ListReferralsByDeal(ctx context.Context, dealID pgtype.UUID) (
 	return items, nil
 }
 
+const listReferralsByDeals = `-- name: ListReferralsByDeals :many
+SELECT id, deal_id, first_name, last_name, phone, amount, status, paid_date, notes, created_at, updated_at FROM referrals
+WHERE deal_id = ANY($1::uuid[])
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListReferralsByDeals(ctx context.Context, dollar_1 []pgtype.UUID) ([]Referral, error) {
+	rows, err := q.db.Query(ctx, listReferralsByDeals, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Referral
+	for rows.Next() {
+		var i Referral
+		if err := rows.Scan(
+			&i.ID,
+			&i.DealID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Phone,
+			&i.Amount,
+			&i.Status,
+			&i.PaidDate,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateReferral = `-- name: UpdateReferral :one
 UPDATE referrals
 SET

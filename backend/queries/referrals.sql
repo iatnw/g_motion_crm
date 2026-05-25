@@ -21,6 +21,11 @@ SELECT * FROM referrals
 WHERE deal_id = $1
 ORDER BY created_at DESC;
 
+-- name: ListReferralsByDeals :many
+SELECT * FROM referrals
+WHERE deal_id = ANY($1::uuid[])
+ORDER BY created_at DESC;
+
 -- name: UpdateReferral :one
 UPDATE referrals
 SET

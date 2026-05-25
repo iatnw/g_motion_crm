@@ -76,7 +76,7 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		in.DealDate = &now
 	}
 
-	if err := normalizeBrokerCommission(in.BrokerFee, in.DocFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
+	if err := normalizeBrokerCommission(in.BrokerFee, in.DocFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission); err != nil {
 		return db.Deal{}, err
 	}
 
@@ -130,8 +130,75 @@ func (s *DealService) GetShow(ctx context.Context, id uuid.UUID) (db.GetDealShow
 	return s.q.GetDealShow(ctx, toUUID(id))
 }
 
-func (s *DealService) List(ctx context.Context, limit, offset int32) ([]db.Deal, error) {
-	return s.q.ListDeals(ctx, db.ListDealsParams{Limit: limit, Offset: offset})
+type DealListCounts struct {
+	All     int64
+	Pending int64
+	Paid    int64
+}
+
+func (s *DealService) ListFiltered(ctx context.Context, status, search string, limit, offset int32) ([]db.Deal, DealListCounts, error) {
+	rows, err := s.q.ListDealsFiltered(ctx, db.ListDealsFilteredParams{
+		Status: status,
+		Search: search,
+		Lim:    limit,
+		Off:    offset,
+	})
+	if err != nil {
+		return nil, DealListCounts{}, err
+	}
+
+	var counts DealListCounts
+	deals := make([]db.Deal, 0, len(rows))
+	for i, row := range rows {
+		if i == 0 {
+			counts = DealListCounts{
+				All:     row.AllCount,
+				Pending: row.PendingCount,
+				Paid:    row.PaidCount,
+			}
+		}
+		if !row.ID.Valid {
+			continue
+		}
+		deals = append(deals, dealFromFilteredRow(row))
+	}
+
+	return deals, counts, nil
+}
+
+func dealFromFilteredRow(row db.ListDealsFilteredRow) db.Deal {
+	return db.Deal{
+		ID:                         row.ID,
+		ClientID:                   row.ClientID,
+		BrokerID:                   row.BrokerID,
+		DealerID:                   row.DealerID,
+		DealDate:                   row.DealDate,
+		DealNumber:                 row.DealNumber,
+		Vin:                        row.Vin,
+		Make:                       row.Make,
+		Model:                      row.Model,
+		TrimLevel:                  row.TrimLevel,
+		DownPayment:                row.DownPayment,
+		DownPaymentMethod:          row.DownPaymentMethod,
+		MonthlyPayment:             row.MonthlyPayment,
+		BrokerFee:                  row.BrokerFee,
+		BrokerPercent:              row.BrokerPercent,
+		BrokerCommission:           row.BrokerCommission,
+		BrokerCommissionStatus:     row.BrokerCommissionStatus,
+		BrokerCommissionPaidDate:   row.BrokerCommissionPaidDate,
+		YourNet:                    row.YourNet,
+		BrokerFeeStatus:            row.BrokerFeeStatus,
+		BrokerFeePaidDate:          row.BrokerFeePaidDate,
+		CreatedAt:                  row.CreatedAt,
+		UpdatedAt:                  row.UpdatedAt,
+		DealStatus:                 row.DealStatus,
+		CollectAmount:              row.CollectAmount,
+		DocFee:                     row.DocFee,
+		BrokerPaymentMethod:        row.BrokerPaymentMethod,
+		Notes:                      row.Notes,
+		DealStatusPendingSince:     row.DealStatusPendingSince,
+		PaymentReminderEmailSentAt: row.PaymentReminderEmailSentAt,
+	}
 }
 
 func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID, limit, offset int32) ([]db.Deal, error) {
@@ -178,7 +245,7 @@ type UpdateDealInput struct {
 }
 
 func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, error) {
-	if err := normalizeBrokerCommission(in.BrokerFee, in.DocFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission, &in.YourNet); err != nil {
+	if err := normalizeBrokerCommission(in.BrokerFee, in.DocFee, in.CollectAmount, &in.BrokerPercent, &in.BrokerCommission); err != nil {
 		return db.Deal{}, err
 	}
 
@@ -236,7 +303,7 @@ func (s *DealService) MarkPaymentReminderEmailSent(ctx context.Context, id uuid.
 	return s.q.MarkDealPaymentReminderEmailSent(ctx, toUUID(id))
 }
 
-func normalizeBrokerCommission(brokerFee *float64, docFee *float64, collectAmount *float64, brokerPercent **float64, brokerCommission **float64, yourNet **float64) error {
+func normalizeBrokerCommission(brokerFee *float64, docFee *float64, collectAmount *float64, brokerPercent **float64, brokerCommission **float64) error {
 	fee := 0.0
 	if brokerFee != nil {
 		fee = *brokerFee
@@ -271,11 +338,6 @@ func normalizeBrokerCommission(brokerFee *float64, docFee *float64, collectAmoun
 			percent := (**brokerCommission) / base * 100
 			*brokerPercent = &percent
 		}
-	}
-
-	if yourNet != nil && *yourNet == nil && hasCommission {
-		net := base - (**brokerCommission)
-		*yourNet = &net
 	}
 
 	return nil

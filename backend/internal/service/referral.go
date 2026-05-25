@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
 
@@ -20,17 +21,23 @@ type CreateReferralInput struct {
 	LastName  string
 	Phone     *string
 	Amount    *float64
+	Status    db.NullReferralStatus
 	Notes     *string
 }
 
 func (s *ReferralService) Create(ctx context.Context, in CreateReferralInput) (db.Referral, error) {
+	status := db.ReferralStatusNone
+	if in.Status.Valid {
+		status = in.Status.ReferralStatus
+	}
+
 	return s.q.CreateReferral(ctx, db.CreateReferralParams{
 		DealID:    toNullUUID(in.DealID),
 		FirstName: in.FirstName,
 		LastName:  in.LastName,
 		Phone:     toText(in.Phone),
 		Amount:    toNumeric(in.Amount),
-		Status:    db.ReferralStatusNone,
+		Status:    status,
 		Notes:     toText(in.Notes),
 	})
 }
@@ -41,6 +48,14 @@ func (s *ReferralService) Get(ctx context.Context, id uuid.UUID) (db.Referral, e
 
 func (s *ReferralService) List(ctx context.Context, id uuid.UUID) ([]db.Referral, error) {
 	return s.q.ListReferralsByDeal(ctx, toUUID(id))
+}
+
+func (s *ReferralService) ListByDeals(ctx context.Context, ids []uuid.UUID) ([]db.Referral, error) {
+	dbIDs := make([]pgtype.UUID, len(ids))
+	for i, id := range ids {
+		dbIDs[i] = toUUID(id)
+	}
+	return s.q.ListReferralsByDeals(ctx, dbIDs)
 }
 
 func (s *ReferralService) ListAll(ctx context.Context) ([]db.ListAllReferralsRow, error) {

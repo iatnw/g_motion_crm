@@ -75,6 +75,9 @@ export const auth = {
 };
 
 type PaginatedResponse<T> = { data: T[]; limit: number; offset: number; has_more: boolean };
+type DealsPaginatedResponse = PaginatedResponse<import("./types").Deal> & {
+  counts?: { all: number; pending: number; paid: number };
+};
 
 async function presignedUpload(
   file: File,
@@ -138,6 +141,12 @@ export const clients = {
 export const deals = {
   nextNumber: () => request<{ deal_number: string }>("/deals/next-number").then((r) => r.deal_number),
   list: () => fetchAll<import("./types").Deal>("/deals"),
+  listPaged: (params: { limit: number; offset: number; status?: string; search?: string }) => {
+    const qs = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
+    if (params.status) qs.set("status", params.status);
+    if (params.search) qs.set("search", params.search);
+    return request<DealsPaginatedResponse>(`/deals?${qs}`);
+  },
   listByClient: (clientId: string) => fetchAll<import("./types").Deal>("/deals", { client_id: clientId }),
   listByBrokerPaged: (brokerId: string, limit: number, offset: number) => {
     const qs = new URLSearchParams({ broker_id: brokerId, limit: String(limit), offset: String(offset) });
@@ -180,6 +189,11 @@ export const deals = {
 // Referrals
 export const referrals = {
   list: () => request<import("./types").Referral[]>("/referrals"),
+  listByDeals: (dealIds: string[]) => {
+    if (dealIds.length === 0) return Promise.resolve([] as import("./types").Referral[]);
+    const qs = new URLSearchParams({ deal_ids: dealIds.join(",") });
+    return request<import("./types").Referral[]>(`/referrals?${qs}`);
+  },
   listByDeal: (dealId: string) =>
     request<import("./types").Referral[]>(`/deals/${dealId}/referrals`),
   create: (data: object) =>

@@ -81,11 +81,77 @@ LEFT JOIN (
 ) referral_totals ON referral_totals.deal_id = d.id
 WHERE d.id = $1;
 
--- name: ListDeals :many
-SELECT deals.* FROM deals
-WHERE deals.deal_status IN ('pending', 'paid')
-ORDER BY COALESCE(deals.deal_date, deals.created_at::date) DESC, deals.created_at DESC
-LIMIT $1 OFFSET $2;
+-- name: ListDealsFiltered :many
+WITH search_filtered AS (
+    SELECT deals.* FROM deals
+    JOIN clients ON clients.id = deals.client_id
+    LEFT JOIN brokers ON brokers.id = deals.broker_id
+    WHERE deals.deal_status IN ('pending', 'paid')
+      AND (
+        sqlc.arg(search)::text = ''
+        OR deals.make ILIKE '%' || sqlc.arg(search) || '%'
+        OR deals.model ILIKE '%' || sqlc.arg(search) || '%'
+        OR deals.vin ILIKE '%' || sqlc.arg(search) || '%'
+        OR deals.deal_number ILIKE '%' || sqlc.arg(search) || '%'
+        OR clients.first_name ILIKE '%' || sqlc.arg(search) || '%'
+        OR clients.last_name ILIKE '%' || sqlc.arg(search) || '%'
+        OR (clients.first_name || ' ' || clients.last_name) ILIKE '%' || sqlc.arg(search) || '%'
+        OR brokers.first_name ILIKE '%' || sqlc.arg(search) || '%'
+        OR brokers.last_name ILIKE '%' || sqlc.arg(search) || '%'
+        OR (brokers.first_name || ' ' || brokers.last_name) ILIKE '%' || sqlc.arg(search) || '%'
+      )
+),
+counts AS (
+    SELECT
+        COUNT(*)::bigint AS all_count,
+        COUNT(*) FILTER (WHERE deal_status = 'pending')::bigint AS pending_count,
+        COUNT(*) FILTER (WHERE deal_status = 'paid')::bigint AS paid_count
+    FROM search_filtered
+),
+page AS (
+    SELECT *
+    FROM search_filtered
+    WHERE sqlc.arg(status)::text = '' OR deal_status::text = sqlc.arg(status)
+    ORDER BY COALESCE(deal_date, created_at::date) DESC, created_at DESC
+    LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off)
+)
+SELECT
+    page.id,
+    page.client_id,
+    page.broker_id,
+    page.dealer_id,
+    page.deal_date,
+    page.deal_number,
+    page.vin,
+    page.make,
+    page.model,
+    page.trim_level,
+    page.down_payment,
+    page.down_payment_method,
+    page.monthly_payment,
+    page.broker_fee,
+    page.broker_percent,
+    page.broker_commission,
+    page.broker_commission_status,
+    page.broker_commission_paid_date,
+    page.your_net,
+    page.broker_fee_status,
+    page.broker_fee_paid_date,
+    page.created_at,
+    page.updated_at,
+    page.deal_status,
+    page.collect_amount,
+    page.doc_fee,
+    page.broker_payment_method,
+    page.notes,
+    page.deal_status_pending_since,
+    page.payment_reminder_email_sent_at,
+    counts.all_count,
+    counts.pending_count,
+    counts.paid_count
+FROM counts
+LEFT JOIN page ON true
+ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at DESC;
 
 -- name: UpdateDeal :one
 UPDATE deals

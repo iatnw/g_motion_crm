@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -26,6 +27,7 @@ type referralRequest struct {
 	LastName  string   `json:"last_name"`
 	Phone     *string  `json:"phone"`
 	Amount    *float64 `json:"amount"`
+	Status    *string  `json:"status"`
 	Notes     *string  `json:"notes"`
 }
 
@@ -47,12 +49,19 @@ func (h *ReferralHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status, err := nullReferralStatus(req.Status)
+	if err != nil {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+
 	referral, err := h.referral.Create(r.Context(), service.CreateReferralInput{
 		DealID:    &dealID,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Phone:     req.Phone,
 		Amount:    req.Amount,
+		Status:    status,
 		Notes:     req.Notes,
 	})
 	if err != nil {
@@ -76,6 +85,12 @@ func (h *ReferralHandler) CreateDirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status, err := nullReferralStatus(req.Status)
+	if err != nil {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+
 	var dealID *uuid.UUID
 	if req.DealID != nil && *req.DealID != "" {
 		id, err := uuid.Parse(*req.DealID)
@@ -92,6 +107,7 @@ func (h *ReferralHandler) CreateDirect(w http.ResponseWriter, r *http.Request) {
 		LastName:  req.LastName,
 		Phone:     req.Phone,
 		Amount:    req.Amount,
+		Status:    status,
 		Notes:     req.Notes,
 	})
 	if err != nil {
@@ -104,6 +120,37 @@ func (h *ReferralHandler) CreateDirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ReferralHandler) List(w http.ResponseWriter, r *http.Request) {
+	if dealIDsParam := strings.TrimSpace(r.URL.Query().Get("deal_ids")); dealIDsParam != "" {
+		parts := strings.Split(dealIDsParam, ",")
+		dealIDs := make([]uuid.UUID, 0, len(parts))
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			id, err := uuid.Parse(part)
+			if err != nil {
+				http.Error(w, "invalid deal_ids", http.StatusBadRequest)
+				return
+			}
+			dealIDs = append(dealIDs, id)
+		}
+
+		if len(dealIDs) == 0 {
+			writeJSON(w, http.StatusOK, []ReferralResponse{})
+			return
+		}
+
+		referrals, err := h.referral.ListByDeals(r.Context(), dealIDs)
+		if err != nil {
+			slog.Error("list referrals by deals", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, toReferralResponses(referrals))
+		return
+	}
+
 	referrals, err := h.referral.ListAll(r.Context())
 	if err != nil {
 		slog.Error("list all referrals", "error", err)

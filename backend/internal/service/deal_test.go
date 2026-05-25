@@ -10,9 +10,8 @@ func TestNormalizeBrokerCommissionCalculatesCommission(t *testing.T) {
 	percentValue := 25.0
 	percent := &percentValue
 	var commission *float64
-	var net *float64
 
-	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission, &net)
+	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
@@ -26,9 +25,8 @@ func TestNormalizeBrokerCommissionCalculatesPercent(t *testing.T) {
 	var percent *float64
 	commissionValue := 250.0
 	commission := &commissionValue
-	var net *float64
 
-	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission, &net)
+	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
@@ -43,16 +41,12 @@ func TestNormalizeBrokerCommissionAllowsManualCommission(t *testing.T) {
 	percent := &percentValue
 	commissionValue := 300.0
 	commission := &commissionValue
-	var net *float64
 
-	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission, &net)
+	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
 	if commission == nil || math.Abs(*commission-300) > 0.01 {
 		t.Fatalf("commission = %v, want 300", commission)
-	}
-	if net == nil || math.Abs(*net-700) > 0.01 {
-		t.Fatalf("net = %v, want 700", net)
 	}
 }

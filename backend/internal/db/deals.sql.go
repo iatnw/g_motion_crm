@@ -275,69 +275,6 @@ func (q *Queries) GetDealShow(ctx context.Context, id pgtype.UUID) (GetDealShowR
 	return i, err
 }
 
-const listDeals = `-- name: ListDeals :many
-SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at FROM deals
-WHERE deals.deal_status IN ('pending', 'paid')
-ORDER BY COALESCE(deals.deal_date, deals.created_at::date) DESC, deals.created_at DESC
-LIMIT $1 OFFSET $2
-`
-
-type ListDealsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) ListDeals(ctx context.Context, arg ListDealsParams) ([]Deal, error) {
-	rows, err := q.db.Query(ctx, listDeals, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Deal
-	for rows.Next() {
-		var i Deal
-		if err := rows.Scan(
-			&i.ID,
-			&i.ClientID,
-			&i.BrokerID,
-			&i.DealerID,
-			&i.DealDate,
-			&i.DealNumber,
-			&i.Vin,
-			&i.Make,
-			&i.Model,
-			&i.TrimLevel,
-			&i.DownPayment,
-			&i.DownPaymentMethod,
-			&i.MonthlyPayment,
-			&i.BrokerFee,
-			&i.BrokerPercent,
-			&i.BrokerCommission,
-			&i.BrokerCommissionStatus,
-			&i.BrokerCommissionPaidDate,
-			&i.YourNet,
-			&i.BrokerFeeStatus,
-			&i.BrokerFeePaidDate,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.DealStatus,
-			&i.CollectAmount,
-			&i.DocFee,
-			&i.BrokerPaymentMethod,
-			&i.Notes,
-			&i.DealStatusPendingSince,
-			&i.PaymentReminderEmailSentAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listDealsByBroker = `-- name: ListDealsByBroker :many
 SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at FROM deals
 WHERE deals.broker_id = $1
@@ -455,6 +392,181 @@ func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientPa
 			&i.Notes,
 			&i.DealStatusPendingSince,
 			&i.PaymentReminderEmailSentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDealsFiltered = `-- name: ListDealsFiltered :many
+WITH search_filtered AS (
+    SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at FROM deals
+    JOIN clients ON clients.id = deals.client_id
+    LEFT JOIN brokers ON brokers.id = deals.broker_id
+    WHERE deals.deal_status IN ('pending', 'paid')
+      AND (
+        $1::text = ''
+        OR deals.make ILIKE '%' || $1 || '%'
+        OR deals.model ILIKE '%' || $1 || '%'
+        OR deals.vin ILIKE '%' || $1 || '%'
+        OR deals.deal_number ILIKE '%' || $1 || '%'
+        OR clients.first_name ILIKE '%' || $1 || '%'
+        OR clients.last_name ILIKE '%' || $1 || '%'
+        OR (clients.first_name || ' ' || clients.last_name) ILIKE '%' || $1 || '%'
+        OR brokers.first_name ILIKE '%' || $1 || '%'
+        OR brokers.last_name ILIKE '%' || $1 || '%'
+        OR (brokers.first_name || ' ' || brokers.last_name) ILIKE '%' || $1 || '%'
+      )
+),
+counts AS (
+    SELECT
+        COUNT(*)::bigint AS all_count,
+        COUNT(*) FILTER (WHERE deal_status = 'pending')::bigint AS pending_count,
+        COUNT(*) FILTER (WHERE deal_status = 'paid')::bigint AS paid_count
+    FROM search_filtered
+),
+page AS (
+    SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
+    FROM search_filtered
+    WHERE $2::text = '' OR deal_status::text = $2
+    ORDER BY COALESCE(deal_date, created_at::date) DESC, created_at DESC
+    LIMIT $4 OFFSET $3
+)
+SELECT
+    page.id,
+    page.client_id,
+    page.broker_id,
+    page.dealer_id,
+    page.deal_date,
+    page.deal_number,
+    page.vin,
+    page.make,
+    page.model,
+    page.trim_level,
+    page.down_payment,
+    page.down_payment_method,
+    page.monthly_payment,
+    page.broker_fee,
+    page.broker_percent,
+    page.broker_commission,
+    page.broker_commission_status,
+    page.broker_commission_paid_date,
+    page.your_net,
+    page.broker_fee_status,
+    page.broker_fee_paid_date,
+    page.created_at,
+    page.updated_at,
+    page.deal_status,
+    page.collect_amount,
+    page.doc_fee,
+    page.broker_payment_method,
+    page.notes,
+    page.deal_status_pending_since,
+    page.payment_reminder_email_sent_at,
+    counts.all_count,
+    counts.pending_count,
+    counts.paid_count
+FROM counts
+LEFT JOIN page ON true
+ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at DESC
+`
+
+type ListDealsFilteredParams struct {
+	Search string `json:"search"`
+	Status string `json:"status"`
+	Off    int32  `json:"off"`
+	Lim    int32  `json:"lim"`
+}
+
+type ListDealsFilteredRow struct {
+	ID                         pgtype.UUID             `json:"id"`
+	ClientID                   pgtype.UUID             `json:"client_id"`
+	BrokerID                   pgtype.UUID             `json:"broker_id"`
+	DealerID                   pgtype.UUID             `json:"dealer_id"`
+	DealDate                   pgtype.Date             `json:"deal_date"`
+	DealNumber                 pgtype.Text             `json:"deal_number"`
+	Vin                        pgtype.Text             `json:"vin"`
+	Make                       pgtype.Text             `json:"make"`
+	Model                      pgtype.Text             `json:"model"`
+	TrimLevel                  pgtype.Text             `json:"trim_level"`
+	DownPayment                pgtype.Numeric          `json:"down_payment"`
+	DownPaymentMethod          NullDownPaymentMethod   `json:"down_payment_method"`
+	MonthlyPayment             pgtype.Numeric          `json:"monthly_payment"`
+	BrokerFee                  pgtype.Numeric          `json:"broker_fee"`
+	BrokerPercent              pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission           pgtype.Numeric          `json:"broker_commission"`
+	BrokerCommissionStatus     NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerCommissionPaidDate   pgtype.Date             `json:"broker_commission_paid_date"`
+	YourNet                    pgtype.Numeric          `json:"your_net"`
+	BrokerFeeStatus            NullPaymentStatus       `json:"broker_fee_status"`
+	BrokerFeePaidDate          pgtype.Date             `json:"broker_fee_paid_date"`
+	CreatedAt                  pgtype.Timestamptz      `json:"created_at"`
+	UpdatedAt                  pgtype.Timestamptz      `json:"updated_at"`
+	DealStatus                 NullDealStatus          `json:"deal_status"`
+	CollectAmount              pgtype.Numeric          `json:"collect_amount"`
+	DocFee                     pgtype.Numeric          `json:"doc_fee"`
+	BrokerPaymentMethod        NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                      pgtype.Text             `json:"notes"`
+	DealStatusPendingSince     pgtype.Date             `json:"deal_status_pending_since"`
+	PaymentReminderEmailSentAt pgtype.Timestamptz      `json:"payment_reminder_email_sent_at"`
+	AllCount                   int64                   `json:"all_count"`
+	PendingCount               int64                   `json:"pending_count"`
+	PaidCount                  int64                   `json:"paid_count"`
+}
+
+func (q *Queries) ListDealsFiltered(ctx context.Context, arg ListDealsFilteredParams) ([]ListDealsFilteredRow, error) {
+	rows, err := q.db.Query(ctx, listDealsFiltered,
+		arg.Search,
+		arg.Status,
+		arg.Off,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDealsFilteredRow
+	for rows.Next() {
+		var i ListDealsFilteredRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientID,
+			&i.BrokerID,
+			&i.DealerID,
+			&i.DealDate,
+			&i.DealNumber,
+			&i.Vin,
+			&i.Make,
+			&i.Model,
+			&i.TrimLevel,
+			&i.DownPayment,
+			&i.DownPaymentMethod,
+			&i.MonthlyPayment,
+			&i.BrokerFee,
+			&i.BrokerPercent,
+			&i.BrokerCommission,
+			&i.BrokerCommissionStatus,
+			&i.BrokerCommissionPaidDate,
+			&i.YourNet,
+			&i.BrokerFeeStatus,
+			&i.BrokerFeePaidDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DealStatus,
+			&i.CollectAmount,
+			&i.DocFee,
+			&i.BrokerPaymentMethod,
+			&i.Notes,
+			&i.DealStatusPendingSince,
+			&i.PaymentReminderEmailSentAt,
+			&i.AllCount,
+			&i.PendingCount,
+			&i.PaidCount,
 		); err != nil {
 			return nil, err
 		}

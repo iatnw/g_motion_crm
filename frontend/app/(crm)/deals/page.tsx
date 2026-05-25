@@ -6,9 +6,10 @@ import { deals, clients, brokers, dealers, referrals as referralsApi } from "@/l
 import type { Deal, Client, Broker, Dealer, DealStatus, Referral, ReferralStatus } from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
-import { fmtDate } from "@/lib/utils";
+import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
 
 type FilterTab = "all" | "pending" | "paid";
+const PAGE_SIZE = 20;
 
 const statusBorder: Record<string, string> = {
   paid:    "border-l-green-500",
@@ -16,7 +17,7 @@ const statusBorder: Record<string, string> = {
 };
 
 export default function DealsPage() {
-  const [allDeals, setAllDeals] = useState<Deal[]>([]);
+  const [dealList, setDealList] = useState<Deal[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [clientMap, setClientMap] = useState<Record<string, Client>>({});
   const [allBrokers, setAllBrokers] = useState<Broker[]>([]);
@@ -25,55 +26,100 @@ export default function DealsPage() {
   const [dealerMap, setDealerMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [querySearch, setQuerySearch] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
   const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
+  const [counts, setCounts] = useState({ all: 0, pending: 0, paid: 0 });
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
 
   useEffect(() => {
-    Promise.all([deals.list(), clients.list(), brokers.list(), dealers.list(), referralsApi.list()])
-      .then(([d, c, b, dl, refs]) => {
-        setAllDeals(d ?? []);
+    Promise.all([clients.list(), brokers.list(), dealers.list()])
+      .then(([c, b, dl]) => {
         setAllClients(c ?? []);
         setClientMap(Object.fromEntries((c ?? []).map((x) => [x.id, x])));
-        const map: Record<string, Referral[]> = {};
-        for (const r of refs ?? []) {
-          if (r.deal_id) {
-            if (!map[r.deal_id]) map[r.deal_id] = [];
-            map[r.deal_id].push(r);
-          }
-        }
-        setReferralMap(map);
         setAllBrokers(b ?? []);
         setAllDealers(dl ?? []);
         setBrokerMap(Object.fromEntries((b ?? []).map((x) => [x.id, `${x.first_name} ${x.last_name}`])));
         setDealerMap(Object.fromEntries((dl ?? []).map((x) => [x.id, x.name])));
-      })
-      .finally(() => setLoading(false));
+      });
   }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setOffset(0);
+      setQuerySearch(search.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    let cancelled = false;
+    deals.listPaged({
+      limit: PAGE_SIZE,
+      offset,
+      status: tab === "all" ? undefined : tab,
+      search: querySearch,
+    }).then(async (res) => {
+      const refs = await referralsApi.listByDeals(res.data.map((deal) => deal.id));
+      if (cancelled) return;
+      setDealList((prev) => offset === 0 ? res.data : [...prev, ...res.data]);
+      setReferralMap((prev) => {
+        const pageMap = groupReferralsByDeal(refs ?? []);
+        return offset === 0 ? pageMap : { ...prev, ...pageMap };
+      });
+      setHasMore(res.has_more);
+      if (res.counts) setCounts(res.counts);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, querySearch, offset]);
 
   async function handleSave(data: object): Promise<Deal> {
     if (modal.deal) {
       const updated = await deals.update(modal.deal.id, data);
-      setAllDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      setDealList((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
       return updated;
     } else {
       const created = await deals.create(data);
-      setAllDeals((prev) => [created, ...prev]);
+      setLoading(true);
+      setOffset(0);
+      setDealList((prev) => [created, ...prev].slice(0, PAGE_SIZE));
+      setCounts((prev) => ({
+        all: prev.all + 1,
+        pending: prev.pending + (created.deal_status === "pending" ? 1 : 0),
+        paid: prev.paid + (created.deal_status === "paid" ? 1 : 0),
+      }));
       return created;
     }
   }
 
   async function handleStatusChange(deal: Deal, status: DealStatus) {
     const updated = await deals.updateStatus(deal.id, status);
-    setAllDeals((prev) => {
-      if (updated.deal_status === "cancelled") return prev.filter((d) => d.id !== updated.id);
+    setDealList((prev) => {
+      if (updated.deal_status === "cancelled" || (tab !== "all" && updated.deal_status !== tab)) {
+        return prev.filter((d) => d.id !== updated.id);
+      }
       return prev.map((d) => (d.id === updated.id ? updated : d));
     });
+    setCounts((prev) => ({
+      all: prev.all + (deal.deal_status === "cancelled" ? 1 : 0) - (updated.deal_status === "cancelled" ? 1 : 0),
+      pending: prev.pending
+        - (deal.deal_status === "pending" ? 1 : 0)
+        + (updated.deal_status === "pending" ? 1 : 0),
+      paid: prev.paid
+        - (deal.deal_status === "paid" ? 1 : 0)
+        + (updated.deal_status === "paid" ? 1 : 0),
+    }));
   }
 
   async function handleCommissionMethod(deal: Deal, status: "paid" | "pending") {
     const updated = await deals.updateBrokerCommissionStatus(deal.id, status);
-    setAllDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+    setDealList((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
   }
 
   async function handleReferralStatus(ref: Referral, status: ReferralStatus) {
@@ -87,37 +133,13 @@ export default function DealsPage() {
     });
   }
 
-  const counts = {
-    all: allDeals.length,
-    pending: allDeals.filter((d) => d.deal_status === "pending").length,
-    paid: allDeals.filter((d) => d.deal_status === "paid").length,
-  };
-
-  const filtered = allDeals.filter((d) => {
-    if (tab === "pending" && d.deal_status !== "pending") return false;
-    if (tab === "paid" && d.deal_status !== "paid") return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const client = clientMap[d.client_id];
-    const broker = d.broker_id ? brokerMap[d.broker_id] : "";
-    return (
-      d.make?.toLowerCase().includes(q) ||
-      d.model?.toLowerCase().includes(q) ||
-      d.vin?.toLowerCase().includes(q) ||
-      d.deal_number?.toLowerCase().includes(q) ||
-      client?.first_name.toLowerCase().includes(q) ||
-      client?.last_name.toLowerCase().includes(q) ||
-      broker?.toLowerCase().includes(q)
-    );
-  });
-
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Deals</h1>
-          <p className="text-slate-500 text-xs mt-0.5">{allDeals.length} total</p>
+          <p className="text-slate-500 text-xs mt-0.5">{counts.all} total</p>
         </div>
         <button
           onClick={async () => {
@@ -136,7 +158,12 @@ export default function DealsPage() {
           {(["all", "pending", "paid"] as FilterTab[]).map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => {
+                if (t === tab) return;
+                setLoading(true);
+                setTab(t);
+                setOffset(0);
+              }}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize ${
                 tab === t
                   ? "bg-[#1a1b1d] text-white"
@@ -155,7 +182,10 @@ export default function DealsPage() {
             type="text"
             placeholder="Search by client, broker, car, VIN, deal #…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setLoading(true);
+              setSearch(e.target.value);
+            }}
             className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
           />
         </div>
@@ -163,11 +193,11 @@ export default function DealsPage() {
 
       {loading ? (
         <div className="text-center py-12 text-slate-600 text-sm">Loading…</div>
-      ) : filtered.length === 0 ? (
+      ) : dealList.length === 0 ? (
         <div className="text-center py-12 text-slate-600 text-sm">No deals found</div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((d) => {
+          {dealList.map((d) => {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
@@ -288,6 +318,20 @@ export default function DealsPage() {
               </div>
             );
           })}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  setOffset((o) => o + PAGE_SIZE);
+                }}
+                disabled={loading}
+                className="px-6 py-2 bg-[#0b0c0d] border border-[#252628] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors disabled:opacity-50"
+              >
+                {loading ? "Loading…" : "Load more"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -335,7 +336,14 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deals, err := h.deal.List(r.Context(), limit+1, offset)
+	status := r.URL.Query().Get("status")
+	if status != "" && status != "pending" && status != "paid" {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+
+	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, limit+1, offset)
 	if err != nil {
 		slog.Error("list deals", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -347,6 +355,11 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		"limit":    limit,
 		"offset":   offset,
 		"has_more": hasMore,
+		"counts": map[string]int64{
+			"all":     counts.All,
+			"pending": counts.Pending,
+			"paid":    counts.Paid,
+		},
 	})
 }
 
