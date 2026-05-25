@@ -222,6 +222,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
             >
               ✕ Close
             </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={preview.url}
               alt={preview.name}

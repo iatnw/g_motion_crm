@@ -157,7 +157,6 @@ export default function BrokerDealsPage() {
           dealers={allDealers}
           onSave={handleSave}
           onClose={() => setModal({ open: false })}
-          onStatusChange={(updated) => setDeals((prev) => prev.map((d) => d.id === updated.id ? updated : d))}
         />
       )}
     </div>

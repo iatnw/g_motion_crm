@@ -263,7 +263,6 @@ export default function DashboardPage() {
             return updated;
           }}
           onClose={() => setEditModal(null)}
-          onStatusChange={() => {}}
         />
       )}
     </div>

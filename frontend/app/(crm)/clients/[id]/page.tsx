@@ -196,9 +196,6 @@ export default function ClientDetailPage() {
           dealers={allDealers}
           onSave={handleSaveDeal}
           onClose={() => setDealModal({ open: false })}
-          onStatusChange={(updated) =>
-            setClientDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
-          }
         />
       )}
     </div>

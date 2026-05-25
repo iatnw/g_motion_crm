@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Deal, Broker, Dealer, Client, Referral } from "@/lib/types";
-import { deals as dealsApi, referrals as referralsApi } from "@/lib/api";
+import { referrals as referralsApi } from "@/lib/api";
 
 interface Props {
   deal?: Deal;
@@ -13,14 +13,11 @@ interface Props {
   dealers: Dealer[];
   onSave: (data: object) => Promise<Deal>;
   onClose: () => void;
-  onStatusChange?: (deal: Deal) => void;
 }
 
 type ReferralDraft = { first_name: string; last_name: string; phone: string; amount: string };
 
-export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose, onStatusChange }: Props) {
-  const [currentDeal, setCurrentDeal] = useState<Deal | undefined>(deal);
-
+export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -360,7 +357,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 });
               }} />
               <Field label="Your Net ($)" type="number" value={form.your_net} onChange={(v) => set("your_net", v)} />
-              {currentDeal && (
+              {deal && (
                 <div>
                   <FieldLabel>Deal Status</FieldLabel>
                   <DarkSelect value={form.deal_status} onChange={(e) => set("deal_status", e.target.value)}>
