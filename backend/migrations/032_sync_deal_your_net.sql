@@ -1,5 +1,6 @@
 -- +goose Up
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION calculate_deal_your_net(p_deal_id UUID)
 RETURNS NUMERIC AS $$
     SELECT
@@ -17,7 +18,9 @@ RETURNS NUMERIC AS $$
     ) referral_totals ON referral_totals.deal_id = d.id
     WHERE d.id = p_deal_id;
 $$ LANGUAGE SQL;
+-- +goose StatementEnd
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION set_deal_your_net()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -38,7 +41,9 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION refresh_deal_your_net_from_referral()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -59,6 +64,7 @@ BEGIN
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 UPDATE deals
 SET your_net = calculate_deal_your_net(id);
