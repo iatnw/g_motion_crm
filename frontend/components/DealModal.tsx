@@ -356,7 +356,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   return { ...prev, ...next };
                 });
               }} />
-              <Field label="Your Net ($)" type="number" value={form.your_net} onChange={(v) => set("your_net", v)} />
+              <Field label="Your Net ($)" type="number" value={form.your_net} onChange={() => {}} readOnly />
               {deal && (
                 <div>
                   <FieldLabel>Deal Status</FieldLabel>
