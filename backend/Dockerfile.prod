@@ -12,6 +12,8 @@ FROM alpine:3.21
 
 WORKDIR /app
 
+RUN apk add --no-cache ca-certificates postgresql-client
+
 COPY --from=builder /app/bin/server ./server
 COPY --from=builder /app/migrations ./migrations
 
