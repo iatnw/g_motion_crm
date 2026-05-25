@@ -422,6 +422,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                       value={referralAmounts[ref.id] ?? ""}
                       onChange={(e) => setReferralAmounts((prev) => ({ ...prev, [ref.id]: e.target.value }))}
                       onBlur={() => saveReferralAmount(ref)}
+                      onWheel={(e) => e.currentTarget.blur()}
                       placeholder="$0"
                       className="w-20 bg-[#0b0c0d] border border-[#252628] rounded-md px-2 py-0.5 text-sm text-slate-300 focus:outline-none shrink-0"
                     />
@@ -513,6 +514,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                         type="number"
                         value={ref.amount}
                         onChange={(e) => updateReferralRow(i, "amount", e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
                         placeholder="0"
                         className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none"
                       />
@@ -599,6 +601,7 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onWheel={type === "number" ? (e) => e.currentTarget.blur() : undefined}
         readOnly={readOnly}
         className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors read-only:text-slate-500"
       />

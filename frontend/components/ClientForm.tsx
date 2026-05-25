@@ -204,6 +204,7 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onWheel={type === "number" ? (e) => e.currentTarget.blur() : undefined}
         required={required}
         placeholder={placeholder}
         className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors"

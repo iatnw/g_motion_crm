@@ -274,6 +274,7 @@ export default function ReferralsPage() {
                     type="number"
                     value={form.amount}
                     onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+                    onWheel={(e) => e.currentTarget.blur()}
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
                     placeholder="0"
                   />
