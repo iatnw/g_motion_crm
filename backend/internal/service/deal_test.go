@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"math"
 	"testing"
 )
@@ -13,7 +12,7 @@ func TestNormalizeBrokerCommissionCalculatesCommission(t *testing.T) {
 	var commission *float64
 	var net *float64
 
-	err := normalizeBrokerCommission(&fee, nil, &percent, &commission, &net)
+	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission, &net)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
@@ -29,7 +28,7 @@ func TestNormalizeBrokerCommissionCalculatesPercent(t *testing.T) {
 	commission := &commissionValue
 	var net *float64
 
-	err := normalizeBrokerCommission(&fee, nil, &percent, &commission, &net)
+	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission, &net)
 	if err != nil {
 		t.Fatalf("normalize broker commission: %v", err)
 	}
@@ -38,7 +37,7 @@ func TestNormalizeBrokerCommissionCalculatesPercent(t *testing.T) {
 	}
 }
 
-func TestNormalizeBrokerCommissionRejectsMismatch(t *testing.T) {
+func TestNormalizeBrokerCommissionAllowsManualCommission(t *testing.T) {
 	fee := 1000.0
 	percentValue := 25.0
 	percent := &percentValue
@@ -46,8 +45,14 @@ func TestNormalizeBrokerCommissionRejectsMismatch(t *testing.T) {
 	commission := &commissionValue
 	var net *float64
 
-	err := normalizeBrokerCommission(&fee, nil, &percent, &commission, &net)
-	if !errors.Is(err, ErrBrokerCommissionMismatch) {
-		t.Fatalf("err = %v, want ErrBrokerCommissionMismatch", err)
+	err := normalizeBrokerCommission(&fee, nil, nil, &percent, &commission, &net)
+	if err != nil {
+		t.Fatalf("normalize broker commission: %v", err)
+	}
+	if commission == nil || math.Abs(*commission-300) > 0.01 {
+		t.Fatalf("commission = %v, want 300", commission)
+	}
+	if net == nil || math.Abs(*net-700) > 0.01 {
+		t.Fatalf("net = %v, want 700", net)
 	}
 }

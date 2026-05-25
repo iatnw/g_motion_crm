@@ -62,7 +62,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
 
   // Auto-correct on load: only fill in missing values, never overwrite both
   useEffect(() => {
-    const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
+    const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
     const pct = parseFloat(form.broker_percent);
     const com = parseFloat(form.broker_commission);
     const hasPct = !isNaN(pct) && pct > 0;
@@ -71,10 +71,10 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     if (base > 0 && hasPct && !hasCom) {
       // Only percent stored — compute commission
       const commission = base * pct / 100;
-      setForm((prev) => ({ ...prev, broker_commission: commission.toFixed(2), your_net: (base - commission).toFixed(2) }));
+      setForm((prev) => ({ ...prev, broker_commission: commission.toFixed(2), your_net: netAfterReferral(base, commission, referralTotal) }));
     } else if (base > 0 && hasCom && !hasPct) {
       // Only commission stored — compute percent
-      setForm((prev) => ({ ...prev, broker_percent: (com / base * 100).toFixed(2), your_net: (base - com).toFixed(2) }));
+      setForm((prev) => ({ ...prev, broker_percent: (com / base * 100).toFixed(2), your_net: netAfterReferral(base, com, referralTotal) }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -169,10 +169,10 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       // Always recompute broker_percent from commission at save time to ensure consistency
       const finalForm = { ...form };
       const saveCom = parseFloat(finalForm.broker_commission);
-      const saveBase = commissionBase(finalForm.broker_fee, finalForm.collect_amount, finalForm.doc_fee, referralTotal);
+      const saveBase = commissionBase(finalForm.broker_fee, finalForm.collect_amount, finalForm.doc_fee);
       if (!isNaN(saveCom) && saveCom > 0 && saveBase > 0) {
         finalForm.broker_percent = (saveCom / saveBase * 100).toFixed(2);
-        finalForm.your_net = (saveBase - saveCom).toFixed(2);
+        finalForm.your_net = netAfterReferral(saveBase, saveCom, referralTotal);
       }
 
       const payload: Record<string, string | number> = {};
@@ -291,23 +291,23 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               </div>
               <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
               <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, form.collect_amount, v, referralTotal);
+                const base = commissionBase(form.broker_fee, form.collect_amount, v);
                 const pct = parseFloat(form.broker_percent);
                 setForm((prev) => {
                   const next: Partial<typeof prev> = { doc_fee: v };
                   if (!isNaN(pct) && pct > 0 && base > 0) {
                     const commission = base * pct / 100;
                     next.broker_commission = commission.toFixed(2);
-                    next.your_net = (base - commission).toFixed(2);
+                    next.your_net = netAfterReferral(base, commission, referralTotal);
                   } else {
                     const com = parseFloat(prev.broker_commission);
-                    if (!isNaN(com) && base > 0) next.your_net = (base - com).toFixed(2);
+                    if (!isNaN(com) && base > 0) next.your_net = netAfterReferral(base, com, referralTotal);
                   }
                   return { ...prev, ...next };
                 });
               }} />
               <Field label="Broker Fee ($)" type="number" value={form.broker_fee} onChange={(v) => {
-                const base = commissionBase(v, form.collect_amount, form.doc_fee, referralTotal);
+                const base = commissionBase(v, form.collect_amount, form.doc_fee);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
                 setForm((prev) => {
@@ -315,16 +315,16 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   if (form.broker_percent && !isNaN(pct) && base > 0) {
                     const commission = base * pct / 100;
                     next.broker_commission = commission.toFixed(2);
-                    next.your_net = (base - commission).toFixed(2);
+                    next.your_net = netAfterReferral(base, commission, referralTotal);
                   } else if (form.broker_commission && !isNaN(com) && base > 0) {
                     next.broker_percent = (com / base * 100).toFixed(2);
-                    next.your_net = (base - com).toFixed(2);
+                    next.your_net = netAfterReferral(base, com, referralTotal);
                   }
                   return { ...prev, ...next };
                 });
               }} />
               <Field label="Collect ($)" type="number" value={form.collect_amount} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, v, form.doc_fee, referralTotal);
+                const base = commissionBase(form.broker_fee, v, form.doc_fee);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
                 setForm((prev) => {
@@ -332,29 +332,29 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   if (form.broker_percent && !isNaN(pct) && base > 0) {
                     const commission = base * pct / 100;
                     next.broker_commission = commission.toFixed(2);
-                    next.your_net = (base - commission).toFixed(2);
+                    next.your_net = netAfterReferral(base, commission, referralTotal);
                   } else if (form.broker_commission && !isNaN(com) && base > 0) {
                     next.broker_percent = (com / base * 100).toFixed(2);
-                    next.your_net = (base - com).toFixed(2);
+                    next.your_net = netAfterReferral(base, com, referralTotal);
                   }
                   return { ...prev, ...next };
                 });
               }} />
               <Field label="Broker %" type="number" value={form.broker_percent} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
+                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
                 const pct = parseFloat(v);
                 setForm((prev) => {
                   if (!v || isNaN(pct) || base === 0) return { ...prev, broker_percent: v };
                   const commission = base * pct / 100;
-                  return { ...prev, broker_percent: v, broker_commission: commission.toFixed(2), your_net: (base - commission).toFixed(2) };
+                  return { ...prev, broker_percent: v, broker_commission: commission.toFixed(2), your_net: netAfterReferral(base, commission, referralTotal) };
                 });
               }} />
               <Field label="Broker Commission ($)" type="number" value={form.broker_commission} onChange={(v) => {
-                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee, referralTotal);
+                const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
                 const com = parseFloat(v);
                 setForm((prev) => {
                   if (!v || isNaN(com)) return { ...prev, broker_commission: v };
-                  const next: Partial<typeof prev> = { broker_commission: v, your_net: base > 0 ? (base - com).toFixed(2) : prev.your_net };
+                  const next: Partial<typeof prev> = { broker_commission: v, your_net: base > 0 ? netAfterReferral(base, com, referralTotal) : prev.your_net };
                   if (base > 0) next.broker_percent = (com / base * 100).toFixed(2);
                   return { ...prev, ...next };
                 });
@@ -613,10 +613,13 @@ function formatDateInput(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function commissionBase(brokerFee: string, collectAmount: string, docFee: string, referralTotal = 0) {
+function commissionBase(brokerFee: string, collectAmount: string, docFee: string) {
   const fee = parseFloat(brokerFee) || 0;
   const collect = parseFloat(collectAmount) || 0;
   const doc = parseFloat(docFee) || 0;
-  return fee + collect - doc - referralTotal;
+  return fee + collect - doc;
 }
 
+function netAfterReferral(base: number, commission: number, referralTotal: number) {
+  return (base - commission - referralTotal).toFixed(2);
+}

@@ -102,7 +102,7 @@ func setup() {
 	dealSvc := service.NewDeal(queries, pool)
 	clientSvc := service.NewClient(queries, encryptionKey)
 	dealerSvc := service.NewDealer(queries)
-	documentSvc := service.NewDocument(queries, s3Client)
+	documentSvc := service.NewDocument(queries, s3Client, encryptionKey)
 	dashboardSvc := service.NewDashboard(queries)
 	tallySvc := service.NewTally(clientSvc, documentSvc, dealSvc, queries, pool)
 	referralSvc := service.NewReferral(queries)

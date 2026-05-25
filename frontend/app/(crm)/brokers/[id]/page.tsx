@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { brokers as brokersApi, deals as dealsApi, clients, dealers } from "@/lib/api";
-import type { Broker, Deal, Client, Dealer } from "@/lib/types";
+import { brokers as brokersApi, deals as dealsApi, clients, dealers, referrals as referralsApi } from "@/lib/api";
+import type { Broker, Deal, Client, Dealer, Referral } from "@/lib/types";
 import { fmtDate } from "@/lib/utils";
 import DealModal from "@/components/DealModal";
 
@@ -22,6 +22,7 @@ export default function BrokerDealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [clientMap, setClientMap] = useState<Record<string, Client>>({});
   const [dealerMap, setDealerMap] = useState<Record<string, string>>({});
+  const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
   const [allBrokers, setAllBrokers] = useState<Broker[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [allDealers, setAllDealers] = useState<Dealer[]>([]);
@@ -36,13 +37,15 @@ export default function BrokerDealsPage() {
       brokersApi.list(),
       clients.list(),
       dealers.list(),
-    ]).then(([b, bs, cs, ds]) => {
+      referralsApi.list(),
+    ]).then(([b, bs, cs, ds, refs]) => {
       setBroker(b);
       setAllBrokers(bs ?? []);
       setAllClients(cs ?? []);
       setAllDealers(ds ?? []);
       setClientMap(Object.fromEntries((cs ?? []).map((c) => [c.id, c])));
       setDealerMap(Object.fromEntries((ds ?? []).map((d) => [d.id, d.name])));
+      setReferralMap(groupReferralsByDeal(refs ?? []));
     });
   }, [id]);
 
@@ -95,9 +98,11 @@ export default function BrokerDealsPage() {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
             const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
+            const dealReferrals = referralMap[d.id] ?? [];
+            const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
             const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
             const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
-            const net = base - commission;
+            const net = base - commission - referralTotal;
 
             return (
               <div key={d.id} className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl`}>
@@ -169,4 +174,14 @@ function Cell({ label, value, green, blue }: { label: string; value?: string; gr
       <span className={value ? cls + " truncate" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
     </div>
   );
+}
+
+function groupReferralsByDeal(referrals: Referral[]) {
+  const map: Record<string, Referral[]> = {};
+  for (const ref of referrals) {
+    if (!ref.deal_id) continue;
+    if (!map[ref.deal_id]) map[ref.deal_id] = [];
+    map[ref.deal_id].push(ref);
+  }
+  return map;
 }

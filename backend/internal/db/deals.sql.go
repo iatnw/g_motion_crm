@@ -201,6 +201,7 @@ SELECT
     d.broker_commission,
     (
         COALESCE(d.broker_fee, 0)
+        + COALESCE(d.collect_amount, 0)
         - COALESCE(d.broker_commission, 0)
         - COALESCE(referral_totals.referral_total, 0)
         - COALESCE(d.doc_fee, 0)
