@@ -391,7 +391,7 @@ function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, 
                 <div className="flex divide-x divide-[#1e1f20]">
                   {d.broker_id && <BucketStat label="Broker" value={brokerMap[d.broker_id]} />}
                   {d.dealer_id && <BucketStat label="Dealer" value={dealerMap[d.dealer_id]} />}
-                  {d.broker_fee != null && <BucketStat label="Revenue" value={money(d.broker_fee)} highlight="green" />}
+                  {d.broker_fee != null && <BucketStat label="Broker Fee" value={money(d.broker_fee)} highlight="green" />}
                   {computedNet != null && <BucketStat label="Net" value={money(computedNet)} highlight="blue" />}
                   {d.broker_commission != null && <BucketStat label="Commission" value={money(d.broker_commission)} />}
                   {d.doc_fee != null && <BucketStat label="Doc Fee" value={money(d.doc_fee)} />}

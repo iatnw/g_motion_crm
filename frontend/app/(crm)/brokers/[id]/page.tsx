@@ -124,7 +124,7 @@ export default function BrokerDealsPage() {
                 </div>
                 <div className="flex divide-x divide-[#1e1f20]">
                   <Cell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
-                  <Cell label="Revenue" value={money(d.broker_fee)} green />
+                  <Cell label="Broker Fee" value={money(d.broker_fee)} green />
                   <Cell label="Net" value={money(net)} blue />
                   <Cell label="Doc Fee" value={money(d.doc_fee)} />
                   <Cell label="Broker %" value={d.broker_percent != null ? `${d.broker_percent}%` : undefined} />

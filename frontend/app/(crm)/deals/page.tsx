@@ -228,7 +228,7 @@ export default function DealsPage() {
                 <div className="flex divide-x divide-[#1e1f20] border-t border-[#1e1f20]">
                   <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
                   <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
-                  <StatCell label="Revenue" value={money(d.broker_fee)} highlight="green" />
+                  <StatCell label="Broker Fee" value={money(d.broker_fee)} highlight="green" />
                   <StatCell label="Net" value={money(computedNet)} highlight="blue" />
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
