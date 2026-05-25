@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
-
-var ErrBrokerCommissionMismatch = errors.New("broker_commission does not match broker_percent and broker_fee")
 
 func (s *DealService) WithTx(tx pgx.Tx) *DealService {
 	return &DealService{q: s.q.WithTx(tx), pool: s.pool}

@@ -134,10 +134,6 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Notes:                  req.Notes,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
-			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
-			return
-		}
 		slog.Error("create deal", "client_id", clientID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -240,10 +236,6 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Notes:                  req.Notes,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrBrokerCommissionMismatch) {
-			http.Error(w, "broker_commission does not match broker_percent and broker_fee", http.StatusBadRequest)
-			return
-		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
