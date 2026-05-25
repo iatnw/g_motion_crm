@@ -37,11 +37,12 @@ func (s *BackupService) Run(ctx context.Context) error {
 		return fmt.Errorf("gzip close: %w", err)
 	}
 
-	if err := s.store.Upload(ctx, key, &buf, int64(buf.Len())); err != nil {
+	backupSize := int64(buf.Len())
+	if err := s.store.Upload(ctx, key, &buf, backupSize); err != nil {
 		return fmt.Errorf("s3 upload: %w", err)
 	}
 
-	slog.Info("database backup complete", "key", key, "bytes", buf.Len())
+	slog.Info("database backup complete", "key", key, "bytes", backupSize)
 	return nil
 }
 
