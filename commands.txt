@@ -1,17 +1,29 @@
 G MOTION CRM - Dev Commands
 ============================
 
-DOCKER
-------
-docker compose up --build          # build and start all containers
-docker compose up                  # start all containers (no rebuild)
-docker compose down                # stop and remove containers
-docker compose down -v             # stop, remove containers AND volumes
-docker compose config              # show resolved config with env vars substituted
+LOCAL DOCKER
+------------
+docker compose up --build          # local/dev only: Postgres + backend + frontend
+docker compose up                  # local/dev only: start all containers (no rebuild)
+docker compose down                # local/dev only: stop and remove containers
+docker compose down -v             # local/dev only: stop, remove containers AND volumes
+docker compose config              # show resolved local config with env vars substituted
 docker ps                          # list running containers
 docker volume ls                   # list all volumes
 docker volume rm <volume_name>     # remove a specific volume
 docker exec <container> <command>  # run command inside container
+
+
+PRODUCTION DEPLOY
+-----------------
+# Production uses AWS RDS. Do NOT deploy production with plain `docker compose up`.
+# Plain `docker compose up` starts/uses the local Postgres container.
+
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Verify backend is using RDS, not the local `postgres` service:
+docker exec g_motion_crm-backend-1 sh -lc 'printenv DATABASE_URL | sed -E "s#postgres://[^@]+@([^/:?]+).*#DATABASE_URL_HOST=\1#"'
 
 
 POSTGRES - CONNECTING

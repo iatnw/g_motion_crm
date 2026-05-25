@@ -74,6 +74,10 @@ TEST_DATABASE_URL="postgres://user:pass@localhost:5432/gmotion_test?sslmode=disa
 
 `docker-compose.prod.yml` is a standalone production file — no local Postgres (uses AWS RDS instead), no source mounts, multi-stage builds, `restart: unless-stopped`.
 
+**Important:** Production on EC2 must be deployed with `docker-compose.prod.yml`.
+The default `docker-compose.yml` is for local/dev-style runs because it starts a
+local Postgres container. Do not use `docker-compose up` for production deploys.
+
 **Infrastructure needed:**
 - EC2 instance (t3.small recommended) with Docker installed
 - RDS PostgreSQL instance — set `DATABASE_URL` to the RDS endpoint in `.env`
@@ -96,6 +100,14 @@ docker-compose -f docker-compose.prod.yml up -d --build
 git pull
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
+
+**Verifying production is using RDS:**
+```bash
+docker exec g_motion_crm-backend-1 sh -lc \
+  'printenv DATABASE_URL | sed -E "s#postgres://[^@]+@([^/:?]+).*#DATABASE_URL_HOST=\1#"'
+```
+
+Expected output should be the RDS host, not `postgres`.
 
 **Viewing logs:**
 ```bash
