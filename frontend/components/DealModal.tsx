@@ -53,12 +53,16 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
 
   const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
   const [referralAmounts, setReferralAmounts] = useState<Record<string, string>>({});
+  const [referralsLoaded, setReferralsLoaded] = useState(!deal);
+  const [didAutoCorrect, setDidAutoCorrect] = useState(false);
   const referralTotal = existingReferrals.reduce((s, r) => s + (r.amount ?? 0), 0);
   const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
   const [allReferralContacts, setAllReferralContacts] = useState<Referral[]>([]);
 
-  // Auto-correct on load: only fill in missing values, never overwrite both
+  // Auto-correct once referrals are loaded: only fill in missing values, never overwrite both.
   useEffect(() => {
+    if (!referralsLoaded || didAutoCorrect) return;
+
     const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
     const pct = parseFloat(form.broker_percent);
     const com = parseFloat(form.broker_commission);
@@ -73,19 +77,32 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       // Only commission stored — compute percent
       setForm((prev) => ({ ...prev, broker_percent: (com / base * 100).toFixed(2), your_net: netAfterReferral(base, com, referralTotal) }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    setDidAutoCorrect(true);
+  }, [didAutoCorrect, form.broker_commission, form.broker_fee, form.broker_percent, form.collect_amount, form.doc_fee, referralTotal, referralsLoaded]);
 
   useEffect(() => {
+    let cancelled = false;
+    setDidAutoCorrect(false);
+
     if (deal) {
+      setReferralsLoaded(false);
       referralsApi.listByDeal(deal.id).then((refs) => {
+        if (cancelled) return;
         setExistingReferrals(refs);
         const amounts: Record<string, string> = {};
         for (const r of refs) amounts[r.id] = r.amount != null ? String(r.amount) : "";
         setReferralAmounts(amounts);
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        if (!cancelled) setReferralsLoaded(true);
+      });
+    } else {
+      setExistingReferrals([]);
+      setReferralAmounts({});
+      setReferralsLoaded(true);
     }
     referralsApi.list().then((data) => {
+      if (cancelled) return;
       // Deduplicate by full name, keeping latest entry per person
       const seen = new Map<string, Referral>();
       for (const r of (data ?? [])) {
@@ -94,6 +111,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       }
       setAllReferralContacts(Array.from(seen.values()));
     }).catch(() => {});
+
+    return () => { cancelled = true; };
   }, [deal]);
 
   function set(field: string, value: string) {
