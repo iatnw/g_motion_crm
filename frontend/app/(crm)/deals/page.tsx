@@ -255,7 +255,8 @@ export default function DealsPage() {
                 </div>
 
                 {/* Stats bar */}
-                <div className="flex divide-x divide-[#1e1f20] border-t border-[#1e1f20]">
+                <div className="overflow-x-auto border-t border-[#1e1f20]">
+                <div className="flex divide-x divide-[#1e1f20] min-w-max">
                   <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
                   <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
                   <StatCell label="Broker Fee" value={money(d.broker_fee)} highlight="green" />
@@ -263,7 +264,7 @@ export default function DealsPage() {
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
                   <StatCell label="Broker %" value={displayPercent ? `${Number(displayPercent).toFixed(2)}%` : undefined} />
-                  <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+                  <div className="px-4 py-2.5 flex flex-col gap-0.5 min-w-[130px]">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-slate-300">{money(commission) ?? "—"}</span>
@@ -284,11 +285,13 @@ export default function DealsPage() {
                     </div>
                   </div>
                 </div>
+                </div>
                 {/* Referrals row — separate so it doesn't affect stats layout */}
                 {dealReferrals.length > 0 && (
-                  <div className="flex divide-x divide-[#1e1f20] border-t border-[#1e1f20]">
+                  <div className="overflow-x-auto border-t border-[#1e1f20]">
+                  <div className="flex divide-x divide-[#1e1f20] min-w-max">
                     {dealReferrals.map((ref) => (
-                      <div key={ref.id} className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+                      <div key={ref.id} className="px-4 py-2.5 flex flex-col gap-0.5 min-w-[160px]">
                         <span className="text-xs text-slate-600 uppercase tracking-wider">
                           Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
                         </span>
@@ -313,6 +316,7 @@ export default function DealsPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
               </div>
@@ -360,9 +364,9 @@ function StatCell({ label, value, highlight }: { label: string; value?: string; 
     : highlight === "blue" ? "text-blue-400 font-bold text-base"
     : "text-slate-300 text-sm";
   return (
-    <div className="flex-1 px-4 py-2.5 flex flex-col gap-0.5 min-w-0">
+    <div className="px-4 py-2.5 flex flex-col gap-0.5 min-w-[90px]">
       <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">{label}</span>
-      <span className={value ? valCls + " truncate" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
+      <span className={value ? valCls + " whitespace-nowrap" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
     </div>
   );
 }

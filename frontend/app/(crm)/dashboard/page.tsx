@@ -74,12 +74,12 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Dashboard</h1>
           <p className="text-slate-500 text-xs mt-0.5">Company overview, pending money, broker and dealer performance</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <SegmentedButton active={mode === "all"} onClick={() => setMode("all")}>All time</SegmentedButton>
           <SegmentedButton active={mode === "month"} onClick={() => setMode("month")}>This month</SegmentedButton>
           <SegmentedButton active={mode === "custom"} onClick={() => setMode("custom")}>Custom</SegmentedButton>
@@ -210,7 +210,8 @@ export default function DashboardPage() {
 
           {/* Recent deals */}
           <Panel title="Recent deals">
-            <div className="divide-y divide-[#1e1f20]">
+            <div className="overflow-x-auto">
+            <div className="divide-y divide-[#1e1f20] min-w-[460px]">
               {summary.recent_deals.length === 0 ? (
                 <div className="py-8 text-center text-sm text-slate-600">No recent deals</div>
               ) : (
@@ -229,6 +230,7 @@ export default function DashboardPage() {
                   </div>
                 ))
               )}
+            </div>
             </div>
           </Panel>
 

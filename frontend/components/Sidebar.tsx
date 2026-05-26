@@ -106,7 +106,8 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-56 flex flex-col h-full bg-[#08080f] border-r border-[#252628]">
+    <>
+    <aside className="hidden md:flex w-56 flex-col h-full bg-[#08080f] border-r border-[#252628]">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-[#252628]">
         <div className="flex items-center gap-2.5">
@@ -171,5 +172,24 @@ export default function Sidebar() {
       </div>
     </aside>
 
+    {/* Mobile bottom tab bar */}
+    <nav className="fixed bottom-0 left-0 right-0 flex md:hidden bg-[#08080f] border-t border-[#252628] z-50 h-14">
+      {links.map(({ href, label, icon }) => {
+        const active = pathname === href || pathname.startsWith(href + "/");
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
+              active ? "text-blue-400" : "text-slate-600 hover:text-slate-400"
+            }`}
+          >
+            <span>{icon}</span>
+            <span className="text-[8px] font-medium uppercase tracking-wide leading-none">{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+    </>
   );
 }
