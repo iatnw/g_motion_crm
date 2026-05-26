@@ -254,9 +254,8 @@ export default function DealsPage() {
                   </div>
                 </div>
 
-                {/* Stats bar */}
-                <div className="overflow-x-auto border-t border-[#1e1f20]">
-                <div className="flex divide-x divide-[#1e1f20] min-w-max">
+                {/* Stats bar — 2-col grid on mobile, horizontal flex on desktop */}
+                <div className="border-t border-[#1e1f20] grid grid-cols-2 md:flex">
                   <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
                   <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
                   <StatCell label="Broker Fee" value={money(d.broker_fee)} highlight="green" />
@@ -264,7 +263,7 @@ export default function DealsPage() {
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
                   <StatCell label="Broker %" value={displayPercent ? `${Number(displayPercent).toFixed(2)}%` : undefined} />
-                  <div className="px-4 py-2.5 flex flex-col gap-0.5 min-w-[130px]">
+                  <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[130px]">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-slate-300">{money(commission) ?? "—"}</span>
@@ -285,38 +284,35 @@ export default function DealsPage() {
                     </div>
                   </div>
                 </div>
-                </div>
-                {/* Referrals row — separate so it doesn't affect stats layout */}
+                {/* Referrals — stacked on mobile, horizontal on desktop */}
                 {dealReferrals.length > 0 && (
-                  <div className="overflow-x-auto border-t border-[#1e1f20]">
-                  <div className="flex divide-x divide-[#1e1f20] min-w-max">
-                    {dealReferrals.map((ref) => (
-                      <div key={ref.id} className="px-4 py-2.5 flex flex-col gap-0.5 min-w-[160px]">
-                        <span className="text-xs text-slate-600 uppercase tracking-wider">
-                          Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
-                        </span>
-                        <div className="flex items-center gap-2">
+                  <div className="border-t border-[#1e1f20] flex flex-col md:flex-row md:divide-x md:divide-[#1e1f20]">
+                    {dealReferrals.map((ref, idx) => (
+                      <div key={ref.id} className={`px-4 py-2.5 flex items-center justify-between gap-3 md:flex-col md:items-start md:justify-start md:gap-0.5 md:flex-1 md:min-w-[160px]${idx < dealReferrals.length - 1 ? " border-b border-[#1e1f20] md:border-b-0" : ""}`}>
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-xs text-slate-600 uppercase tracking-wider">
+                            Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
+                          </span>
                           <span className="text-sm text-slate-300 truncate">
                             {[ref.first_name, ref.last_name].filter(Boolean).join(" ")}
                           </span>
-                          <select
-                            value={ref.status}
-                            onChange={(e) => handleReferralStatus(ref, e.target.value as ReferralStatus)}
-                            onClick={(e) => e.stopPropagation()}
-                            className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
-                              ref.status === "paid"
-                                ? "bg-green-500/10 border-green-500/25 text-green-400"
-                                : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                            }`}
-                            style={{ backgroundColor: "transparent" }}
-                          >
-                            <option value="none">NOT PAID</option>
-                            <option value="paid">PAID</option>
-                          </select>
                         </div>
+                        <select
+                          value={ref.status}
+                          onChange={(e) => handleReferralStatus(ref, e.target.value as ReferralStatus)}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer shrink-0 ${
+                            ref.status === "paid"
+                              ? "bg-green-500/10 border-green-500/25 text-green-400"
+                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                          }`}
+                          style={{ backgroundColor: "transparent" }}
+                        >
+                          <option value="none">NOT PAID</option>
+                          <option value="paid">PAID</option>
+                        </select>
                       </div>
                     ))}
-                  </div>
                   </div>
                 )}
               </div>
@@ -364,9 +360,9 @@ function StatCell({ label, value, highlight }: { label: string; value?: string; 
     : highlight === "blue" ? "text-blue-400 font-bold text-base"
     : "text-slate-300 text-sm";
   return (
-    <div className="px-4 py-2.5 flex flex-col gap-0.5 min-w-[90px]">
+    <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[90px]">
       <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">{label}</span>
-      <span className={value ? valCls + " whitespace-nowrap" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
+      <span className={value ? valCls + " truncate" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
     </div>
   );
 }
