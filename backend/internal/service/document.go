@@ -208,7 +208,7 @@ func (s *DocumentService) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // resolveLabel returns an S3 folder and human-readable label for the upload.
-// For deals it uses the deal number; for clients it decrypts the name.
+// For deals it uses the deal number; for clients it uses the client name.
 func (s *DocumentService) resolveLabel(ctx context.Context, clientID, dealID uuid.NullUUID) (folder, label string) {
 	if dealID.Valid {
 		deal, err := s.q.GetDeal(ctx, toUUID(dealID.UUID))
@@ -220,9 +220,7 @@ func (s *DocumentService) resolveLabel(ctx context.Context, clientID, dealID uui
 	if clientID.Valid {
 		client, err := s.q.GetClient(ctx, toUUID(clientID.UUID))
 		if err == nil {
-			first, _ := decrypt(s.encryptionKey, client.FirstName)
-			last, _ := decrypt(s.encryptionKey, client.LastName)
-			name := strings.TrimSpace(first + "-" + last)
+			name := strings.TrimSpace(client.FirstName + "-" + client.LastName)
 			if name != "-" {
 				return "clients", sanitizeName(name)
 			}

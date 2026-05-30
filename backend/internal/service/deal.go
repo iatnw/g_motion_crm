@@ -52,7 +52,6 @@ type CreateDealInput struct {
 	BrokerPercent          *float64
 	BrokerCommission       *float64
 	BrokerCommissionStatus db.NullPaymentStatus
-	YourNet                *float64
 	BrokerFeeStatus        db.NullPaymentStatus
 	DealStatus             db.NullDealStatus
 	CollectAmount          *float64
@@ -104,7 +103,6 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		BrokerPercent:          toNumeric(in.BrokerPercent),
 		BrokerCommission:       toNumeric(in.BrokerCommission),
 		BrokerCommissionStatus: in.BrokerCommissionStatus,
-		YourNet:                toNumeric(in.YourNet),
 		BrokerFeeStatus:        in.BrokerFeeStatus,
 		DealStatus:             in.DealStatus,
 		CollectAmount:          toNumeric(in.CollectAmount),
@@ -235,7 +233,6 @@ type UpdateDealInput struct {
 	BrokerPercent          *float64
 	BrokerCommission       *float64
 	BrokerCommissionStatus db.NullPaymentStatus
-	YourNet                *float64
 	BrokerFeeStatus        db.NullPaymentStatus
 	DealStatus             db.NullDealStatus
 	CollectAmount          *float64
@@ -267,7 +264,6 @@ func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, 
 		BrokerPercent:          toNumeric(in.BrokerPercent),
 		BrokerCommission:       toNumeric(in.BrokerCommission),
 		BrokerCommissionStatus: in.BrokerCommissionStatus,
-		YourNet:                toNumeric(in.YourNet),
 		BrokerFeeStatus:        in.BrokerFeeStatus,
 		DealStatus:             in.DealStatus,
 		CollectAmount:          toNumeric(in.CollectAmount),

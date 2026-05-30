@@ -29,10 +29,7 @@ INSERT INTO deals (
     broker_percent,
     broker_commission,
     broker_commission_status,
-    broker_commission_paid_date,
-    your_net,
     broker_fee_status,
-    broker_fee_paid_date,
     deal_status,
     deal_status_pending_since,
     collect_amount,
@@ -41,38 +38,35 @@ INSERT INTO deals (
     notes
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    $16, $17, $18, $19, $20, $21,
-    CASE WHEN $21::deal_status = 'pending' THEN COALESCE($4::date, CURRENT_DATE) ELSE NULL END,
-    $22, $23, $24, $25
+    $16, $17, $18,
+    CASE WHEN $18::deal_status = 'pending' THEN COALESCE($4::date, CURRENT_DATE) ELSE NULL END,
+    $19, $20, $21, $22
 ) RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type CreateDealParams struct {
-	ClientID                 pgtype.UUID             `json:"client_id"`
-	BrokerID                 pgtype.UUID             `json:"broker_id"`
-	DealerID                 pgtype.UUID             `json:"dealer_id"`
-	DealDate                 pgtype.Date             `json:"deal_date"`
-	DealNumber               pgtype.Text             `json:"deal_number"`
-	Vin                      pgtype.Text             `json:"vin"`
-	Make                     pgtype.Text             `json:"make"`
-	Model                    pgtype.Text             `json:"model"`
-	TrimLevel                pgtype.Text             `json:"trim_level"`
-	DownPayment              pgtype.Numeric          `json:"down_payment"`
-	DownPaymentMethod        NullDownPaymentMethod   `json:"down_payment_method"`
-	MonthlyPayment           pgtype.Numeric          `json:"monthly_payment"`
-	BrokerFee                pgtype.Numeric          `json:"broker_fee"`
-	BrokerPercent            pgtype.Numeric          `json:"broker_percent"`
-	BrokerCommission         pgtype.Numeric          `json:"broker_commission"`
-	BrokerCommissionStatus   NullPaymentStatus       `json:"broker_commission_status"`
-	BrokerCommissionPaidDate pgtype.Date             `json:"broker_commission_paid_date"`
-	YourNet                  pgtype.Numeric          `json:"your_net"`
-	BrokerFeeStatus          NullPaymentStatus       `json:"broker_fee_status"`
-	BrokerFeePaidDate        pgtype.Date             `json:"broker_fee_paid_date"`
-	DealStatus               NullDealStatus          `json:"deal_status"`
-	CollectAmount            pgtype.Numeric          `json:"collect_amount"`
-	DocFee                   pgtype.Numeric          `json:"doc_fee"`
-	BrokerPaymentMethod      NullBrokerPaymentMethod `json:"broker_payment_method"`
-	Notes                    pgtype.Text             `json:"notes"`
+	ClientID               pgtype.UUID             `json:"client_id"`
+	BrokerID               pgtype.UUID             `json:"broker_id"`
+	DealerID               pgtype.UUID             `json:"dealer_id"`
+	DealDate               pgtype.Date             `json:"deal_date"`
+	DealNumber             pgtype.Text             `json:"deal_number"`
+	Vin                    pgtype.Text             `json:"vin"`
+	Make                   pgtype.Text             `json:"make"`
+	Model                  pgtype.Text             `json:"model"`
+	TrimLevel              pgtype.Text             `json:"trim_level"`
+	DownPayment            pgtype.Numeric          `json:"down_payment"`
+	DownPaymentMethod      NullDownPaymentMethod   `json:"down_payment_method"`
+	MonthlyPayment         pgtype.Numeric          `json:"monthly_payment"`
+	BrokerFee              pgtype.Numeric          `json:"broker_fee"`
+	BrokerPercent          pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission       pgtype.Numeric          `json:"broker_commission"`
+	BrokerCommissionStatus NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerFeeStatus        NullPaymentStatus       `json:"broker_fee_status"`
+	DealStatus             NullDealStatus          `json:"deal_status"`
+	CollectAmount          pgtype.Numeric          `json:"collect_amount"`
+	DocFee                 pgtype.Numeric          `json:"doc_fee"`
+	BrokerPaymentMethod    NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                  pgtype.Text             `json:"notes"`
 }
 
 func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, error) {
@@ -93,10 +87,7 @@ func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, e
 		arg.BrokerPercent,
 		arg.BrokerCommission,
 		arg.BrokerCommissionStatus,
-		arg.BrokerCommissionPaidDate,
-		arg.YourNet,
 		arg.BrokerFeeStatus,
-		arg.BrokerFeePaidDate,
 		arg.DealStatus,
 		arg.CollectAmount,
 		arg.DocFee,
@@ -199,13 +190,7 @@ SELECT
     COALESCE(referral_totals.referral_total, 0::numeric)::numeric AS referral_total,
     d.broker_percent,
     d.broker_commission,
-    (
-        COALESCE(d.broker_fee, 0)
-        + COALESCE(d.collect_amount, 0)
-        - COALESCE(d.broker_commission, 0)
-        - COALESCE(referral_totals.referral_total, 0)
-        - COALESCE(d.doc_fee, 0)
-    )::numeric AS company_net,
+    d.your_net AS company_net,
     d.broker_fee_status,
     d.broker_commission_status,
     d.broker_payment_method,
@@ -655,55 +640,49 @@ SET
     broker_percent              = $15,
     broker_commission           = $16,
     broker_commission_status    = $17,
-    broker_commission_paid_date = $18,
-    your_net                    = $19,
-    broker_fee_status           = $20,
-    broker_fee_paid_date        = $21,
-    deal_status                 = $22,
+    broker_fee_status           = $18,
+    deal_status                 = $19,
     deal_status_pending_since   = CASE
-        WHEN $22::deal_status = 'pending'
+        WHEN $19::deal_status = 'pending'
          AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
         THEN CURRENT_DATE
-        WHEN $22::deal_status IS DISTINCT FROM 'pending'
+        WHEN $19::deal_status IS DISTINCT FROM 'pending'
         THEN NULL
         ELSE deal_status_pending_since
     END,
-    collect_amount              = $23,
-    doc_fee                     = $24,
-    broker_payment_method       = $25,
-    notes                       = $26,
+    collect_amount              = $20,
+    doc_fee                     = $21,
+    broker_payment_method       = $22,
+    notes                       = $23,
     updated_at                  = NOW()
 WHERE id = $1
 RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
 `
 
 type UpdateDealParams struct {
-	ID                       pgtype.UUID             `json:"id"`
-	ClientID                 pgtype.UUID             `json:"client_id"`
-	BrokerID                 pgtype.UUID             `json:"broker_id"`
-	DealerID                 pgtype.UUID             `json:"dealer_id"`
-	DealDate                 pgtype.Date             `json:"deal_date"`
-	DealNumber               pgtype.Text             `json:"deal_number"`
-	Vin                      pgtype.Text             `json:"vin"`
-	Make                     pgtype.Text             `json:"make"`
-	Model                    pgtype.Text             `json:"model"`
-	TrimLevel                pgtype.Text             `json:"trim_level"`
-	DownPayment              pgtype.Numeric          `json:"down_payment"`
-	DownPaymentMethod        NullDownPaymentMethod   `json:"down_payment_method"`
-	MonthlyPayment           pgtype.Numeric          `json:"monthly_payment"`
-	BrokerFee                pgtype.Numeric          `json:"broker_fee"`
-	BrokerPercent            pgtype.Numeric          `json:"broker_percent"`
-	BrokerCommission         pgtype.Numeric          `json:"broker_commission"`
-	BrokerCommissionStatus   NullPaymentStatus       `json:"broker_commission_status"`
-	BrokerCommissionPaidDate pgtype.Date             `json:"broker_commission_paid_date"`
-	YourNet                  pgtype.Numeric          `json:"your_net"`
-	BrokerFeeStatus          NullPaymentStatus       `json:"broker_fee_status"`
-	BrokerFeePaidDate        pgtype.Date             `json:"broker_fee_paid_date"`
-	DealStatus               NullDealStatus          `json:"deal_status"`
-	CollectAmount            pgtype.Numeric          `json:"collect_amount"`
-	DocFee                   pgtype.Numeric          `json:"doc_fee"`
-	BrokerPaymentMethod      NullBrokerPaymentMethod `json:"broker_payment_method"`
-	Notes                    pgtype.Text             `json:"notes"`
+	ID                     pgtype.UUID             `json:"id"`
+	ClientID               pgtype.UUID             `json:"client_id"`
+	BrokerID               pgtype.UUID             `json:"broker_id"`
+	DealerID               pgtype.UUID             `json:"dealer_id"`
+	DealDate               pgtype.Date             `json:"deal_date"`
+	DealNumber             pgtype.Text             `json:"deal_number"`
+	Vin                    pgtype.Text             `json:"vin"`
+	Make                   pgtype.Text             `json:"make"`
+	Model                  pgtype.Text             `json:"model"`
+	TrimLevel              pgtype.Text             `json:"trim_level"`
+	DownPayment            pgtype.Numeric          `json:"down_payment"`
+	DownPaymentMethod      NullDownPaymentMethod   `json:"down_payment_method"`
+	MonthlyPayment         pgtype.Numeric          `json:"monthly_payment"`
+	BrokerFee              pgtype.Numeric          `json:"broker_fee"`
+	BrokerPercent          pgtype.Numeric          `json:"broker_percent"`
+	BrokerCommission       pgtype.Numeric          `json:"broker_commission"`
+	BrokerCommissionStatus NullPaymentStatus       `json:"broker_commission_status"`
+	BrokerFeeStatus        NullPaymentStatus       `json:"broker_fee_status"`
+	DealStatus             NullDealStatus          `json:"deal_status"`
+	CollectAmount          pgtype.Numeric          `json:"collect_amount"`
+	DocFee                 pgtype.Numeric          `json:"doc_fee"`
+	BrokerPaymentMethod    NullBrokerPaymentMethod `json:"broker_payment_method"`
+	Notes                  pgtype.Text             `json:"notes"`
 }
 
 func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, error) {
@@ -725,10 +704,7 @@ func (q *Queries) UpdateDeal(ctx context.Context, arg UpdateDealParams) (Deal, e
 		arg.BrokerPercent,
 		arg.BrokerCommission,
 		arg.BrokerCommissionStatus,
-		arg.BrokerCommissionPaidDate,
-		arg.YourNet,
 		arg.BrokerFeeStatus,
-		arg.BrokerFeePaidDate,
 		arg.DealStatus,
 		arg.CollectAmount,
 		arg.DocFee,

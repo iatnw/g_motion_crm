@@ -36,7 +36,7 @@ services:
       context: ./frontend/
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://gmotioncrm.com/api
+        NEXT_PUBLIC_API_URL: http://localhost:8080
     restart: unless-stopped
     ports:
       - "3000:3000"

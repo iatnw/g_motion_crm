@@ -38,7 +38,6 @@ type dealRequest struct {
 	BrokerPercent          *float64 `json:"broker_percent"`
 	BrokerCommission       *float64 `json:"broker_commission"`
 	BrokerCommissionStatus *string  `json:"broker_commission_status"`
-	YourNet                *float64 `json:"your_net"`
 	BrokerFeeStatus        *string  `json:"broker_fee_status"`
 	DealStatus             *string  `json:"deal_status"`
 	CollectAmount          *float64 `json:"collect_amount"`
@@ -126,7 +125,6 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		BrokerPercent:          req.BrokerPercent,
 		BrokerCommission:       req.BrokerCommission,
 		BrokerCommissionStatus: brokerCommissionStatus,
-		YourNet:                req.YourNet,
 		BrokerFeeStatus:        brokerFeeStatus,
 		DealStatus:             dealStatus,
 		CollectAmount:          req.CollectAmount,
@@ -228,7 +226,6 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		BrokerPercent:          req.BrokerPercent,
 		BrokerCommission:       req.BrokerCommission,
 		BrokerCommissionStatus: brokerCommissionStatus,
-		YourNet:                req.YourNet,
 		BrokerFeeStatus:        brokerFeeStatus,
 		DealStatus:             dealStatus,
 		CollectAmount:          req.CollectAmount,

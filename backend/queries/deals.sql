@@ -19,10 +19,7 @@ INSERT INTO deals (
     broker_percent,
     broker_commission,
     broker_commission_status,
-    broker_commission_paid_date,
-    your_net,
     broker_fee_status,
-    broker_fee_paid_date,
     deal_status,
     deal_status_pending_since,
     collect_amount,
@@ -31,9 +28,9 @@ INSERT INTO deals (
     notes
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    $16, $17, $18, $19, $20, $21,
-    CASE WHEN $21::deal_status = 'pending' THEN COALESCE($4::date, CURRENT_DATE) ELSE NULL END,
-    $22, $23, $24, $25
+    $16, $17, $18,
+    CASE WHEN $18::deal_status = 'pending' THEN COALESCE($4::date, CURRENT_DATE) ELSE NULL END,
+    $19, $20, $21, $22
 ) RETURNING *;
 
 -- name: GetDeal :one
@@ -57,13 +54,7 @@ SELECT
     COALESCE(referral_totals.referral_total, 0::numeric)::numeric AS referral_total,
     d.broker_percent,
     d.broker_commission,
-    (
-        COALESCE(d.broker_fee, 0)
-        + COALESCE(d.collect_amount, 0)
-        - COALESCE(d.broker_commission, 0)
-        - COALESCE(referral_totals.referral_total, 0)
-        - COALESCE(d.doc_fee, 0)
-    )::numeric AS company_net,
+    d.your_net AS company_net,
     d.broker_fee_status,
     d.broker_commission_status,
     d.broker_payment_method,
@@ -172,23 +163,20 @@ SET
     broker_percent              = $15,
     broker_commission           = $16,
     broker_commission_status    = $17,
-    broker_commission_paid_date = $18,
-    your_net                    = $19,
-    broker_fee_status           = $20,
-    broker_fee_paid_date        = $21,
-    deal_status                 = $22,
+    broker_fee_status           = $18,
+    deal_status                 = $19,
     deal_status_pending_since   = CASE
-        WHEN $22::deal_status = 'pending'
+        WHEN $19::deal_status = 'pending'
          AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
         THEN CURRENT_DATE
-        WHEN $22::deal_status IS DISTINCT FROM 'pending'
+        WHEN $19::deal_status IS DISTINCT FROM 'pending'
         THEN NULL
         ELSE deal_status_pending_since
     END,
-    collect_amount              = $23,
-    doc_fee                     = $24,
-    broker_payment_method       = $25,
-    notes                       = $26,
+    collect_amount              = $20,
+    doc_fee                     = $21,
+    broker_payment_method       = $22,
+    notes                       = $23,
     updated_at                  = NOW()
 WHERE id = $1
 RETURNING *;
