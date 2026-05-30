@@ -129,10 +129,11 @@ func (s *DealService) GetShow(ctx context.Context, id uuid.UUID) (db.GetDealShow
 }
 
 type DealListCounts struct {
-	All         int64
-	Pending     int64
-	Paid        int64
-	AwaitingVIN int64
+	All       int64
+	New       int64
+	Pending   int64
+	Paid      int64
+	Cancelled int64
 }
 
 func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilter string, limit, offset int32) ([]db.Deal, DealListCounts, error) {
@@ -152,10 +153,11 @@ func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilte
 	for i, row := range rows {
 		if i == 0 {
 			counts = DealListCounts{
-				All:         row.AllCount,
-				Pending:     row.PendingCount,
-				Paid:        row.PaidCount,
-				AwaitingVIN: row.AwaitingVinCount,
+				All:       row.AllCount,
+				New:       row.NewCount,
+				Pending:   row.PendingCount,
+				Paid:      row.PaidCount,
+				Cancelled: row.CancelledCount,
 			}
 		}
 		if !row.ID.Valid {

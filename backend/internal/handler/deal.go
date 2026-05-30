@@ -334,7 +334,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := r.URL.Query().Get("status")
-	if status != "" && status != "pending" && status != "paid" {
+	if status != "" && status != "pending" && status != "paid" && status != "cancelled" {
 		http.Error(w, "invalid status", http.StatusBadRequest)
 		return
 	}
@@ -358,10 +358,11 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		"offset":   offset,
 		"has_more": hasMore,
 		"counts": map[string]int64{
-			"all":          counts.All,
-			"pending":      counts.Pending,
-			"paid":         counts.Paid,
-			"awaiting_vin": counts.AwaitingVIN,
+			"all":       counts.All,
+			"new":       counts.New,
+			"pending":   counts.Pending,
+			"paid":      counts.Paid,
+			"cancelled": counts.Cancelled,
 		},
 	})
 }

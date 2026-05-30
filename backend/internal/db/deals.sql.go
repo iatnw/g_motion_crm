@@ -394,8 +394,7 @@ WITH search_filtered AS (
     JOIN clients ON clients.id = deals.client_id
     LEFT JOIN brokers ON brokers.id = deals.broker_id
     LEFT JOIN dealers ON dealers.id = deals.dealer_id
-    WHERE deals.deal_status IN ('pending', 'paid')
-      AND (
+    WHERE (
         $1::text = ''
         OR deals.make ILIKE '%' || $1 || '%'
         OR deals.model ILIKE '%' || $1 || '%'
@@ -412,16 +411,20 @@ WITH search_filtered AS (
 ),
 counts AS (
     SELECT
-        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS all_count,
+        COUNT(*) FILTER (WHERE deal_status != 'cancelled' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS all_count,
         COUNT(*) FILTER (WHERE deal_status = 'pending' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS pending_count,
         COUNT(*) FILTER (WHERE deal_status = 'paid' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS paid_count,
-        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NULL)::bigint AS awaiting_vin_count
+        COUNT(*) FILTER (WHERE deal_status != 'cancelled' AND NULLIF(BTRIM(vin), '') IS NULL)::bigint AS new_count,
+        COUNT(*) FILTER (WHERE deal_status = 'cancelled')::bigint AS cancelled_count
     FROM search_filtered
 ),
 page AS (
     SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
     FROM search_filtered
-    WHERE ($2::text = '' OR deal_status::text = $2)
+    WHERE (
+        ($2::text = '' AND deal_status != 'cancelled')
+        OR deal_status::text = $2
+      )
       AND (
         $3::text = ''
         OR ($3::text = 'present' AND NULLIF(BTRIM(vin), '') IS NOT NULL)
@@ -464,7 +467,8 @@ SELECT
     counts.all_count,
     counts.pending_count,
     counts.paid_count,
-    counts.awaiting_vin_count
+    counts.new_count,
+    counts.cancelled_count
 FROM counts
 LEFT JOIN page ON true
 ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at DESC
@@ -512,7 +516,8 @@ type ListDealsFilteredRow struct {
 	AllCount                   int64                   `json:"all_count"`
 	PendingCount               int64                   `json:"pending_count"`
 	PaidCount                  int64                   `json:"paid_count"`
-	AwaitingVinCount           int64                   `json:"awaiting_vin_count"`
+	NewCount                   int64                   `json:"new_count"`
+	CancelledCount             int64                   `json:"cancelled_count"`
 }
 
 func (q *Queries) ListDealsFiltered(ctx context.Context, arg ListDealsFilteredParams) ([]ListDealsFilteredRow, error) {
@@ -564,7 +569,8 @@ func (q *Queries) ListDealsFiltered(ctx context.Context, arg ListDealsFilteredPa
 			&i.AllCount,
 			&i.PendingCount,
 			&i.PaidCount,
-			&i.AwaitingVinCount,
+			&i.NewCount,
+			&i.CancelledCount,
 		); err != nil {
 			return nil, err
 		}

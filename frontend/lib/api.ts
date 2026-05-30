@@ -77,7 +77,7 @@ export const auth = {
 
 type PaginatedResponse<T> = { data: T[]; limit: number; offset: number; has_more: boolean };
 type DealsPaginatedResponse = PaginatedResponse<import("./types").Deal> & {
-  counts?: { all: number; pending: number; paid: number; awaiting_vin: number };
+  counts?: { all: number; new: number; pending: number; paid: number; cancelled: number };
 };
 
 async function presignedUpload(

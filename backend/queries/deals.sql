@@ -78,8 +78,7 @@ WITH search_filtered AS (
     JOIN clients ON clients.id = deals.client_id
     LEFT JOIN brokers ON brokers.id = deals.broker_id
     LEFT JOIN dealers ON dealers.id = deals.dealer_id
-    WHERE deals.deal_status IN ('pending', 'paid')
-      AND (
+    WHERE (
         sqlc.arg(search)::text = ''
         OR deals.make ILIKE '%' || sqlc.arg(search) || '%'
         OR deals.model ILIKE '%' || sqlc.arg(search) || '%'
@@ -96,16 +95,20 @@ WITH search_filtered AS (
 ),
 counts AS (
     SELECT
-        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS all_count,
+        COUNT(*) FILTER (WHERE deal_status != 'cancelled' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS all_count,
         COUNT(*) FILTER (WHERE deal_status = 'pending' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS pending_count,
         COUNT(*) FILTER (WHERE deal_status = 'paid' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS paid_count,
-        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NULL)::bigint AS awaiting_vin_count
+        COUNT(*) FILTER (WHERE deal_status != 'cancelled' AND NULLIF(BTRIM(vin), '') IS NULL)::bigint AS new_count,
+        COUNT(*) FILTER (WHERE deal_status = 'cancelled')::bigint AS cancelled_count
     FROM search_filtered
 ),
 page AS (
     SELECT *
     FROM search_filtered
-    WHERE (sqlc.arg(status)::text = '' OR deal_status::text = sqlc.arg(status))
+    WHERE (
+        (sqlc.arg(status)::text = '' AND deal_status != 'cancelled')
+        OR deal_status::text = sqlc.arg(status)
+      )
       AND (
         sqlc.arg(vin_filter)::text = ''
         OR (sqlc.arg(vin_filter)::text = 'present' AND NULLIF(BTRIM(vin), '') IS NOT NULL)
@@ -148,7 +151,8 @@ SELECT
     counts.all_count,
     counts.pending_count,
     counts.paid_count,
-    counts.awaiting_vin_count
+    counts.new_count,
+    counts.cancelled_count
 FROM counts
 LEFT JOIN page ON true
 ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at DESC;

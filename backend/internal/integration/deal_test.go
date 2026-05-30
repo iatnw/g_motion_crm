@@ -151,6 +151,46 @@ func TestListDealsFiltersAwaitingVIN(t *testing.T) {
 	assertDealListLength(t, cookie, "/deals?vin=missing", 0)
 }
 
+func TestListDealsIncludesCancelledTab(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1011", "deal-cancelled@example.com")
+
+	createRes := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+		"vin":       "1HGCV1F30JA000002",
+	}, cookie)
+	if createRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create deal: got %d, want 201", createRes.StatusCode)
+	}
+	var created map[string]any
+	decodeJSON(t, createRes, &created)
+	dealID := created["id"].(string)
+
+	cancelRes := do(t, http.MethodPatch, "/deals/"+dealID+"/status", map[string]any{
+		"status": "cancelled",
+	}, cookie)
+	if cancelRes.StatusCode != http.StatusOK {
+		t.Fatalf("cancel deal: got %d, want 200", cancelRes.StatusCode)
+	}
+	cancelRes.Body.Close()
+
+	updateRes := do(t, http.MethodPut, "/deals/"+dealID, map[string]any{
+		"client_id":                clientID,
+		"deal_status":              "cancelled",
+		"broker_fee_status":        "pending",
+		"broker_commission_status": "pending",
+	}, cookie)
+	if updateRes.StatusCode != http.StatusOK {
+		t.Fatalf("remove cancelled deal VIN: got %d, want 200", updateRes.StatusCode)
+	}
+	updateRes.Body.Close()
+
+	assertDealListLength(t, cookie, "/deals?vin=present", 0)
+	assertDealListLength(t, cookie, "/deals?status=cancelled", 1)
+}
+
 func assertDealListLength(t *testing.T, cookie *http.Cookie, path string, want int) {
 	t.Helper()
 	res := do(t, http.MethodGet, path, nil, cookie)

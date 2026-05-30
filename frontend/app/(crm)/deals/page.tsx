@@ -8,13 +8,14 @@ import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
 
-type FilterTab = "all" | "pending" | "paid" | "awaiting_vin";
+type FilterTab = "all" | "new" | "pending" | "paid" | "cancelled";
 const PAGE_SIZE = 20;
 const filterTabs: Array<{ value: FilterTab; label: string }> = [
   { value: "all", label: "All" },
+  { value: "new", label: "New" },
   { value: "pending", label: "Pending" },
   { value: "paid", label: "Paid" },
-  { value: "awaiting_vin", label: "Awaiting VIN" },
+  { value: "cancelled", label: "Canceled" },
 ];
 
 const statusBorder: Record<string, string> = {
@@ -23,9 +24,10 @@ const statusBorder: Record<string, string> = {
 };
 
 function belongsToTab(deal: Deal, tab: FilterTab) {
+  if (tab === "cancelled") return deal.deal_status === "cancelled";
   if (deal.deal_status === "cancelled") return false;
   const hasVIN = !!deal.vin?.trim();
-  if (tab === "awaiting_vin") return !hasVIN;
+  if (tab === "new") return !hasVIN;
   if (!hasVIN) return false;
   return tab === "all" || deal.deal_status === tab;
 }
@@ -44,7 +46,7 @@ export default function DealsPage() {
   const [tab, setTab] = useState<FilterTab>("all");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
   const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
-  const [counts, setCounts] = useState({ all: 0, pending: 0, paid: 0, awaiting_vin: 0 });
+  const [counts, setCounts] = useState({ all: 0, new: 0, pending: 0, paid: 0, cancelled: 0 });
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -74,9 +76,9 @@ export default function DealsPage() {
     deals.listPaged({
       limit: PAGE_SIZE,
       offset,
-      status: tab === "pending" || tab === "paid" ? tab : undefined,
+      status: tab === "pending" || tab === "paid" || tab === "cancelled" ? tab : undefined,
       search: querySearch,
-      vin: tab === "awaiting_vin" ? "missing" : "present",
+      vin: tab === "new" ? "missing" : tab === "cancelled" ? undefined : "present",
     }).then(async (res) => {
       const refs = await referralsApi.listByDeals(res.data.map((deal) => deal.id));
       if (cancelled) return;
