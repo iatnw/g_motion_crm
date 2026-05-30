@@ -393,6 +393,7 @@ WITH search_filtered AS (
     SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at FROM deals
     JOIN clients ON clients.id = deals.client_id
     LEFT JOIN brokers ON brokers.id = deals.broker_id
+    LEFT JOIN dealers ON dealers.id = deals.dealer_id
     WHERE deals.deal_status IN ('pending', 'paid')
       AND (
         $1::text = ''
@@ -406,6 +407,7 @@ WITH search_filtered AS (
         OR brokers.first_name ILIKE '%' || $1 || '%'
         OR brokers.last_name ILIKE '%' || $1 || '%'
         OR (brokers.first_name || ' ' || brokers.last_name) ILIKE '%' || $1 || '%'
+        OR dealers.name ILIKE '%' || $1 || '%'
       )
 ),
 counts AS (

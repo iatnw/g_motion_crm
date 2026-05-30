@@ -185,7 +185,7 @@ export default function DealsPage() {
           </svg>
           <input
             type="text"
-            placeholder="Search by client, broker, car, VIN, deal #…"
+            placeholder="Search by client, broker, dealer, car, VIN, deal #…"
             value={search}
             onChange={(e) => {
               setLoading(true);

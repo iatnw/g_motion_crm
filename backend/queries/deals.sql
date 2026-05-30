@@ -77,6 +77,7 @@ WITH search_filtered AS (
     SELECT deals.* FROM deals
     JOIN clients ON clients.id = deals.client_id
     LEFT JOIN brokers ON brokers.id = deals.broker_id
+    LEFT JOIN dealers ON dealers.id = deals.dealer_id
     WHERE deals.deal_status IN ('pending', 'paid')
       AND (
         sqlc.arg(search)::text = ''
@@ -90,6 +91,7 @@ WITH search_filtered AS (
         OR brokers.first_name ILIKE '%' || sqlc.arg(search) || '%'
         OR brokers.last_name ILIKE '%' || sqlc.arg(search) || '%'
         OR (brokers.first_name || ' ' || brokers.last_name) ILIKE '%' || sqlc.arg(search) || '%'
+        OR dealers.name ILIKE '%' || sqlc.arg(search) || '%'
       )
 ),
 counts AS (
