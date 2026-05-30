@@ -86,10 +86,15 @@ async function presignedUpload(
   onProgress: ((pct: number) => void) | undefined,
   ids: { client_id?: string; deal_id?: string },
 ): Promise<import("./types").Document> {
-  const qs = new URLSearchParams({ filename: file.name, content_type: file.type || "application/octet-stream" });
+  const qs = new URLSearchParams({
+    filename: file.name,
+    content_type: file.type || "application/octet-stream",
+    size: String(file.size),
+    document_type: documentType,
+  });
   if (ids.client_id) qs.set("client_id", ids.client_id);
   if (ids.deal_id) qs.set("deal_id", ids.deal_id);
-  const { upload_url, key } = await request<{ upload_url: string; key: string }>(
+  const { upload_url, upload_token } = await request<{ upload_url: string; upload_token: string }>(
     `/documents/presign?${qs}`
   );
   await new Promise<void>((resolve, reject) => {
@@ -103,7 +108,7 @@ async function presignedUpload(
   });
   return request<import("./types").Document>("/documents/confirm", {
     method: "POST",
-    body: JSON.stringify({ key, filename: file.name, size: file.size, document_type: documentType, ...ids }),
+    body: JSON.stringify({ upload_token }),
   });
 }
 

@@ -3,15 +3,18 @@ package integration_test
 import (
 	"net/http"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func createDealForReferral(t *testing.T, cookie *http.Cookie) string {
 	t.Helper()
+	unique := uuid.NewString()[:8]
 	clientRes := do(t, http.MethodPost, "/clients", map[string]any{
 		"first_name": "Ref",
 		"last_name":  "Client",
-		"phone":      "555-9000",
-		"email":      "ref@example.com",
+		"phone":      "555-" + unique,
+		"email":      "ref-" + unique + "@example.com",
 	}, cookie)
 	if clientRes.StatusCode != http.StatusCreated {
 		t.Fatalf("create client: got %d, want 201", clientRes.StatusCode)

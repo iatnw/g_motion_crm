@@ -18,6 +18,11 @@ type S3Client struct {
 	bucket  string
 }
 
+type ObjectInfo struct {
+	Size        int64
+	ContentType string
+}
+
 func NewS3Client(cfg config.AWSConfig) (*S3Client, error) {
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(),
 		awsconfig.WithRegion(cfg.Region),
@@ -53,16 +58,31 @@ func (s *S3Client) Upload(ctx context.Context, key string, body io.Reader, size 
 	return err
 }
 
-func (s *S3Client) PresignedUploadURL(ctx context.Context, key, contentType string, expiry time.Duration) (string, error) {
+func (s *S3Client) PresignedUploadURL(ctx context.Context, key, contentType string, size int64, expiry time.Duration) (string, error) {
 	req, err := s.presign.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(s.bucket),
-		Key:         aws.String(key),
-		ContentType: aws.String(contentType),
+		Bucket:        aws.String(s.bucket),
+		Key:           aws.String(key),
+		ContentLength: aws.Int64(size),
+		ContentType:   aws.String(contentType),
 	}, s3.WithPresignExpires(expiry))
 	if err != nil {
 		return "", err
 	}
 	return req.URL, nil
+}
+
+func (s *S3Client) Head(ctx context.Context, key string) (ObjectInfo, error) {
+	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return ObjectInfo{}, err
+	}
+	return ObjectInfo{
+		Size:        aws.ToInt64(out.ContentLength),
+		ContentType: aws.ToString(out.ContentType),
+	}, nil
 }
 
 func (s *S3Client) PresignedURL(ctx context.Context, key string, expiry time.Duration) (string, error) {
