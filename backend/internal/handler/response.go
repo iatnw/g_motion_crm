@@ -29,6 +29,7 @@ type ClientResponse struct {
 	State                 *string  `json:"state"`
 	Zip                   *string  `json:"zip"`
 	Ssn                   *string  `json:"ssn"`
+	HasSsn                bool     `json:"has_ssn"`
 	HousingStatus         *string  `json:"housing_status"`
 	HousingDuration       *string  `json:"housing_duration"`
 	HousingMonthlyPayment *float64 `json:"housing_monthly_payment"`
@@ -62,7 +63,7 @@ func toClientResponse(c db.Client) ClientResponse {
 		City:                  pgText(c.City),
 		State:                 pgText(c.State),
 		Zip:                   pgText(c.Zip),
-		Ssn:                   pgText(c.Ssn),
+		HasSsn:                c.Ssn.Valid,
 		HousingStatus:         pgText(c.HousingStatus),
 		HousingDuration:       pgText(c.HousingDuration),
 		HousingMonthlyPayment: pgNumeric(c.HousingMonthlyPayment),

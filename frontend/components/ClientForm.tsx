@@ -82,7 +82,7 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
           <Field label="Phone" value={form.phone} onChange={(v) => set("phone", v)} />
           <Field label="Email" type="email" value={form.email} onChange={(v) => set("email", v)} />
           <Field label="Date of Birth" type="date" value={form.date_of_birth} onChange={(v) => set("date_of_birth", v)} />
-          <Field label="SSN" value={form.ssn} onChange={(v) => set("ssn", v)} placeholder="123456789" />
+          <Field label="SSN" value={form.ssn} onChange={(v) => set("ssn", v)} placeholder={initial ? "Leave blank to keep existing SSN" : "123456789"} />
           <SelectField
             label="Source"
             value={form.source}

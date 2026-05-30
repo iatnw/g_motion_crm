@@ -36,6 +36,7 @@ export interface Client {
   state?: string;
   zip?: string;
   ssn?: string;
+  has_ssn?: boolean;
   housing_status?: string;
   housing_duration?: string;
   housing_monthly_payment?: string;

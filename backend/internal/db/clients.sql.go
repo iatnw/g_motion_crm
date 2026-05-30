@@ -359,7 +359,7 @@ SET
     city                    = $11,
     state                   = $12,
     zip                     = $13,
-    ssn                     = $14,
+    ssn                     = COALESCE($14, ssn),
     housing_status          = $15,
     housing_duration        = $16,
     housing_monthly_payment = $17,

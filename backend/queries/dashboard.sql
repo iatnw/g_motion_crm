@@ -116,13 +116,13 @@ SELECT
     d.name,
     COUNT(fd.id)::bigint AS deal_count,
     COALESCE(SUM(fd.broker_fee), 0::numeric)::numeric AS gross_revenue,
-    COALESCE(AVG(
+    AVG(
         CASE
             WHEN fd.broker_fee_paid_date IS NOT NULL
              AND fd.deal_date IS NOT NULL
             THEN (fd.broker_fee_paid_date - fd.deal_date)::numeric
         END
-    ), 0::numeric)::numeric AS avg_days_to_payment
+    )::numeric AS avg_days_to_payment
 FROM dealers d
 JOIN filtered_deals fd ON fd.dealer_id = d.id
 GROUP BY d.id, d.name

@@ -96,7 +96,7 @@ func (s *ClientService) Create(ctx context.Context, in CreateClientInput) (db.Cl
 		return db.Client{}, err
 	}
 
-	return s.decryptSSN(client)
+	return client, nil
 }
 
 func (s *ClientService) Get(ctx context.Context, id uuid.UUID) (db.Client, error) {
@@ -104,7 +104,7 @@ func (s *ClientService) Get(ctx context.Context, id uuid.UUID) (db.Client, error
 	if err != nil {
 		return db.Client{}, err
 	}
-	return s.decryptSSN(client)
+	return client, nil
 }
 
 func (s *ClientService) List(ctx context.Context, limit, offset int32) ([]db.Client, error) {
@@ -187,17 +187,5 @@ func (s *ClientService) Update(ctx context.Context, in UpdateClientInput) (db.Cl
 		return db.Client{}, err
 	}
 
-	return s.decryptSSN(client)
-}
-
-func (s *ClientService) decryptSSN(client db.Client) (db.Client, error) {
-	if !client.Ssn.Valid {
-		return client, nil
-	}
-	plain, err := decrypt(s.encryptionKey, client.Ssn.String)
-	if err != nil {
-		return db.Client{}, err
-	}
-	client.Ssn.String = plain
 	return client, nil
 }

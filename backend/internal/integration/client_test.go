@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 )
@@ -66,6 +67,72 @@ func TestGetClient(t *testing.T) {
 	}
 	if got["last_name"] != "Jones" {
 		t.Fatalf("last_name = %v, want Jones", got["last_name"])
+	}
+}
+
+func TestClientSSNIsNotReturnedAndSurvivesBlankEdit(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	createRes := do(t, http.MethodPost, "/clients", map[string]any{
+		"first_name": "Private",
+		"last_name":  "Client",
+		"phone":      "555-0003",
+		"email":      "private@example.com",
+		"status":     "active",
+		"ssn":        "123456789",
+	}, cookie)
+	var created map[string]any
+	decodeJSON(t, createRes, &created)
+	if createRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create: got %d, want 201", createRes.StatusCode)
+	}
+	if created["ssn"] != nil {
+		t.Fatalf("create response exposed SSN: %v", created["ssn"])
+	}
+	if created["has_ssn"] != true {
+		t.Fatalf("has_ssn = %v, want true", created["has_ssn"])
+	}
+	id := created["id"].(string)
+
+	var storedBefore string
+	if err := pool.QueryRow(context.Background(), `SELECT ssn FROM clients WHERE id = $1`, id).Scan(&storedBefore); err != nil {
+		t.Fatalf("query stored SSN: %v", err)
+	}
+	if storedBefore == "" || storedBefore == "123456789" {
+		t.Fatalf("stored SSN is not encrypted: %q", storedBefore)
+	}
+
+	getRes := do(t, http.MethodGet, "/clients/"+id, nil, cookie)
+	var got map[string]any
+	decodeJSON(t, getRes, &got)
+	if got["ssn"] != nil {
+		t.Fatalf("get response exposed SSN: %v", got["ssn"])
+	}
+
+	updateRes := do(t, http.MethodPut, "/clients/"+id, map[string]any{
+		"first_name": "Private",
+		"last_name":  "Updated",
+		"phone":      "555-0003",
+		"email":      "private@example.com",
+		"status":     "active",
+		"ssn":        nil,
+	}, cookie)
+	var updated map[string]any
+	decodeJSON(t, updateRes, &updated)
+	if updateRes.StatusCode != http.StatusOK {
+		t.Fatalf("update: got %d, want 200", updateRes.StatusCode)
+	}
+	if updated["ssn"] != nil {
+		t.Fatalf("update response exposed SSN: %v", updated["ssn"])
+	}
+
+	var storedAfter string
+	if err := pool.QueryRow(context.Background(), `SELECT ssn FROM clients WHERE id = $1`, id).Scan(&storedAfter); err != nil {
+		t.Fatalf("query stored SSN after update: %v", err)
+	}
+	if storedAfter != storedBefore {
+		t.Fatal("blank SSN edit changed the stored encrypted SSN")
 	}
 }
 

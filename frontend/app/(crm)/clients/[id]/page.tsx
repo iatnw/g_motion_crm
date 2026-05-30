@@ -211,7 +211,7 @@ function ProfileTab({ client }: { client: Client }) {
         { label: "Email", value: client.email },
         { label: "Phone", value: client.phone },
         { label: "Date of Birth", value: client.date_of_birth },
-        { label: "SSN", value: client.ssn ? "•••-••-" + client.ssn.slice(-4) : undefined },
+        { label: "SSN", value: client.has_ssn ? "Stored securely" : undefined },
         { label: "Source", value: client.source },
         { label: "Notes", value: client.notes },
       ],
