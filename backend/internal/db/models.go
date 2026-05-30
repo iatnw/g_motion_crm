@@ -554,6 +554,23 @@ type Setting struct {
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 }
 
+type TallyDocumentImport struct {
+	ID           pgtype.UUID        `json:"id"`
+	TallyEventID int64              `json:"tally_event_id"`
+	ClientID     pgtype.UUID        `json:"client_id"`
+	DealID       pgtype.UUID        `json:"deal_id"`
+	SourceUrl    string             `json:"source_url"`
+	FileName     string             `json:"file_name"`
+	DocumentType DocumentType       `json:"document_type"`
+	Status       string             `json:"status"`
+	Attempts     int32              `json:"attempts"`
+	LastError    pgtype.Text        `json:"last_error"`
+	DocumentID   pgtype.UUID        `json:"document_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+}
+
 type TallyWebhookEvent struct {
 	ID           int64              `json:"id"`
 	EventID      pgtype.Text        `json:"event_id"`

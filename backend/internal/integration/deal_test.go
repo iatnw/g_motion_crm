@@ -232,6 +232,88 @@ func TestUpdateDealStatus(t *testing.T) {
 	if got["deal_status"] != "paid" {
 		t.Fatalf("deal_status = %v, want paid", got["deal_status"])
 	}
+	paidDate := got["broker_fee_paid_date"]
+	if paidDate == nil {
+		t.Fatal("broker_fee_paid_date missing after paid transition")
+	}
+
+	res3 := do(t, http.MethodPatch, "/deals/"+dealID+"/status", map[string]any{
+		"status": "paid",
+	}, cookie)
+	var repeated map[string]any
+	decodeJSON(t, res3, &repeated)
+	if res3.StatusCode != http.StatusOK {
+		t.Fatalf("repeat paid status: got %d, want 200", res3.StatusCode)
+	}
+	if repeated["broker_fee_paid_date"] != paidDate {
+		t.Fatalf("paid date changed on repeated paid status: got %v, want %v", repeated["broker_fee_paid_date"], paidDate)
+	}
+}
+
+func TestFullDealUpdateSynchronizesPaymentDates(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1012", "deal-full-update@example.com")
+	createRes := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+	}, cookie)
+	var created map[string]any
+	decodeJSON(t, createRes, &created)
+	dealID := created["id"].(string)
+
+	paidRes := do(t, http.MethodPut, "/deals/"+dealID, map[string]any{
+		"client_id":                clientID,
+		"deal_status":              "paid",
+		"broker_fee_status":        "pending",
+		"broker_commission_status": "paid",
+	}, cookie)
+	var paid map[string]any
+	decodeJSON(t, paidRes, &paid)
+	if paidRes.StatusCode != http.StatusOK {
+		t.Fatalf("mark paid through full update: got %d, want 200", paidRes.StatusCode)
+	}
+	if paid["broker_fee_status"] != "paid" || paid["broker_fee_paid_date"] == nil {
+		t.Fatalf("broker fee payment not synchronized: %v", paid)
+	}
+	if paid["broker_commission_paid_date"] == nil {
+		t.Fatalf("broker commission paid date missing: %v", paid)
+	}
+
+	paidDate := paid["broker_fee_paid_date"]
+	editRes := do(t, http.MethodPut, "/deals/"+dealID, map[string]any{
+		"client_id":                clientID,
+		"deal_status":              "paid",
+		"broker_fee_status":        "paid",
+		"broker_commission_status": "paid",
+		"notes":                    "ordinary edit",
+	}, cookie)
+	var edited map[string]any
+	decodeJSON(t, editRes, &edited)
+	if editRes.StatusCode != http.StatusOK {
+		t.Fatalf("edit paid deal: got %d, want 200", editRes.StatusCode)
+	}
+	if edited["broker_fee_paid_date"] != paidDate {
+		t.Fatalf("paid date changed during ordinary edit: got %v, want %v", edited["broker_fee_paid_date"], paidDate)
+	}
+
+	pendingRes := do(t, http.MethodPut, "/deals/"+dealID, map[string]any{
+		"client_id":                clientID,
+		"deal_status":              "pending",
+		"broker_fee_status":        "paid",
+		"broker_commission_status": "pending",
+	}, cookie)
+	var pending map[string]any
+	decodeJSON(t, pendingRes, &pending)
+	if pendingRes.StatusCode != http.StatusOK {
+		t.Fatalf("return deal to pending: got %d, want 200", pendingRes.StatusCode)
+	}
+	if pending["broker_fee_status"] != "pending" || pending["broker_fee_paid_date"] != nil {
+		t.Fatalf("pending broker fee payment not synchronized: %v", pending)
+	}
+	if pending["broker_commission_paid_date"] != nil {
+		t.Fatalf("pending broker commission retained paid date: %v", pending)
+	}
 }
 
 func TestCreateDealMissingClientID(t *testing.T) {

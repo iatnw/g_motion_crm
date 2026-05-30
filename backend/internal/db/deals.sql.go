@@ -659,7 +659,34 @@ SET
     broker_percent              = $15,
     broker_commission           = $16,
     broker_commission_status    = $17,
-    broker_fee_status           = $18,
+    broker_commission_paid_date = CASE
+        WHEN $17::payment_status = 'paid'
+         AND broker_commission_status IS DISTINCT FROM 'paid'
+        THEN CURRENT_DATE
+        WHEN $17::payment_status = 'paid'
+        THEN COALESCE(broker_commission_paid_date, CURRENT_DATE)
+        ELSE NULL
+    END,
+    broker_fee_status           = CASE
+        WHEN $19::deal_status = 'paid' THEN 'paid'::payment_status
+        WHEN $19::deal_status = 'pending' THEN 'pending'::payment_status
+        ELSE $18
+    END,
+    broker_fee_paid_date        = CASE
+        WHEN $19::deal_status = 'paid'
+         AND broker_fee_status IS DISTINCT FROM 'paid'
+        THEN CURRENT_DATE
+        WHEN $19::deal_status = 'paid'
+        THEN COALESCE(broker_fee_paid_date, CURRENT_DATE)
+        WHEN $19::deal_status = 'pending'
+        THEN NULL
+        WHEN $18::payment_status = 'paid'
+         AND broker_fee_status IS DISTINCT FROM 'paid'
+        THEN CURRENT_DATE
+        WHEN $18::payment_status = 'paid'
+        THEN COALESCE(broker_fee_paid_date, CURRENT_DATE)
+        ELSE NULL
+    END,
     deal_status                 = $19,
     deal_status_pending_since   = CASE
         WHEN $19::deal_status = 'pending'
@@ -886,7 +913,11 @@ SET
         ELSE broker_fee_status
     END,
     broker_fee_paid_date = CASE
-        WHEN $2::deal_status = 'paid' THEN CURRENT_DATE
+        WHEN $2::deal_status = 'paid'
+         AND broker_fee_status IS DISTINCT FROM 'paid'
+        THEN CURRENT_DATE
+        WHEN $2::deal_status = 'paid'
+        THEN COALESCE(broker_fee_paid_date, CURRENT_DATE)
         WHEN $2::deal_status = 'pending' THEN NULL
         ELSE broker_fee_paid_date
     END,
