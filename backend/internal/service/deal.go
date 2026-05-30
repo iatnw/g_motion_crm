@@ -129,17 +129,19 @@ func (s *DealService) GetShow(ctx context.Context, id uuid.UUID) (db.GetDealShow
 }
 
 type DealListCounts struct {
-	All     int64
-	Pending int64
-	Paid    int64
+	All         int64
+	Pending     int64
+	Paid        int64
+	AwaitingVIN int64
 }
 
-func (s *DealService) ListFiltered(ctx context.Context, status, search string, limit, offset int32) ([]db.Deal, DealListCounts, error) {
+func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilter string, limit, offset int32) ([]db.Deal, DealListCounts, error) {
 	rows, err := s.q.ListDealsFiltered(ctx, db.ListDealsFilteredParams{
-		Status: status,
-		Search: search,
-		Lim:    limit,
-		Off:    offset,
+		Status:    status,
+		Search:    search,
+		VinFilter: vinFilter,
+		Lim:       limit,
+		Off:       offset,
 	})
 	if err != nil {
 		return nil, DealListCounts{}, err
@@ -150,9 +152,10 @@ func (s *DealService) ListFiltered(ctx context.Context, status, search string, l
 	for i, row := range rows {
 		if i == 0 {
 			counts = DealListCounts{
-				All:     row.AllCount,
-				Pending: row.PendingCount,
-				Paid:    row.PaidCount,
+				All:         row.AllCount,
+				Pending:     row.PendingCount,
+				Paid:        row.PaidCount,
+				AwaitingVIN: row.AwaitingVinCount,
 			}
 		}
 		if !row.ID.Valid {

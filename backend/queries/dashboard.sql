@@ -3,6 +3,7 @@ WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+      AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 ),
@@ -44,6 +45,7 @@ WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+      AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND d.deal_status = 'pending'
       AND d.deal_status_pending_since IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
@@ -70,6 +72,7 @@ WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+      AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND d.broker_id IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
@@ -103,6 +106,7 @@ WITH filtered_deals AS (
     SELECT d.*
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+      AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND d.dealer_id IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
@@ -128,6 +132,7 @@ ORDER BY gross_revenue DESC, deal_count DESC;
 SELECT d.*
 FROM deals d
 WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+  AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
   AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
   AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 ORDER BY COALESCE(d.deal_date, d.created_at::date) DESC, d.created_at DESC

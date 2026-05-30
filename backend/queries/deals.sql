@@ -94,15 +94,21 @@ WITH search_filtered AS (
 ),
 counts AS (
     SELECT
-        COUNT(*)::bigint AS all_count,
-        COUNT(*) FILTER (WHERE deal_status = 'pending')::bigint AS pending_count,
-        COUNT(*) FILTER (WHERE deal_status = 'paid')::bigint AS paid_count
+        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS all_count,
+        COUNT(*) FILTER (WHERE deal_status = 'pending' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS pending_count,
+        COUNT(*) FILTER (WHERE deal_status = 'paid' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS paid_count,
+        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NULL)::bigint AS awaiting_vin_count
     FROM search_filtered
 ),
 page AS (
     SELECT *
     FROM search_filtered
-    WHERE sqlc.arg(status)::text = '' OR deal_status::text = sqlc.arg(status)
+    WHERE (sqlc.arg(status)::text = '' OR deal_status::text = sqlc.arg(status))
+      AND (
+        sqlc.arg(vin_filter)::text = ''
+        OR (sqlc.arg(vin_filter)::text = 'present' AND NULLIF(BTRIM(vin), '') IS NOT NULL)
+        OR (sqlc.arg(vin_filter)::text = 'missing' AND NULLIF(BTRIM(vin), '') IS NULL)
+      )
     ORDER BY COALESCE(deal_date, created_at::date) DESC, created_at DESC
     LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off)
 )
@@ -139,7 +145,8 @@ SELECT
     page.payment_reminder_email_sent_at,
     counts.all_count,
     counts.pending_count,
-    counts.paid_count
+    counts.paid_count,
+    counts.awaiting_vin_count
 FROM counts
 LEFT JOIN page ON true
 ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at DESC;

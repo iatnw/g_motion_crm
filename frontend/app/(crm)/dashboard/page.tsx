@@ -29,12 +29,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    dashboard
-      .summary({ ...params, limit: 8 })
-      .then((data) => { if (!cancelled) setSummary(data); })
-      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+
+    function refresh() {
+      dashboard
+        .summary({ ...params, limit: 8 })
+        .then((data) => {
+          if (!cancelled) {
+            setSummary(data);
+            setError("");
+          }
+        })
+        .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard"); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") refresh();
+    }
+
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [params]);
 
   async function handleDealStatusChange(id: string, status: DealStatus) {

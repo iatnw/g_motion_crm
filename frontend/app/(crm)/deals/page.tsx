@@ -8,13 +8,27 @@ import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
 
-type FilterTab = "all" | "pending" | "paid";
+type FilterTab = "all" | "pending" | "paid" | "awaiting_vin";
 const PAGE_SIZE = 20;
+const filterTabs: Array<{ value: FilterTab; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "paid", label: "Paid" },
+  { value: "awaiting_vin", label: "Awaiting VIN" },
+];
 
 const statusBorder: Record<string, string> = {
   paid:    "border-l-green-500",
   pending: "border-l-amber-500",
 };
+
+function belongsToTab(deal: Deal, tab: FilterTab) {
+  if (deal.deal_status === "cancelled") return false;
+  const hasVIN = !!deal.vin?.trim();
+  if (tab === "awaiting_vin") return !hasVIN;
+  if (!hasVIN) return false;
+  return tab === "all" || deal.deal_status === tab;
+}
 
 export default function DealsPage() {
   const [dealList, setDealList] = useState<Deal[]>([]);
@@ -30,9 +44,10 @@ export default function DealsPage() {
   const [tab, setTab] = useState<FilterTab>("all");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
   const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
-  const [counts, setCounts] = useState({ all: 0, pending: 0, paid: 0 });
+  const [counts, setCounts] = useState({ all: 0, pending: 0, paid: 0, awaiting_vin: 0 });
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     Promise.all([clients.list(), brokers.list(), dealers.list()])
@@ -59,8 +74,9 @@ export default function DealsPage() {
     deals.listPaged({
       limit: PAGE_SIZE,
       offset,
-      status: tab === "all" ? undefined : tab,
+      status: tab === "pending" || tab === "paid" ? tab : undefined,
       search: querySearch,
+      vin: tab === "awaiting_vin" ? "missing" : "present",
     }).then(async (res) => {
       const refs = await referralsApi.listByDeals(res.data.map((deal) => deal.id));
       if (cancelled) return;
@@ -77,23 +93,20 @@ export default function DealsPage() {
     return () => {
       cancelled = true;
     };
-  }, [tab, querySearch, offset]);
+  }, [tab, querySearch, offset, refreshVersion]);
 
   async function handleSave(data: object): Promise<Deal> {
     if (modal.deal) {
       const updated = await deals.update(modal.deal.id, data);
-      setDealList((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      setLoading(true);
+      setOffset(0);
+      setRefreshVersion((version) => version + 1);
       return updated;
     } else {
       const created = await deals.create(data);
       setLoading(true);
       setOffset(0);
-      setDealList((prev) => [created, ...prev].slice(0, PAGE_SIZE));
-      setCounts((prev) => ({
-        all: prev.all + 1,
-        pending: prev.pending + (created.deal_status === "pending" ? 1 : 0),
-        paid: prev.paid + (created.deal_status === "paid" ? 1 : 0),
-      }));
+      setRefreshVersion((version) => version + 1);
       return created;
     }
   }
@@ -101,20 +114,12 @@ export default function DealsPage() {
   async function handleStatusChange(deal: Deal, status: DealStatus) {
     const updated = await deals.updateStatus(deal.id, status);
     setDealList((prev) => {
-      if (updated.deal_status === "cancelled" || (tab !== "all" && updated.deal_status !== tab)) {
+      if (!belongsToTab(updated, tab)) {
         return prev.filter((d) => d.id !== updated.id);
       }
       return prev.map((d) => (d.id === updated.id ? updated : d));
     });
-    setCounts((prev) => ({
-      all: prev.all + (deal.deal_status === "cancelled" ? 1 : 0) - (updated.deal_status === "cancelled" ? 1 : 0),
-      pending: prev.pending
-        - (deal.deal_status === "pending" ? 1 : 0)
-        + (updated.deal_status === "pending" ? 1 : 0),
-      paid: prev.paid
-        - (deal.deal_status === "paid" ? 1 : 0)
-        + (updated.deal_status === "paid" ? 1 : 0),
-    }));
+    setRefreshVersion((version) => version + 1);
   }
 
   async function handleCommissionMethod(deal: Deal, status: "paid" | "pending") {
@@ -155,22 +160,22 @@ export default function DealsPage() {
       {/* Filter tabs + search */}
       <div className="flex items-center gap-3 mb-5">
         <div className="flex bg-[#0b0c0d] border border-[#252628] rounded-lg p-0.5 gap-0.5">
-          {(["all", "pending", "paid"] as FilterTab[]).map((t) => (
+          {filterTabs.map(({ value, label }) => (
             <button
-              key={t}
+              key={value}
               onClick={() => {
-                if (t === tab) return;
+                if (value === tab) return;
                 setLoading(true);
-                setTab(t);
+                setTab(value);
                 setOffset(0);
               }}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize ${
-                tab === t
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                tab === value
                   ? "bg-[#1a1b1d] text-white"
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
-              {t} <span className={`ml-1 ${tab === t ? "text-slate-400" : "text-slate-600"}`}>{counts[t]}</span>
+              {label} <span className={`ml-1 ${tab === value ? "text-slate-400" : "text-slate-600"}`}>{counts[value]}</span>
             </button>
           ))}
         </div>

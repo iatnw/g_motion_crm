@@ -104,6 +104,70 @@ func TestListDeals(t *testing.T) {
 	}
 }
 
+func TestListDealsFiltersAwaitingVIN(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1010", "deal-vin@example.com")
+
+	missingVINRes := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+		"make":      "Honda",
+		"model":     "Pilot",
+	}, cookie)
+	if missingVINRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create missing VIN deal: got %d, want 201", missingVINRes.StatusCode)
+	}
+	var missingVINDeal map[string]any
+	decodeJSON(t, missingVINRes, &missingVINDeal)
+
+	presentVINRes := do(t, http.MethodPost, "/deals", map[string]any{
+		"client_id": clientID,
+		"make":      "Honda",
+		"model":     "Accord",
+		"vin":       "1HGCV1F30JA000001",
+	}, cookie)
+	if presentVINRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create present VIN deal: got %d, want 201", presentVINRes.StatusCode)
+	}
+	presentVINRes.Body.Close()
+
+	assertDealListLength(t, cookie, "/deals?vin=present", 1)
+	assertDealListLength(t, cookie, "/deals?vin=missing", 1)
+
+	updateRes := do(t, http.MethodPut, "/deals/"+missingVINDeal["id"].(string), map[string]any{
+		"client_id":                clientID,
+		"vin":                      "5FNYF6H50NB000001",
+		"deal_status":              "pending",
+		"broker_fee_status":        "pending",
+		"broker_commission_status": "pending",
+	}, cookie)
+	if updateRes.StatusCode != http.StatusOK {
+		t.Fatalf("update deal VIN: got %d, want 200", updateRes.StatusCode)
+	}
+	updateRes.Body.Close()
+
+	assertDealListLength(t, cookie, "/deals?vin=present", 2)
+	assertDealListLength(t, cookie, "/deals?vin=missing", 0)
+}
+
+func assertDealListLength(t *testing.T, cookie *http.Cookie, path string, want int) {
+	t.Helper()
+	res := do(t, http.MethodGet, path, nil, cookie)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("list deals: got %d, want 200", res.StatusCode)
+	}
+	var got map[string]any
+	decodeJSON(t, res, &got)
+	data, ok := got["data"].([]any)
+	if !ok {
+		t.Fatalf("expected deal data array, got %v", got["data"])
+	}
+	if len(data) != want {
+		t.Fatalf("got %d deals, want %d", len(data), want)
+	}
+}
+
 func TestUpdateDealStatus(t *testing.T) {
 	cookie := login(t)
 	t.Cleanup(truncateData)

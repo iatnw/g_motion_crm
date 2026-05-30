@@ -338,9 +338,14 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid status", http.StatusBadRequest)
 		return
 	}
+	vinFilter := r.URL.Query().Get("vin")
+	if vinFilter != "" && vinFilter != "present" && vinFilter != "missing" {
+		http.Error(w, "invalid vin filter", http.StatusBadRequest)
+		return
+	}
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
-	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, limit+1, offset)
+	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, vinFilter, limit+1, offset)
 	if err != nil {
 		slog.Error("list deals", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -353,9 +358,10 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		"offset":   offset,
 		"has_more": hasMore,
 		"counts": map[string]int64{
-			"all":     counts.All,
-			"pending": counts.Pending,
-			"paid":    counts.Paid,
+			"all":          counts.All,
+			"pending":      counts.Pending,
+			"paid":         counts.Paid,
+			"awaiting_vin": counts.AwaitingVIN,
 		},
 	})
 }

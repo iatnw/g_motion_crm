@@ -410,17 +410,23 @@ WITH search_filtered AS (
 ),
 counts AS (
     SELECT
-        COUNT(*)::bigint AS all_count,
-        COUNT(*) FILTER (WHERE deal_status = 'pending')::bigint AS pending_count,
-        COUNT(*) FILTER (WHERE deal_status = 'paid')::bigint AS paid_count
+        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS all_count,
+        COUNT(*) FILTER (WHERE deal_status = 'pending' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS pending_count,
+        COUNT(*) FILTER (WHERE deal_status = 'paid' AND NULLIF(BTRIM(vin), '') IS NOT NULL)::bigint AS paid_count,
+        COUNT(*) FILTER (WHERE NULLIF(BTRIM(vin), '') IS NULL)::bigint AS awaiting_vin_count
     FROM search_filtered
 ),
 page AS (
     SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
     FROM search_filtered
-    WHERE $2::text = '' OR deal_status::text = $2
+    WHERE ($2::text = '' OR deal_status::text = $2)
+      AND (
+        $3::text = ''
+        OR ($3::text = 'present' AND NULLIF(BTRIM(vin), '') IS NOT NULL)
+        OR ($3::text = 'missing' AND NULLIF(BTRIM(vin), '') IS NULL)
+      )
     ORDER BY COALESCE(deal_date, created_at::date) DESC, created_at DESC
-    LIMIT $4 OFFSET $3
+    LIMIT $5 OFFSET $4
 )
 SELECT
     page.id,
@@ -455,17 +461,19 @@ SELECT
     page.payment_reminder_email_sent_at,
     counts.all_count,
     counts.pending_count,
-    counts.paid_count
+    counts.paid_count,
+    counts.awaiting_vin_count
 FROM counts
 LEFT JOIN page ON true
 ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at DESC
 `
 
 type ListDealsFilteredParams struct {
-	Search string `json:"search"`
-	Status string `json:"status"`
-	Off    int32  `json:"off"`
-	Lim    int32  `json:"lim"`
+	Search    string `json:"search"`
+	Status    string `json:"status"`
+	VinFilter string `json:"vin_filter"`
+	Off       int32  `json:"off"`
+	Lim       int32  `json:"lim"`
 }
 
 type ListDealsFilteredRow struct {
@@ -502,12 +510,14 @@ type ListDealsFilteredRow struct {
 	AllCount                   int64                   `json:"all_count"`
 	PendingCount               int64                   `json:"pending_count"`
 	PaidCount                  int64                   `json:"paid_count"`
+	AwaitingVinCount           int64                   `json:"awaiting_vin_count"`
 }
 
 func (q *Queries) ListDealsFiltered(ctx context.Context, arg ListDealsFilteredParams) ([]ListDealsFilteredRow, error) {
 	rows, err := q.db.Query(ctx, listDealsFiltered,
 		arg.Search,
 		arg.Status,
+		arg.VinFilter,
 		arg.Off,
 		arg.Lim,
 	)
@@ -552,6 +562,7 @@ func (q *Queries) ListDealsFiltered(ctx context.Context, arg ListDealsFilteredPa
 			&i.AllCount,
 			&i.PendingCount,
 			&i.PaidCount,
+			&i.AwaitingVinCount,
 		); err != nil {
 			return nil, err
 		}
