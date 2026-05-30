@@ -146,7 +146,7 @@ export const clients = {
 // Deals
 export const deals = {
   nextNumber: () => request<{ deal_number: string }>("/deals/next-number").then((r) => r.deal_number),
-  list: () => fetchAll<import("./types").Deal>("/deals"),
+  list: (params: Record<string, string> = {}) => fetchAll<import("./types").Deal>("/deals", params),
   listPaged: (params: { limit: number; offset: number; status?: string; search?: string; vin?: "present" | "missing" }) => {
     const qs = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
     if (params.status) qs.set("status", params.status);

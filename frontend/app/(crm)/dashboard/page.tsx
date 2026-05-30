@@ -67,7 +67,7 @@ export default function DashboardPage() {
     setBucketLoading(true);
     try {
       const [allDeals, allClients, allBrokers, allDealers, allReferrals] = await Promise.all([
-        deals.list(), clients.list(), brokers.list(), dealers.list(), referralsApi.list(),
+        deals.list({ vin: "present" }), clients.list(), brokers.list(), dealers.list(), referralsApi.list(),
       ]);
       const filtered = (allDeals ?? []).filter((d) => d.deal_status === "pending" && d.pending_payment_bucket === bucket);
       const clientMap = Object.fromEntries((allClients ?? []).map((c) => [c.id, c]));
