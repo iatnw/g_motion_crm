@@ -134,6 +134,7 @@ func setup() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authSvc.ParseToken, "authenticated"))
+		r.Use(middleware.AuditMutations(queries))
 
 		r.Get("/auth/me", authH.Me)
 		r.Post("/auth/logout", authH.Logout)
@@ -181,7 +182,7 @@ func teardown() {
 
 func truncateData() {
 	_, err := pool.Exec(context.Background(), `
-		TRUNCATE TABLE referrals, documents, tally_document_imports, tally_webhook_events, deals, clients, brokers, dealers
+		TRUNCATE TABLE audit_logs, referrals, documents, tally_document_imports, tally_webhook_events, deals, clients, brokers, dealers
 		RESTART IDENTITY CASCADE
 	`)
 	if err != nil {

@@ -7,13 +7,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/umbrllacrp/g_motion_crm/internal/config"
 )
 
 type BackupStorage struct {
-	client *s3.Client
-	bucket string
+	uploader *transfermanager.Client
+	bucket   string
 }
 
 func NewBackupStorage(cfg config.AWSConfig) (*BackupStorage, error) {
@@ -29,18 +30,17 @@ func NewBackupStorage(cfg config.AWSConfig) (*BackupStorage, error) {
 		return nil, err
 	}
 	return &BackupStorage{
-		client: s3.NewFromConfig(awsCfg),
-		bucket: cfg.BucketBackups,
+		uploader: transfermanager.New(s3.NewFromConfig(awsCfg)),
+		bucket:   cfg.BucketBackups,
 	}, nil
 }
 
-func (b *BackupStorage) Upload(ctx context.Context, key string, body io.Reader, size int64) error {
-	_, err := b.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(b.bucket),
-		Key:           aws.String(key),
-		Body:          body,
-		ContentLength: aws.Int64(size),
-		ContentType:   aws.String("application/gzip"),
+func (b *BackupStorage) Upload(ctx context.Context, key string, body io.Reader) error {
+	_, err := b.uploader.UploadObject(ctx, &transfermanager.UploadObjectInput{
+		Bucket:      aws.String(b.bucket),
+		Key:         aws.String(key),
+		Body:        body,
+		ContentType: aws.String("application/gzip"),
 	})
 	return err
 }

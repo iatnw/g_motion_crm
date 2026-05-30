@@ -122,6 +122,13 @@ func main() {
 	r.Use(corsMiddleware)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := pool.Ping(ctx); err != nil {
+			slog.Error("health check database ping failed", "error", err)
+			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("ok")); err != nil {
 			slog.Error("failed to write health response", "error", err)
@@ -149,6 +156,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
 		r.Use(chimiddleware.RequestSize(1 << 20)) // 1 MB for all standard endpoints
+		r.Use(middleware.AuditMutations(queries))
 
 		r.Get("/auth/me", authHandler.Me)
 		r.Post("/auth/logout", authHandler.Logout)
@@ -218,13 +226,21 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
 		r.Use(chimiddleware.RequestSize(20 << 20))
+		r.Use(middleware.AuditMutations(queries))
 
 		r.Post("/clients/{id}/documents", documentHandler.UploadForClient)
 		r.Post("/deals/{id}/documents", documentHandler.UploadForDeal)
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.App.Port)
-	server := &http.Server{Addr: addr, Handler: r}
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 
 	appCtx, appCancel := context.WithCancel(context.Background())
 	defer appCancel()

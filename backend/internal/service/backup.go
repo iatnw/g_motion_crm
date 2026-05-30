@@ -1,10 +1,10 @@
 package service
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os/exec"
 	"time"
@@ -24,26 +24,55 @@ func NewBackup(store *storage.BackupStorage, databaseURL string) *BackupService 
 func (s *BackupService) Run(ctx context.Context) error {
 	key := fmt.Sprintf("backups/%s.sql.gz", time.Now().UTC().Format("2006-01-02T15-04-05Z"))
 
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
+	reader, writer := io.Pipe()
+	counter := &countingWriter{Writer: writer}
+	dumpErr := make(chan error, 1)
 
-	cmd := exec.CommandContext(ctx, "pg_dump", "--format=plain", "--no-acl", "--no-owner", s.databaseURL)
-	cmd.Stdout = gz
+	go func() {
+		gz := gzip.NewWriter(counter)
+		cmd := exec.CommandContext(ctx, "pg_dump", "--format=plain", "--no-acl", "--no-owner", s.databaseURL)
+		cmd.Stdout = gz
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg_dump: %w", err)
+		if err := cmd.Run(); err != nil {
+			err = fmt.Errorf("pg_dump: %w", err)
+			_ = writer.CloseWithError(err)
+			dumpErr <- err
+			return
+		}
+		if err := gz.Close(); err != nil {
+			err = fmt.Errorf("gzip close: %w", err)
+			_ = writer.CloseWithError(err)
+			dumpErr <- err
+			return
+		}
+		_ = writer.Close()
+		dumpErr <- nil
+	}()
+
+	uploadErr := s.store.Upload(ctx, key, reader)
+	if uploadErr != nil {
+		_ = reader.CloseWithError(uploadErr)
 	}
-	if err := gz.Close(); err != nil {
-		return fmt.Errorf("gzip close: %w", err)
+	if err := <-dumpErr; err != nil {
+		return err
+	}
+	if uploadErr != nil {
+		return fmt.Errorf("s3 upload: %w", uploadErr)
 	}
 
-	backupSize := int64(buf.Len())
-	if err := s.store.Upload(ctx, key, &buf, backupSize); err != nil {
-		return fmt.Errorf("s3 upload: %w", err)
-	}
-
-	slog.Info("database backup complete", "key", key, "bytes", backupSize)
+	slog.Info("database backup complete", "key", key, "bytes", counter.Count)
 	return nil
+}
+
+type countingWriter struct {
+	io.Writer
+	Count int64
+}
+
+func (w *countingWriter) Write(p []byte) (int, error) {
+	n, err := w.Writer.Write(p)
+	w.Count += int64(n)
+	return n, err
 }
 
 // StartScheduler runs an initial backup then one every 24 hours.
