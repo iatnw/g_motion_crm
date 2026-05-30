@@ -218,6 +218,11 @@ export const referrals = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+  updateAmount: (id: string, amount?: number) =>
+    request<import("./types").Referral>(`/referrals/${id}/amount`, {
+      method: "PATCH",
+      body: JSON.stringify({ amount }),
+    }),
   delete: (id: string) => request<void>(`/referrals/${id}`, { method: "DELETE" }),
 };
 

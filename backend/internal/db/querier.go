@@ -69,6 +69,7 @@ type Querier interface {
 	UpdateOwnerPassword(ctx context.Context, ownerPasswordHash string) (Setting, error)
 	UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (Setting, error)
 	UpdateReferral(ctx context.Context, arg UpdateReferralParams) (Referral, error)
+	UpdateReferralAmount(ctx context.Context, arg UpdateReferralAmountParams) (Referral, error)
 	UpdateReferralStatus(ctx context.Context, arg UpdateReferralStatusParams) (Referral, error)
 }
 

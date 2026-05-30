@@ -91,6 +91,13 @@ func (s *ReferralService) UpdateStatus(ctx context.Context, id uuid.UUID, status
 	})
 }
 
+func (s *ReferralService) UpdateAmount(ctx context.Context, id uuid.UUID, amount *float64) (db.Referral, error) {
+	return s.q.UpdateReferralAmount(ctx, db.UpdateReferralAmountParams{
+		ID:     toUUID(id),
+		Amount: toNumeric(amount),
+	})
+}
+
 func (s *ReferralService) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := s.q.DeleteReferral(ctx, toUUID(id))
 	return err

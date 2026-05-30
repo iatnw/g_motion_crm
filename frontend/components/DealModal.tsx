@@ -134,7 +134,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     const amount = raw ? Number(raw) : undefined;
     if (amount === ref.amount || (amount == null && ref.amount == null)) return;
     try {
-      const updated = await referralsApi.update(ref.id, { amount });
+      const updated = await referralsApi.updateAmount(ref.id, amount);
       setExistingReferrals((prev) => prev.map((r) => r.id === ref.id ? { ...r, amount: updated.amount } : r));
     } catch {
       setError("Failed to update referral amount");

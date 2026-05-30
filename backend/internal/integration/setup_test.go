@@ -164,6 +164,7 @@ func setup() {
 		r.Get("/referrals", referralH.List)
 		r.Post("/deals/{dealID}/referrals", referralH.Create)
 		r.Get("/deals/{dealID}/referrals", referralH.ListByDeal)
+		r.Patch("/referrals/{id}/amount", referralH.UpdateAmount)
 		r.Delete("/referrals/{id}", referralH.Delete)
 
 		r.Get("/dashboard/summary", dashboardH.Summary)

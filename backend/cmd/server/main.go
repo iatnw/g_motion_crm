@@ -204,6 +204,7 @@ func main() {
 		r.Get("/referrals/{id}", referralHandler.Get)
 		r.Put("/referrals/{id}", referralHandler.Update)
 		r.Patch("/referrals/{id}/status", referralHandler.UpdateStatus)
+		r.Patch("/referrals/{id}/amount", referralHandler.UpdateAmount)
 		r.Delete("/referrals/{id}", referralHandler.Delete)
 
 		// Documents

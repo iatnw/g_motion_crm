@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -236,4 +237,63 @@ func TestDeleteReferral(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("expected 0 referrals after delete, got %d", len(got))
 	}
+}
+
+func TestUpdateReferralAmount(t *testing.T) {
+	t.Cleanup(truncateData)
+	cookie := login(t)
+
+	dealID := createDealForReferral(t, cookie)
+	dealRes := do(t, http.MethodPut, "/deals/"+dealID, map[string]any{
+		"client_id":                referralDealClientID(t, dealID),
+		"broker_fee":               1000,
+		"broker_commission":        200,
+		"deal_status":              "pending",
+		"broker_fee_status":        "pending",
+		"broker_commission_status": "pending",
+	}, cookie)
+	dealRes.Body.Close()
+	if dealRes.StatusCode != http.StatusOK {
+		t.Fatalf("update deal financials: got %d, want 200", dealRes.StatusCode)
+	}
+
+	createRes := do(t, http.MethodPost, "/deals/"+dealID+"/referrals", map[string]any{
+		"first_name": "Amount",
+		"last_name":  "Update",
+		"amount":     100,
+	}, cookie)
+	var created map[string]any
+	decodeJSON(t, createRes, &created)
+	if createRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create referral: got %d, want 201", createRes.StatusCode)
+	}
+
+	updateRes := do(t, http.MethodPatch, "/referrals/"+created["id"].(string)+"/amount", map[string]any{
+		"amount": 250,
+	}, cookie)
+	var updated map[string]any
+	decodeJSON(t, updateRes, &updated)
+	if updateRes.StatusCode != http.StatusOK {
+		t.Fatalf("update referral amount: got %d, want 200", updateRes.StatusCode)
+	}
+	if updated["amount"] != float64(250) {
+		t.Fatalf("amount = %v, want 250", updated["amount"])
+	}
+
+	var net float64
+	if err := pool.QueryRow(context.Background(), `SELECT your_net FROM deals WHERE id = $1`, dealID).Scan(&net); err != nil {
+		t.Fatalf("query deal net: %v", err)
+	}
+	if net != 550 {
+		t.Fatalf("deal net = %v, want 550", net)
+	}
+}
+
+func referralDealClientID(t *testing.T, dealID string) string {
+	t.Helper()
+	var clientID string
+	if err := pool.QueryRow(context.Background(), `SELECT client_id::text FROM deals WHERE id = $1`, dealID).Scan(&clientID); err != nil {
+		t.Fatalf("query deal client: %v", err)
+	}
+	return clientID
 }

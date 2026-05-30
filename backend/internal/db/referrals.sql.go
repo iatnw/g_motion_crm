@@ -307,6 +307,39 @@ func (q *Queries) UpdateReferral(ctx context.Context, arg UpdateReferralParams) 
 	return i, err
 }
 
+const updateReferralAmount = `-- name: UpdateReferralAmount :one
+UPDATE referrals
+SET
+    amount = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, deal_id, first_name, last_name, phone, amount, status, paid_date, notes, created_at, updated_at
+`
+
+type UpdateReferralAmountParams struct {
+	ID     pgtype.UUID    `json:"id"`
+	Amount pgtype.Numeric `json:"amount"`
+}
+
+func (q *Queries) UpdateReferralAmount(ctx context.Context, arg UpdateReferralAmountParams) (Referral, error) {
+	row := q.db.QueryRow(ctx, updateReferralAmount, arg.ID, arg.Amount)
+	var i Referral
+	err := row.Scan(
+		&i.ID,
+		&i.DealID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Phone,
+		&i.Amount,
+		&i.Status,
+		&i.PaidDate,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateReferralStatus = `-- name: UpdateReferralStatus :one
 UPDATE referrals
 SET 
