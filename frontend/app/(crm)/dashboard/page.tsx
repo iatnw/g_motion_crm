@@ -221,7 +221,7 @@ export default function DashboardPage() {
                     d.name,
                     d.deal_count.toLocaleString(),
                     money(d.gross_revenue),
-                    d.avg_days_to_payment == null ? "—" : Number(d.avg_days_to_payment).toFixed(1),
+                    formatDays(d.avg_days_to_payment),
                   ])}
                 />
               </Panel>
@@ -316,6 +316,12 @@ function StatChip({ label, value, warn }: { label: string; value: string; warn?:
       <p className={`text-sm font-semibold shrink-0 ${warn ? "text-red-400" : "text-slate-200"}`}>{value}</p>
     </div>
   );
+}
+
+function formatDays(value?: number) {
+  if (value == null) return "—";
+  const days = Math.round(Number(value));
+  return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
 function AgingCard({ title, count, amount, tone, badge, onClick }: { title: string; count: number; amount?: number; tone: "green" | "yellow" | "red"; badge: string; onClick: () => void }) {
