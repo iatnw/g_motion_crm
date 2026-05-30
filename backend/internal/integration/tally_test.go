@@ -32,6 +32,24 @@ func tallyPayload(eventID, submissionID, phone, email, firstName, lastName strin
 	return b
 }
 
+func tallyPayloadWithFile(eventID, submissionID, phone, email, firstName, lastName string) []byte {
+	var payload map[string]any
+	_ = json.Unmarshal(tallyPayload(eventID, submissionID, phone, email, firstName, lastName), &payload)
+	data := payload["data"].(map[string]any)
+	fields := data["fields"].([]any)
+	data["fields"] = append(fields, map[string]any{
+		"key":   "q5",
+		"label": "Driver's License",
+		"type":  "FILE_UPLOAD",
+		"value": []any{map[string]any{
+			"name": "license.jpg",
+			"url":  "http://invalid.example/license.jpg",
+		}},
+	})
+	b, _ := json.Marshal(payload)
+	return b
+}
+
 func postTally(t *testing.T, body []byte) *http.Response {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/webhooks/tally", bytes.NewReader(body))
@@ -130,5 +148,41 @@ func TestTallyWebhookDeduplication(t *testing.T) {
 	data := got["data"].([]any)
 	if len(data) != 1 {
 		t.Fatalf("expected exactly 1 client (no duplicates), got %d", len(data))
+	}
+}
+
+func TestTallyWebhookRetriesFailedDocumentImportWithoutDuplicatingDeal(t *testing.T) {
+	t.Cleanup(truncateData)
+
+	body := tallyPayloadWithFile("evt-file-retry", "sub-file-retry", "555-8004", "tally-file@example.com", "File", "Retry")
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		res := postTally(t, body)
+		res.Body.Close()
+		if res.StatusCode != http.StatusInternalServerError {
+			t.Fatalf("delivery %d: got %d, want 500", attempt, res.StatusCode)
+		}
+	}
+
+	var clients, deals, imports, attempts int
+	var status string
+	err := pool.QueryRow(context.Background(), `
+		SELECT
+			(SELECT COUNT(*) FROM clients),
+			(SELECT COUNT(*) FROM deals),
+			(SELECT COUNT(*) FROM tally_document_imports),
+			status,
+			attempts
+		FROM tally_document_imports
+		WHERE source_url = 'http://invalid.example/license.jpg'
+	`).Scan(&clients, &deals, &imports, &status, &attempts)
+	if err != nil {
+		t.Fatalf("query tally document import: %v", err)
+	}
+	if clients != 1 || deals != 1 || imports != 1 {
+		t.Fatalf("clients=%d deals=%d imports=%d, want 1 each", clients, deals, imports)
+	}
+	if status != "pending" || attempts != 2 {
+		t.Fatalf("status=%q attempts=%d, want pending and 2", status, attempts)
 	}
 }

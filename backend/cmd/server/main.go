@@ -129,7 +129,7 @@ func main() {
 	})
 
 	// Public webhook — Tally sends to this without auth token (up to 5 MB)
-	r.With(chimiddleware.RequestSize(5 << 20)).Post("/webhooks/tally", tallyHandler.Webhook)
+	r.With(chimiddleware.RequestSize(5<<20)).Post("/webhooks/tally", tallyHandler.Webhook)
 
 	// First-time setup — only works when no password is set
 	r.Get("/auth/setup-required", authHandler.SetupRequired)
@@ -229,6 +229,7 @@ func main() {
 	defer appCancel()
 
 	backupService.StartScheduler(appCtx)
+	tallyService.StartDocumentImportScheduler(appCtx)
 
 	go func() {
 		slog.Info("server starting", "addr", addr)

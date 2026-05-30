@@ -61,6 +61,12 @@ type TallyFile struct {
 	Size     int64  `json:"size"`
 }
 
+type tallyDocumentImport struct {
+	SourceURL    string
+	Filename     string
+	DocumentType db.DocumentType
+}
+
 // fieldParser provides positional-aware field access for forms with duplicate labels.
 type fieldParser struct {
 	fields []TallyField
@@ -197,7 +203,6 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 
 	var clientID uuid.UUID
 	var createdDeal db.Deal
-	var dealCreated bool
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -209,12 +214,13 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	txDeal := s.deal.WithTx(tx)
 	txQueries := s.q.WithTx(tx)
 
-	claimed, err := claimTallyEvent(ctx, tx, payload.EventID, payload.Data.SubmissionID)
+	tallyEventID, claimed, err := claimTallyEvent(ctx, tx, payload.EventID, payload.Data.SubmissionID)
 	if err != nil {
 		return fmt.Errorf("claim tally event: %w", err)
 	}
 	if !claimed {
-		return nil
+		_ = tx.Rollback(ctx)
+		return s.processPendingDocumentImports(ctx, tallyEventID)
 	}
 
 	existing, lookupErr := findExistingClient(ctx, txQueries, phone, email)
@@ -299,7 +305,16 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	if err != nil {
 		return fmt.Errorf("create deal: %w", err)
 	}
-	dealCreated = true
+	for _, item := range tallyDocumentImports(payload.Data.Fields) {
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO tally_document_imports (
+				tally_event_id, client_id, deal_id, source_url, file_name, document_type
+			) VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT DO NOTHING
+		`, tallyEventID, clientID, uuid.UUID(createdDeal.ID.Bytes), item.SourceURL, item.Filename, item.DocumentType); err != nil {
+			return fmt.Errorf("queue tally document import: %w", err)
+		}
+	}
 
 	if err = markTallyEventProcessed(ctx, tx, payload.EventID, payload.Data.SubmissionID); err != nil {
 		return fmt.Errorf("mark tally event processed: %w", err)
@@ -309,67 +324,43 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 
-	// Document uploads happen after commit — S3 is not transactional.
-	clientNullUUID := uuid.NullUUID{UUID: clientID, Valid: true}
-	dealNullUUID := uuid.NullUUID{}
-	if dealCreated {
-		dealNullUUID = uuid.NullUUID{UUID: uuid.UUID(createdDeal.ID.Bytes), Valid: true}
-	}
-
-	for _, field := range payload.Data.Fields {
-		if field.Type != "FILE_UPLOAD" && field.Type != "SIGNATURE" {
-			continue
-		}
-		files := parseFiles(field.Value)
-		docType := labelToDocType(field.Label)
-		for _, f := range files {
-			if f.URL == "" {
-				continue
-			}
-			_, err := s.document.UploadFromURL(ctx, f.URL, f.Name, clientNullUUID, dealNullUUID, docType)
-			if err != nil {
-				slog.Error("tally: failed to upload document", "file", f.Name, "client_id", clientID, "error", err)
-			}
-		}
-	}
-
-	return nil
+	return s.processPendingDocumentImports(ctx, tallyEventID)
 }
 
-func claimTallyEvent(ctx context.Context, tx pgx.Tx, eventID, submissionID string) (bool, error) {
+func claimTallyEvent(ctx context.Context, tx pgx.Tx, eventID, submissionID string) (int64, bool, error) {
 	eventID = strings.TrimSpace(eventID)
 	submissionID = strings.TrimSpace(submissionID)
 	if eventID == "" && submissionID == "" {
-		return false, fmt.Errorf("missing event_id and submission_id")
+		return 0, false, fmt.Errorf("missing event_id and submission_id")
 	}
 
 	// Try to insert a new record for this event.
-	var claimed bool
+	var id int64
 	err := tx.QueryRow(ctx, `
 		INSERT INTO tally_webhook_events (event_id, submission_id)
 		VALUES (NULLIF($1, ''), NULLIF($2, ''))
 		ON CONFLICT DO NOTHING
-		RETURNING true
-	`, eventID, submissionID).Scan(&claimed)
+		RETURNING id
+	`, eventID, submissionID).Scan(&id)
 	if err == nil {
-		return true, nil
+		return id, true, nil
 	}
 	if err != pgx.ErrNoRows {
-		return false, err
+		return 0, false, err
 	}
 
 	// Row already exists — check whether the previous attempt completed.
 	// processed_at IS NULL means it was claimed but the processing failed; retry.
 	var processedAt pgtype.Timestamptz
 	err = tx.QueryRow(ctx, `
-		SELECT processed_at FROM tally_webhook_events
+		SELECT id, processed_at FROM tally_webhook_events
 		WHERE (event_id IS NOT DISTINCT FROM NULLIF($1, '') OR submission_id IS NOT DISTINCT FROM NULLIF($2, ''))
 		LIMIT 1
-	`, eventID, submissionID).Scan(&processedAt)
+	`, eventID, submissionID).Scan(&id, &processedAt)
 	if err != nil {
-		return false, fmt.Errorf("check processed status: %w", err)
+		return 0, false, fmt.Errorf("check processed status: %w", err)
 	}
-	return !processedAt.Valid, nil
+	return id, !processedAt.Valid, nil
 }
 
 func markTallyEventProcessed(ctx context.Context, tx pgx.Tx, eventID, submissionID string) error {
@@ -378,6 +369,139 @@ func markTallyEventProcessed(ctx context.Context, tx pgx.Tx, eventID, submission
 		WHERE (event_id IS NOT DISTINCT FROM NULLIF($1, '') OR submission_id IS NOT DISTINCT FROM NULLIF($2, ''))
 	`, eventID, submissionID)
 	return err
+}
+
+func (s *TallyService) StartDocumentImportScheduler(ctx context.Context) {
+	go func() {
+		s.retryPendingDocumentImports(ctx)
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				s.retryPendingDocumentImports(ctx)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+func (s *TallyService) retryPendingDocumentImports(ctx context.Context) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT tally_event_id
+		FROM tally_document_imports
+		WHERE status = 'pending'
+		   OR (status = 'processing' AND updated_at < NOW() - INTERVAL '15 minutes')
+	`)
+	if err != nil {
+		slog.Error("tally: list pending document imports", "error", err)
+		return
+	}
+	defer rows.Close()
+
+	var eventIDs []int64
+	for rows.Next() {
+		var eventID int64
+		if err := rows.Scan(&eventID); err != nil {
+			slog.Error("tally: scan pending document import", "error", err)
+			return
+		}
+		eventIDs = append(eventIDs, eventID)
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("tally: iterate pending document imports", "error", err)
+		return
+	}
+
+	for _, eventID := range eventIDs {
+		if err := s.processPendingDocumentImports(ctx, eventID); err != nil {
+			slog.Error("tally: retry document imports", "tally_event_id", eventID, "error", err)
+		}
+	}
+}
+
+func (s *TallyService) processPendingDocumentImports(ctx context.Context, tallyEventID int64) error {
+	for {
+		var (
+			id        uuid.UUID
+			clientID  uuid.UUID
+			dealID    uuid.NullUUID
+			sourceURL string
+			filename  string
+			docType   db.DocumentType
+		)
+		err := s.pool.QueryRow(ctx, `
+			UPDATE tally_document_imports
+			SET status = 'processing',
+			    attempts = attempts + 1,
+			    updated_at = NOW()
+			WHERE id = (
+				SELECT id
+				FROM tally_document_imports
+				WHERE tally_event_id = $1
+				  AND (
+				      status = 'pending'
+				      OR (status = 'processing' AND updated_at < NOW() - INTERVAL '15 minutes')
+				  )
+				ORDER BY created_at, id
+				FOR UPDATE SKIP LOCKED
+				LIMIT 1
+			)
+			RETURNING id, client_id, deal_id, source_url, file_name, document_type
+		`, tallyEventID).Scan(&id, &clientID, &dealID, &sourceURL, &filename, &docType)
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("claim tally document import: %w", err)
+		}
+
+		doc, err := s.document.UploadFromURL(ctx, sourceURL, filename, uuid.NullUUID{UUID: clientID, Valid: true}, dealID, docType)
+		if err != nil {
+			if _, updateErr := s.pool.Exec(ctx, `
+				UPDATE tally_document_imports
+				SET status = 'pending', last_error = $2, updated_at = NOW()
+				WHERE id = $1
+			`, id, err.Error()); updateErr != nil {
+				return fmt.Errorf("upload tally document: %v; record failure: %w", err, updateErr)
+			}
+			return fmt.Errorf("upload tally document: %w", err)
+		}
+
+		if _, err := s.pool.Exec(ctx, `
+			UPDATE tally_document_imports
+			SET status = 'completed',
+			    document_id = $2,
+			    last_error = NULL,
+			    completed_at = NOW(),
+			    updated_at = NOW()
+			WHERE id = $1
+		`, id, uuid.UUID(doc.ID.Bytes)); err != nil {
+			return fmt.Errorf("complete tally document import: %w", err)
+		}
+	}
+}
+
+func tallyDocumentImports(fields []TallyField) []tallyDocumentImport {
+	var imports []tallyDocumentImport
+	for _, field := range fields {
+		if field.Type != "FILE_UPLOAD" && field.Type != "SIGNATURE" {
+			continue
+		}
+		docType := labelToDocType(field.Label)
+		for _, file := range parseFiles(field.Value) {
+			if file.URL == "" {
+				continue
+			}
+			imports = append(imports, tallyDocumentImport{
+				SourceURL:    file.URL,
+				Filename:     file.Name,
+				DocumentType: docType,
+			})
+		}
+	}
+	return imports
 }
 
 func findExistingClient(ctx context.Context, q *db.Queries, phone, email string) (db.Client, error) {

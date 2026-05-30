@@ -180,7 +180,7 @@ func teardown() {
 
 func truncateData() {
 	_, err := pool.Exec(context.Background(), `
-		TRUNCATE TABLE referrals, documents, tally_webhook_events, deals, clients, brokers, dealers
+		TRUNCATE TABLE referrals, documents, tally_document_imports, tally_webhook_events, deals, clients, brokers, dealers
 		RESTART IDENTITY CASCADE
 	`)
 	if err != nil {

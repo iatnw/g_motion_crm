@@ -123,11 +123,41 @@ func TestLabelToDocTypeUnknownFallsBackToOther(t *testing.T) {
 }
 
 func TestClaimTallyEventRequiresIdentifier(t *testing.T) {
-	claimed, err := claimTallyEvent(context.Background(), nil, "", " ")
+	_, claimed, err := claimTallyEvent(context.Background(), nil, "", " ")
 	if err == nil {
 		t.Fatal("expected missing identifiers to fail")
 	}
 	if claimed {
 		t.Fatal("missing identifiers must not be claimed")
+	}
+}
+
+func TestTallyDocumentImportsExtractsFileUploadsAndSignatures(t *testing.T) {
+	imports := tallyDocumentImports([]TallyField{
+		{
+			Label: "Driver's License",
+			Type:  "FILE_UPLOAD",
+			Value: []any{map[string]any{"url": "https://files.tally.so/license", "name": "license.jpg"}},
+		},
+		{
+			Label: "Signature",
+			Type:  "SIGNATURE",
+			Value: []any{map[string]any{"url": "https://files.tally.so/signature", "name": "signature.png"}},
+		},
+		{
+			Label: "Ignored",
+			Type:  "INPUT_TEXT",
+			Value: "not a file",
+		},
+	})
+
+	if len(imports) != 2 {
+		t.Fatalf("imports = %d, want 2", len(imports))
+	}
+	if imports[0].DocumentType != db.DocumentTypeDriverLicense {
+		t.Fatalf("first document type = %q, want driver_license", imports[0].DocumentType)
+	}
+	if imports[1].SourceURL != "https://files.tally.so/signature" {
+		t.Fatalf("second source URL = %q", imports[1].SourceURL)
 	}
 }
