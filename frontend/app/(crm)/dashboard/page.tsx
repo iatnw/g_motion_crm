@@ -19,7 +19,7 @@ export default function DashboardPage() {
 
   const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client>; brokerMap: Record<string, string>; dealerMap: Record<string, string>; referralMap: Record<string, Referral[]>; allClients: Client[]; allBrokers: import("@/lib/types").Broker[]; allDealers: import("@/lib/types").Dealer[] } | null>(null);
   const [bucketLoading, setBucketLoading] = useState(false);
-  const [editModal, setEditModal] = useState<{ deal: Deal } | null>(null);
+  const [editModal, setEditModal] = useState<{ deal: Deal; clients: Client[]; brokers: import("@/lib/types").Broker[]; dealers: import("@/lib/types").Dealer[] } | null>(null);
 
   const params = useMemo(() => {
     if (mode === "all") return {};
@@ -267,16 +267,24 @@ export default function DashboardPage() {
           dealerMap={bucketModal?.dealerMap ?? {}}
           referralMap={bucketModal?.referralMap ?? {}}
           onClose={() => setBucketModal(null)}
-          onEdit={(deal) => { setBucketModal(null); setEditModal({ deal }); }}
+          onEdit={(deal) => {
+            setEditModal({
+              deal,
+              clients: bucketModal?.allClients ?? [],
+              brokers: bucketModal?.allBrokers ?? [],
+              dealers: bucketModal?.allDealers ?? [],
+            });
+            setBucketModal(null);
+          }}
         />
       )}
 
       {editModal && (
         <DealModal
           deal={editModal.deal}
-          clients={bucketModal?.allClients ?? []}
-          brokers={bucketModal?.allBrokers ?? []}
-          dealers={bucketModal?.allDealers ?? []}
+          clients={editModal.clients}
+          brokers={editModal.brokers}
+          dealers={editModal.dealers}
           onSave={async (data) => {
             const updated = await deals.update(editModal.deal.id, data);
             setEditModal(null);
