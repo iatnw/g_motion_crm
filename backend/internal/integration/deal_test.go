@@ -104,6 +104,32 @@ func TestListDeals(t *testing.T) {
 	}
 }
 
+func TestListDealsByDealer(t *testing.T) {
+	cookie := login(t)
+	t.Cleanup(truncateData)
+
+	clientID := createTestClient(t, cookie, "555-1012", "dealer-deals@example.com")
+	dealerRes := do(t, http.MethodPost, "/dealers", map[string]any{"name": "Dealer One"}, cookie)
+	if dealerRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create dealer: got %d, want 201", dealerRes.StatusCode)
+	}
+	var dealer map[string]any
+	decodeJSON(t, dealerRes, &dealer)
+
+	for _, payload := range []map[string]any{
+		{"client_id": clientID, "dealer_id": dealer["id"], "make": "Toyota"},
+		{"client_id": clientID, "make": "Honda"},
+	} {
+		res := do(t, http.MethodPost, "/deals", payload, cookie)
+		if res.StatusCode != http.StatusCreated {
+			t.Fatalf("create deal: got %d, want 201", res.StatusCode)
+		}
+		res.Body.Close()
+	}
+
+	assertDealListLength(t, cookie, "/deals?dealer_id="+dealer["id"].(string), 1)
+}
+
 func TestListDealsFiltersAwaitingVIN(t *testing.T) {
 	cookie := login(t)
 	t.Cleanup(truncateData)

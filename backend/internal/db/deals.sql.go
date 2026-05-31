@@ -388,6 +388,70 @@ func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientPa
 	return items, nil
 }
 
+const listDealsByDealer = `-- name: ListDealsByDealer :many
+SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at FROM deals
+WHERE deals.dealer_id = $1
+ORDER BY COALESCE(deals.deal_date, deals.created_at::date) DESC, deals.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListDealsByDealerParams struct {
+	DealerID pgtype.UUID `json:"dealer_id"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
+}
+
+func (q *Queries) ListDealsByDealer(ctx context.Context, arg ListDealsByDealerParams) ([]Deal, error) {
+	rows, err := q.db.Query(ctx, listDealsByDealer, arg.DealerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Deal
+	for rows.Next() {
+		var i Deal
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientID,
+			&i.BrokerID,
+			&i.DealerID,
+			&i.DealDate,
+			&i.DealNumber,
+			&i.Vin,
+			&i.Make,
+			&i.Model,
+			&i.TrimLevel,
+			&i.DownPayment,
+			&i.DownPaymentMethod,
+			&i.MonthlyPayment,
+			&i.BrokerFee,
+			&i.BrokerPercent,
+			&i.BrokerCommission,
+			&i.BrokerCommissionStatus,
+			&i.BrokerCommissionPaidDate,
+			&i.YourNet,
+			&i.BrokerFeeStatus,
+			&i.BrokerFeePaidDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DealStatus,
+			&i.CollectAmount,
+			&i.DocFee,
+			&i.BrokerPaymentMethod,
+			&i.Notes,
+			&i.DealStatusPendingSince,
+			&i.PaymentReminderEmailSentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDealsFiltered = `-- name: ListDealsFiltered :many
 WITH search_filtered AS (
     SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at FROM deals

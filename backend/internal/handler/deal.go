@@ -333,6 +333,28 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if dealerIDStr := r.URL.Query().Get("dealer_id"); dealerIDStr != "" {
+		dealerID, err := uuid.Parse(dealerIDStr)
+		if err != nil {
+			http.Error(w, "invalid dealer id", http.StatusBadRequest)
+			return
+		}
+		deals, err := h.deal.ListByDealer(r.Context(), dealerID, limit+1, offset)
+		if err != nil {
+			slog.Error("list deals by dealer", "dealer_id", dealerID, "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		deals, hasMore := paginate(deals, limit)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"data":     toDealResponses(deals),
+			"limit":    limit,
+			"offset":   offset,
+			"has_more": hasMore,
+		})
+		return
+	}
+
 	status := r.URL.Query().Get("status")
 	if status != "" && status != "pending" && status != "paid" && status != "cancelled" {
 		http.Error(w, "invalid status", http.StatusBadRequest)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { dealers as dealersApi } from "@/lib/api";
 import type { Dealer } from "@/lib/types";
 
@@ -121,7 +122,11 @@ export default function DealersPage() {
                 <tbody className="divide-y divide-[#1e1f20]">
                   {dealers.map((d) => (
                     <tr key={d.id} className="hover:bg-blue-500/5 transition-colors">
-                      <td className="px-4 py-3.5 font-medium text-slate-200">{d.name}</td>
+                      <td className="px-4 py-3.5 font-medium">
+                        <Link href={`/dealers/${d.id}`} className="text-slate-200 hover:text-blue-400 transition-colors">
+                          {d.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3.5 text-slate-400">{d.contact_person ?? "–"}</td>
                       <td className="px-4 py-3.5 text-slate-400">{d.phone ?? "–"}</td>
                       <td className="px-4 py-3.5 text-slate-400 truncate max-w-xs">{d.address ?? "–"}</td>

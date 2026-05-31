@@ -159,6 +159,10 @@ export const deals = {
     const qs = new URLSearchParams({ broker_id: brokerId, limit: String(limit), offset: String(offset) });
     return request<PaginatedResponse<import("./types").Deal>>(`/deals?${qs}`);
   },
+  listByDealerPaged: (dealerId: string, limit: number, offset: number) => {
+    const qs = new URLSearchParams({ dealer_id: dealerId, limit: String(limit), offset: String(offset) });
+    return request<PaginatedResponse<import("./types").Deal>>(`/deals?${qs}`);
+  },
   get: (id: string) => request<import("./types").Deal>(`/deals/${id}`),
   getShow: (id: string) => request<import("./types").DealShow>(`/deals/${id}/show`),
   create: (data: object) =>

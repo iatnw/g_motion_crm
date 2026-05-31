@@ -51,6 +51,7 @@ type Querier interface {
 	ListDealers(ctx context.Context, arg ListDealersParams) ([]Dealer, error)
 	ListDealsByBroker(ctx context.Context, arg ListDealsByBrokerParams) ([]Deal, error)
 	ListDealsByClient(ctx context.Context, arg ListDealsByClientParams) ([]Deal, error)
+	ListDealsByDealer(ctx context.Context, arg ListDealsByDealerParams) ([]Deal, error)
 	ListDealsFiltered(ctx context.Context, arg ListDealsFilteredParams) ([]ListDealsFilteredRow, error)
 	ListDocumentsByClient(ctx context.Context, clientID pgtype.UUID) ([]Document, error)
 	ListDocumentsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Document, error)

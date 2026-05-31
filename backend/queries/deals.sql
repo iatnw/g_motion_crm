@@ -271,6 +271,12 @@ WHERE deals.broker_id = $1
 ORDER BY COALESCE(deals.deal_date, deals.created_at::date) DESC, deals.created_at DESC
 LIMIT $2 OFFSET $3;
 
+-- name: ListDealsByDealer :many
+SELECT * FROM deals
+WHERE deals.dealer_id = $1
+ORDER BY COALESCE(deals.deal_date, deals.created_at::date) DESC, deals.created_at DESC
+LIMIT $2 OFFSET $3;
+
 -- name: UpdateDealBrokerFeeStatus :one
 UPDATE deals
 SET
