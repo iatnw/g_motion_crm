@@ -31,6 +31,7 @@ docker-compose up
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Secret for signing JWTs (any long random string) |
 | `ENCRYPTION_KEY` | 32-byte hex key for encrypting client PII — generate with `openssl rand -hex 32` |
+| `SETUP_SECRET` | Separate random secret required to claim an uninitialized deployment — generate with `openssl rand -hex 32` |
 | `TALLY_SIGNING_SECRET` | Found in your Tally webhook settings |
 | `AWS_REGION` | AWS region for S3 (e.g. `us-east-1`) |
 | `AWS_ACCESS_KEY_ID` | AWS access key |

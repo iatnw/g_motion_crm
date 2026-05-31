@@ -8,6 +8,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [setupSecret, setSetupSecret] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
@@ -27,7 +28,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await auth.setup(password);
+      await auth.setup(setupSecret, password);
       setSetupRequired(false);
       setPassword("");
     } catch (err: unknown) {
@@ -93,6 +94,20 @@ export default function LoginPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Setup Secret
+                </label>
+                <input
+                  type="password"
+                  value={setupSecret}
+                  onChange={(e) => setSetupSecret(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full rounded-lg bg-[#0b0c0d] border border-[#252628] text-white px-3 py-2.5 text-sm focus:outline-none transition-colors placeholder:text-slate-700"
+                  placeholder="From your deployment environment"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
                   Password
                 </label>
                 <input
@@ -100,7 +115,6 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoFocus
                   minLength={12}
                   className="w-full rounded-lg bg-[#0b0c0d] border border-[#252628] text-white px-3 py-2.5 text-sm focus:outline-none transition-colors placeholder:text-slate-700"
                   placeholder="At least 12 characters"

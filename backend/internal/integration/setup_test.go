@@ -31,6 +31,7 @@ import (
 )
 
 const testPassword = "testpassword12345"
+const testSetupSecret = "test-setup-secret-for-integration-tests-only"
 const tallySigningSecret = "test-tally-secret"
 
 var (
@@ -52,6 +53,7 @@ func setup() {
 	mustSetenv("FRONTEND_URL", "http://localhost:3000")
 	mustSetenv("DATABASE_URL", envOr("TEST_DATABASE_URL", "postgres://postgres:postgres@localhost:5432/gmotion_test?sslmode=disable"))
 	mustSetenv("JWT_SECRET", "test-jwt-secret-for-integration-tests-only")
+	mustSetenv("SETUP_SECRET", testSetupSecret)
 	mustSetenv("ENCRYPTION_KEY", "0000000000000000000000000000000000000000000000000000000000000000")
 	mustSetenv("AWS_REGION", "us-east-1")
 	mustSetenv("AWS_ACCESS_KEY_ID", "test")

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"time"
 
@@ -17,15 +18,17 @@ var (
 	ErrInvalidCurrentPassword = errors.New("invalid current password")
 	ErrWeakPassword           = errors.New("password must be at least 12 characters")
 	ErrInvalidTOTP            = errors.New("invalid TOTP code")
+	ErrInvalidSetupSecret     = errors.New("invalid setup secret")
 	ErrTOTPNotEnabled         = errors.New("TOTP not enabled")
 	ErrSetupAlreadyDone       = errors.New("setup already completed")
 	ErrTOTPAlreadyEnabled     = errors.New("TOTP already enabled")
 )
 
 type AuthService struct {
-	q          *db.Queries
-	jwtSecret  []byte
-	totpIssuer string
+	q           *db.Queries
+	jwtSecret   []byte
+	setupSecret []byte
+	totpIssuer  string
 }
 
 type Claims struct {
@@ -40,9 +43,10 @@ type LoginResult struct {
 
 func NewAuth(q *db.Queries, cfg config.AuthConfig) *AuthService {
 	return &AuthService{
-		q:          q,
-		jwtSecret:  []byte(cfg.JWTSecret),
-		totpIssuer: cfg.TOTPIssuer,
+		q:           q,
+		jwtSecret:   []byte(cfg.JWTSecret),
+		setupSecret: []byte(cfg.SetupSecret),
+		totpIssuer:  cfg.TOTPIssuer,
 	}
 }
 
@@ -54,7 +58,10 @@ func (s *AuthService) SetupRequired(ctx context.Context) (bool, error) {
 	return setting.OwnerPasswordHash == "", nil
 }
 
-func (s *AuthService) Setup(ctx context.Context, password string) error {
+func (s *AuthService) Setup(ctx context.Context, setupSecret, password string) error {
+	if subtle.ConstantTimeCompare([]byte(setupSecret), s.setupSecret) != 1 {
+		return ErrInvalidSetupSecret
+	}
 	if len(password) < 12 {
 		return ErrWeakPassword
 	}

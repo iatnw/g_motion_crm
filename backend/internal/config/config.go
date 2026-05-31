@@ -37,8 +37,9 @@ type AWSConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret  string
-	TOTPIssuer string
+	JWTSecret   string
+	SetupSecret string
+	TOTPIssuer  string
 }
 
 type TwilioConfig struct{}
@@ -68,6 +69,11 @@ func Load() (*Config, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
+	}
+
+	setupSecret := os.Getenv("SETUP_SECRET")
+	if setupSecret == "" {
+		return nil, fmt.Errorf("SETUP_SECRET is required")
 	}
 
 	encryptionKey := os.Getenv("ENCRYPTION_KEY")
@@ -111,8 +117,9 @@ func Load() (*Config, error) {
 			DatabaseURL: dbURL,
 		},
 		Auth: AuthConfig{
-			JWTSecret:  jwtSecret,
-			TOTPIssuer: os.Getenv("TOTP_ISSUER"),
+			JWTSecret:   jwtSecret,
+			SetupSecret: setupSecret,
+			TOTPIssuer:  os.Getenv("TOTP_ISSUER"),
 		},
 		AWS: AWSConfig{
 			Region:          region,

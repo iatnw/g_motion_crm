@@ -127,7 +127,7 @@ func TestSetupRequiredReturnsFalse(t *testing.T) {
 }
 
 func TestSetupBlockedWhenAlreadySet(t *testing.T) {
-	body, _ := json.Marshal(map[string]string{"password": "newpassword12345"})
+	body, _ := json.Marshal(map[string]string{"setup_secret": testSetupSecret, "password": "newpassword12345"})
 	res, err := http.Post(srv.URL+"/auth/setup", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("request: %v", err)
@@ -150,7 +150,7 @@ func TestSetupWeakPasswordRejected(t *testing.T) {
 		pool.Exec(context.Background(), `UPDATE settings SET owner_password_hash = $1`, string(hash))
 	})
 
-	body, _ := json.Marshal(map[string]string{"password": "short"})
+	body, _ := json.Marshal(map[string]string{"setup_secret": testSetupSecret, "password": "short"})
 	res, err := http.Post(srv.URL+"/auth/setup", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("request: %v", err)
@@ -159,6 +159,32 @@ func TestSetupWeakPasswordRejected(t *testing.T) {
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("got %d, want 400 (weak password)", res.StatusCode)
+	}
+}
+
+func TestSetupInvalidSecretRejected(t *testing.T) {
+	// Clear password hash so setup is available, run the test, then restore.
+	_, err := pool.Exec(context.Background(), `UPDATE settings SET owner_password_hash = ''`)
+	if err != nil {
+		t.Fatalf("clear hash: %v", err)
+	}
+	t.Cleanup(func() {
+		hash, _ := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.MinCost)
+		pool.Exec(context.Background(), `UPDATE settings SET owner_password_hash = $1`, string(hash))
+	})
+
+	body, _ := json.Marshal(map[string]string{
+		"setup_secret": "wrong-setup-secret",
+		"password":     "newpassword12345",
+	})
+	res, err := http.Post(srv.URL+"/auth/setup", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("got %d, want 401 (invalid setup secret)", res.StatusCode)
 	}
 }
 
@@ -187,7 +213,7 @@ func TestSetupFlow(t *testing.T) {
 	}
 
 	// POST /auth/setup must accept the new password.
-	body, _ := json.Marshal(map[string]string{"password": setupPassword})
+	body, _ := json.Marshal(map[string]string{"setup_secret": testSetupSecret, "password": setupPassword})
 	res, err = http.Post(srv.URL+"/auth/setup", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("setup: %v", err)
@@ -198,7 +224,7 @@ func TestSetupFlow(t *testing.T) {
 	}
 
 	// A second setup call must be rejected (only one setup allowed).
-	body, _ = json.Marshal(map[string]string{"password": setupPassword})
+	body, _ = json.Marshal(map[string]string{"setup_secret": testSetupSecret, "password": setupPassword})
 	res, err = http.Post(srv.URL+"/auth/setup", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("second setup: %v", err)

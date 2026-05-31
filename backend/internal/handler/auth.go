@@ -144,13 +144,18 @@ func (h *AuthHandler) SetupRequired(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Password string `json:"password"`
+		SetupSecret string `json:"setup_secret"`
+		Password    string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if err := h.auth.Setup(r.Context(), req.Password); err != nil {
+	if err := h.auth.Setup(r.Context(), req.SetupSecret, req.Password); err != nil {
+		if errors.Is(err, service.ErrInvalidSetupSecret) {
+			http.Error(w, "invalid setup secret", http.StatusUnauthorized)
+			return
+		}
 		if errors.Is(err, service.ErrSetupAlreadyDone) {
 			http.Error(w, "setup already completed", http.StatusForbidden)
 			return

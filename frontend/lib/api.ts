@@ -39,10 +39,10 @@ async function request<T>(
 // Auth
 export const auth = {
   setupRequired: () => request<{ required: boolean }>("/auth/setup-required"),
-  setup: (password: string) =>
+  setup: (setupSecret: string, password: string) =>
     request<void>("/auth/setup", {
       method: "POST",
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ setup_secret: setupSecret, password }),
     }),
   me: () => request<void>("/auth/me"),
   login: (password: string) =>
