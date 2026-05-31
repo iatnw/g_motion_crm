@@ -69,7 +69,11 @@ export default function DashboardPage() {
       const [allDeals, allClients, allBrokers, allDealers, allReferrals] = await Promise.all([
         deals.list({ vin: "present" }), clients.list(), brokers.list(), dealers.list(), referralsApi.list(),
       ]);
-      const filtered = (allDeals ?? []).filter((d) => d.deal_status === "pending" && d.pending_payment_bucket === bucket);
+      const filtered = (allDeals ?? []).filter((d) =>
+        d.deal_status === "pending" &&
+        d.pending_payment_bucket === bucket &&
+        isDealInRange(d, params)
+      );
       const clientMap = Object.fromEntries((allClients ?? []).map((c) => [c.id, c]));
       const brokerMap = Object.fromEntries((allBrokers ?? []).map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
       const dealerMap = Object.fromEntries((allDealers ?? []).map((d) => [d.id, d.name]));
@@ -539,4 +543,9 @@ function currentMonthRange() {
 
 function fmt(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function isDealInRange(deal: Deal, range: { from?: string; to?: string }) {
+  const date = deal.deal_date ?? deal.created_at.slice(0, 10);
+  return (!range.from || date >= range.from) && (!range.to || date <= range.to);
 }
