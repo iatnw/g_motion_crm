@@ -218,7 +218,9 @@ export default function DashboardPage() {
                 <Table
                   headers={["Dealer", "Deals", "Revenue", "Avg days"]}
                   rows={summary.dealers.map((d) => [
-                    d.name,
+                    <Link key={d.id} href={`/dealers/${d.id}`} className="hover:text-blue-400 transition-colors">
+                      {d.name}
+                    </Link>,
                     d.deal_count.toLocaleString(),
                     money(d.gross_revenue),
                     formatDays(d.avg_days_to_payment),
@@ -473,7 +475,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
+function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) {
   if (!rows.length) return <div className="py-8 text-center text-sm text-slate-600">No data</div>;
   return (
     <table className="w-full text-sm">
