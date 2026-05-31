@@ -62,6 +62,28 @@ func TestAuditActorUsesClaimsSubject(t *testing.T) {
 	}
 }
 
+func TestAuditEntityIDFoundByValue(t *testing.T) {
+	store := &auditRecorder{}
+	r := chi.NewRouter()
+	r.Use(AuditMutations(store))
+	r.Delete("/deals/{dealID}/documents/{docID}", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(
+		http.MethodDelete,
+		"/deals/1b2a177f-4060-452a-9be3-b1bdb68d1119/documents/2c3b288g-5171-563b-ace4-c2cec79e2230",
+		nil,
+	))
+
+	if len(store.logs) != 1 {
+		t.Fatalf("audit logs = %d, want 1", len(store.logs))
+	}
+	if !store.logs[0].EntityID.Valid {
+		t.Fatal("entity id is null, want first UUID param regardless of name")
+	}
+}
+
 func TestAuditMutationsSkipsFailedWriteAndRead(t *testing.T) {
 	store := &auditRecorder{}
 	r := chi.NewRouter()

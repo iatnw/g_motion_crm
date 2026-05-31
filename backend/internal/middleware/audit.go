@@ -94,8 +94,9 @@ func entityType(route string) string {
 }
 
 func routeEntityID(r *http.Request) pgtype.UUID {
-	for _, name := range []string{"id", "dealID"} {
-		if id, err := uuid.Parse(chi.URLParam(r, name)); err == nil {
+	rctx := chi.RouteContext(r.Context())
+	for _, v := range rctx.URLParams.Values {
+		if id, err := uuid.Parse(v); err == nil {
 			return pgtype.UUID{Bytes: id, Valid: true}
 		}
 	}
