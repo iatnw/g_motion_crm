@@ -87,3 +87,35 @@ SET
     updated_at              = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: MergeClientFromTally :one
+UPDATE clients
+SET
+    first_name              = $2,
+    last_name               = $3,
+    phone                   = COALESCE($4, phone),
+    email                   = COALESCE($5, email),
+    date_of_birth           = COALESCE($6, date_of_birth),
+    address                 = COALESCE($7, address),
+    city                    = COALESCE($8, city),
+    state                   = COALESCE($9, state),
+    zip                     = COALESCE($10, zip),
+    ssn                     = COALESCE($11, ssn),
+    housing_status          = COALESCE($12, housing_status),
+    housing_duration        = COALESCE($13, housing_duration),
+    housing_monthly_payment = COALESCE($14, housing_monthly_payment),
+    employer_name           = COALESCE($15, employer_name),
+    employer_address        = COALESCE($16, employer_address),
+    employer_city           = COALESCE($17, employer_city),
+    employer_state          = COALESCE($18, employer_state),
+    employer_zip            = COALESCE($19, employer_zip),
+    occupation              = COALESCE($20, occupation),
+    employer_phone          = COALESCE($21, employer_phone),
+    employment_status       = COALESCE($22, employment_status),
+    employment_duration     = COALESCE($23, employment_duration),
+    gross_monthly_income    = COALESCE($24, gross_monthly_income),
+    other_monthly_income    = COALESCE($25, other_monthly_income),
+    other_income_source     = COALESCE($26, other_income_source),
+    updated_at              = NOW()
+WHERE id = $1
+RETURNING *;

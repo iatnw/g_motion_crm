@@ -58,6 +58,7 @@ type Querier interface {
 	ListReferralsByDeal(ctx context.Context, dealID pgtype.UUID) ([]Referral, error)
 	ListReferralsByDeals(ctx context.Context, dollar_1 []pgtype.UUID) ([]Referral, error)
 	MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtype.UUID) (Deal, error)
+	MergeClientFromTally(ctx context.Context, arg MergeClientFromTallyParams) (Client, error)
 	NextDealNumber(ctx context.Context) (int64, error)
 	SetupOwnerPassword(ctx context.Context, ownerPasswordHash string) (pgconn.CommandTag, error)
 	UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error)

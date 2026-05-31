@@ -226,7 +226,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	existing, lookupErr := findExistingClient(ctx, txQueries, phone, email)
 	if lookupErr == nil {
 		clientID = uuid.UUID(existing.ID.Bytes)
-		_, err = txClient.Update(ctx, UpdateClientInput{
+		_, err = txClient.MergeFromTally(ctx, UpdateClientInput{
 			ID:                    clientID,
 			FirstName:             firstName,
 			LastName:              lastName,

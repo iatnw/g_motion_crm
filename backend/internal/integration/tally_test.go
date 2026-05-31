@@ -151,6 +151,66 @@ func TestTallyWebhookDeduplication(t *testing.T) {
 	}
 }
 
+func TestTallyWebhookPreservesExistingClientFieldsWhenOmitted(t *testing.T) {
+	t.Cleanup(truncateData)
+
+	cookie := login(t)
+	createRes := do(t, http.MethodPost, "/clients", map[string]any{
+		"first_name":           "Existing",
+		"last_name":            "Client",
+		"phone":                "555-8005",
+		"email":                "existing@example.com",
+		"status":               "active",
+		"address":              "123 Original Street",
+		"employer_name":        "Original Employer",
+		"gross_monthly_income": 7200,
+	}, cookie)
+	createRes.Body.Close()
+	if createRes.StatusCode != http.StatusCreated {
+		t.Fatalf("create client: got %d, want 201", createRes.StatusCode)
+	}
+
+	body := tallyPayload("evt-preserve", "sub-preserve", "555-8005", "", "Updated", "Name")
+	res := postTally(t, body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("tally submission: got %d, want 200", res.StatusCode)
+	}
+
+	var (
+		firstName          string
+		lastName           string
+		email              string
+		address            string
+		employerName       string
+		grossMonthlyIncome float64
+	)
+	err := pool.QueryRow(context.Background(), `
+		SELECT first_name, last_name, email, address, employer_name, gross_monthly_income
+		FROM clients
+		WHERE phone = '555-8005'
+	`).Scan(&firstName, &lastName, &email, &address, &employerName, &grossMonthlyIncome)
+	if err != nil {
+		t.Fatalf("query client: %v", err)
+	}
+
+	if firstName != "Updated" || lastName != "Name" {
+		t.Fatalf("name = %q %q, want Updated Name", firstName, lastName)
+	}
+	if email != "existing@example.com" {
+		t.Fatalf("email = %q, want existing@example.com", email)
+	}
+	if address != "123 Original Street" {
+		t.Fatalf("address = %q, want 123 Original Street", address)
+	}
+	if employerName != "Original Employer" {
+		t.Fatalf("employer_name = %q, want Original Employer", employerName)
+	}
+	if grossMonthlyIncome != 7200 {
+		t.Fatalf("gross_monthly_income = %v, want 7200", grossMonthlyIncome)
+	}
+}
+
 func TestTallyWebhookRetriesFailedDocumentImportWithoutDuplicatingDeal(t *testing.T) {
 	t.Cleanup(truncateData)
 

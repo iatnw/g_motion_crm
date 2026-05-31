@@ -189,3 +189,44 @@ func (s *ClientService) Update(ctx context.Context, in UpdateClientInput) (db.Cl
 
 	return client, nil
 }
+
+// MergeFromTally updates fields included in a Tally submission without clearing
+// existing profile data when optional form fields are omitted.
+func (s *ClientService) MergeFromTally(ctx context.Context, in UpdateClientInput) (db.Client, error) {
+	if in.Ssn != nil {
+		enc, err := encrypt(s.encryptionKey, *in.Ssn)
+		if err != nil {
+			return db.Client{}, err
+		}
+		in.Ssn = &enc
+	}
+
+	return s.q.MergeClientFromTally(ctx, db.MergeClientFromTallyParams{
+		ID:                    toUUID(in.ID),
+		FirstName:             in.FirstName,
+		LastName:              in.LastName,
+		Phone:                 toText(in.Phone),
+		Email:                 toText(in.Email),
+		DateOfBirth:           toDate(in.DateOfBirth),
+		Address:               toText(in.Address),
+		City:                  toText(in.City),
+		State:                 toText(in.State),
+		Zip:                   toText(in.Zip),
+		Ssn:                   toText(in.Ssn),
+		HousingStatus:         toText(in.HousingStatus),
+		HousingDuration:       toText(in.HousingDuration),
+		HousingMonthlyPayment: toNumeric(in.HousingMonthlyPayment),
+		EmployerName:          toText(in.EmployerName),
+		EmployerAddress:       toText(in.EmployerAddress),
+		EmployerCity:          toText(in.EmployerCity),
+		EmployerState:         toText(in.EmployerState),
+		EmployerZip:           toText(in.EmployerZip),
+		Occupation:            toText(in.Occupation),
+		EmployerPhone:         toText(in.EmployerPhone),
+		EmploymentStatus:      in.EmploymentStatus,
+		EmploymentDuration:    toText(in.EmploymentDuration),
+		GrossMonthlyIncome:    toNumeric(in.GrossMonthlyIncome),
+		OtherMonthlyIncome:    toNumeric(in.OtherMonthlyIncome),
+		OtherIncomeSource:     toText(in.OtherIncomeSource),
+	})
+}

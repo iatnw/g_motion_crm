@@ -344,6 +344,134 @@ func (q *Queries) ListClients(ctx context.Context, arg ListClientsParams) ([]Cli
 	return items, nil
 }
 
+const mergeClientFromTally = `-- name: MergeClientFromTally :one
+UPDATE clients
+SET
+    first_name              = $2,
+    last_name               = $3,
+    phone                   = COALESCE($4, phone),
+    email                   = COALESCE($5, email),
+    date_of_birth           = COALESCE($6, date_of_birth),
+    address                 = COALESCE($7, address),
+    city                    = COALESCE($8, city),
+    state                   = COALESCE($9, state),
+    zip                     = COALESCE($10, zip),
+    ssn                     = COALESCE($11, ssn),
+    housing_status          = COALESCE($12, housing_status),
+    housing_duration        = COALESCE($13, housing_duration),
+    housing_monthly_payment = COALESCE($14, housing_monthly_payment),
+    employer_name           = COALESCE($15, employer_name),
+    employer_address        = COALESCE($16, employer_address),
+    employer_city           = COALESCE($17, employer_city),
+    employer_state          = COALESCE($18, employer_state),
+    employer_zip            = COALESCE($19, employer_zip),
+    occupation              = COALESCE($20, occupation),
+    employer_phone          = COALESCE($21, employer_phone),
+    employment_status       = COALESCE($22, employment_status),
+    employment_duration     = COALESCE($23, employment_duration),
+    gross_monthly_income    = COALESCE($24, gross_monthly_income),
+    other_monthly_income    = COALESCE($25, other_monthly_income),
+    other_income_source     = COALESCE($26, other_income_source),
+    updated_at              = NOW()
+WHERE id = $1
+RETURNING id, first_name, last_name, phone, email, source, status, notes, created_at, updated_at, date_of_birth, address, city, state, zip, ssn, housing_status, housing_duration, housing_monthly_payment, employer_name, employer_address, employer_city, employer_state, employer_zip, occupation, employer_phone, employment_status, employment_duration, gross_monthly_income, other_monthly_income, other_income_source
+`
+
+type MergeClientFromTallyParams struct {
+	ID                    pgtype.UUID          `json:"id"`
+	FirstName             string               `json:"first_name"`
+	LastName              string               `json:"last_name"`
+	Phone                 pgtype.Text          `json:"phone"`
+	Email                 pgtype.Text          `json:"email"`
+	DateOfBirth           pgtype.Date          `json:"date_of_birth"`
+	Address               pgtype.Text          `json:"address"`
+	City                  pgtype.Text          `json:"city"`
+	State                 pgtype.Text          `json:"state"`
+	Zip                   pgtype.Text          `json:"zip"`
+	Ssn                   pgtype.Text          `json:"ssn"`
+	HousingStatus         pgtype.Text          `json:"housing_status"`
+	HousingDuration       pgtype.Text          `json:"housing_duration"`
+	HousingMonthlyPayment pgtype.Numeric       `json:"housing_monthly_payment"`
+	EmployerName          pgtype.Text          `json:"employer_name"`
+	EmployerAddress       pgtype.Text          `json:"employer_address"`
+	EmployerCity          pgtype.Text          `json:"employer_city"`
+	EmployerState         pgtype.Text          `json:"employer_state"`
+	EmployerZip           pgtype.Text          `json:"employer_zip"`
+	Occupation            pgtype.Text          `json:"occupation"`
+	EmployerPhone         pgtype.Text          `json:"employer_phone"`
+	EmploymentStatus      NullEmploymentStatus `json:"employment_status"`
+	EmploymentDuration    pgtype.Text          `json:"employment_duration"`
+	GrossMonthlyIncome    pgtype.Numeric       `json:"gross_monthly_income"`
+	OtherMonthlyIncome    pgtype.Numeric       `json:"other_monthly_income"`
+	OtherIncomeSource     pgtype.Text          `json:"other_income_source"`
+}
+
+func (q *Queries) MergeClientFromTally(ctx context.Context, arg MergeClientFromTallyParams) (Client, error) {
+	row := q.db.QueryRow(ctx, mergeClientFromTally,
+		arg.ID,
+		arg.FirstName,
+		arg.LastName,
+		arg.Phone,
+		arg.Email,
+		arg.DateOfBirth,
+		arg.Address,
+		arg.City,
+		arg.State,
+		arg.Zip,
+		arg.Ssn,
+		arg.HousingStatus,
+		arg.HousingDuration,
+		arg.HousingMonthlyPayment,
+		arg.EmployerName,
+		arg.EmployerAddress,
+		arg.EmployerCity,
+		arg.EmployerState,
+		arg.EmployerZip,
+		arg.Occupation,
+		arg.EmployerPhone,
+		arg.EmploymentStatus,
+		arg.EmploymentDuration,
+		arg.GrossMonthlyIncome,
+		arg.OtherMonthlyIncome,
+		arg.OtherIncomeSource,
+	)
+	var i Client
+	err := row.Scan(
+		&i.ID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Phone,
+		&i.Email,
+		&i.Source,
+		&i.Status,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DateOfBirth,
+		&i.Address,
+		&i.City,
+		&i.State,
+		&i.Zip,
+		&i.Ssn,
+		&i.HousingStatus,
+		&i.HousingDuration,
+		&i.HousingMonthlyPayment,
+		&i.EmployerName,
+		&i.EmployerAddress,
+		&i.EmployerCity,
+		&i.EmployerState,
+		&i.EmployerZip,
+		&i.Occupation,
+		&i.EmployerPhone,
+		&i.EmploymentStatus,
+		&i.EmploymentDuration,
+		&i.GrossMonthlyIncome,
+		&i.OtherMonthlyIncome,
+		&i.OtherIncomeSource,
+	)
+	return i, err
+}
+
 const updateClient = `-- name: UpdateClient :one
 UPDATE clients
 SET
