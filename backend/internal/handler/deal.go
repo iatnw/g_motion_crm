@@ -288,6 +288,16 @@ func (h *DealHandler) GetShow(w http.ResponseWriter, r *http.Request) {
 
 func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
+	status := r.URL.Query().Get("status")
+	if status != "" && status != "pending" && status != "paid" && status != "cancelled" {
+		http.Error(w, "invalid status", http.StatusBadRequest)
+		return
+	}
+	vinFilter := r.URL.Query().Get("vin")
+	if vinFilter != "" && vinFilter != "present" && vinFilter != "missing" {
+		http.Error(w, "invalid vin filter", http.StatusBadRequest)
+		return
+	}
 
 	if clientIDStr := r.URL.Query().Get("client_id"); clientIDStr != "" {
 		clientID, err := uuid.Parse(clientIDStr)
@@ -355,16 +365,6 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := r.URL.Query().Get("status")
-	if status != "" && status != "pending" && status != "paid" && status != "cancelled" {
-		http.Error(w, "invalid status", http.StatusBadRequest)
-		return
-	}
-	vinFilter := r.URL.Query().Get("vin")
-	if vinFilter != "" && vinFilter != "present" && vinFilter != "missing" {
-		http.Error(w, "invalid vin filter", http.StatusBadRequest)
-		return
-	}
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
 	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, vinFilter, limit+1, offset)

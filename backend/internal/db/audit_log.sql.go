@@ -15,16 +15,18 @@ const createAuditLog = `-- name: CreateAuditLog :one
 INSERT INTO audit_logs (
     entity_type,
     entity_id,
+    actor,
     action, 
     changed_fields,
     ip_address,
     user_agent
-) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, entity_type, entity_id, action, changed_fields, ip_address, user_agent, created_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, entity_type, entity_id, action, changed_fields, ip_address, user_agent, created_at, actor
 `
 
 type CreateAuditLogParams struct {
 	EntityType    string      `json:"entity_type"`
 	EntityID      pgtype.UUID `json:"entity_id"`
+	Actor         string      `json:"actor"`
 	Action        string      `json:"action"`
 	ChangedFields []byte      `json:"changed_fields"`
 	IpAddress     pgtype.Text `json:"ip_address"`
@@ -35,6 +37,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 	row := q.db.QueryRow(ctx, createAuditLog,
 		arg.EntityType,
 		arg.EntityID,
+		arg.Actor,
 		arg.Action,
 		arg.ChangedFields,
 		arg.IpAddress,
@@ -50,12 +53,13 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		&i.IpAddress,
 		&i.UserAgent,
 		&i.CreatedAt,
+		&i.Actor,
 	)
 	return i, err
 }
 
 const listAuditLogsByEntity = `-- name: ListAuditLogsByEntity :many
-SELECT id, entity_type, entity_id, action, changed_fields, ip_address, user_agent, created_at FROM audit_logs
+SELECT id, entity_type, entity_id, action, changed_fields, ip_address, user_agent, created_at, actor FROM audit_logs
 WHERE audit_logs.entity_id = $1 AND audit_logs.entity_type = $2
 ORDER BY created_at DESC
 `
@@ -83,6 +87,7 @@ func (q *Queries) ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsBy
 			&i.IpAddress,
 			&i.UserAgent,
 			&i.CreatedAt,
+			&i.Actor,
 		); err != nil {
 			return nil, err
 		}

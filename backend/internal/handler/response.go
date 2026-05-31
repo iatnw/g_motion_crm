@@ -28,7 +28,6 @@ type ClientResponse struct {
 	City                  *string  `json:"city"`
 	State                 *string  `json:"state"`
 	Zip                   *string  `json:"zip"`
-	Ssn                   *string  `json:"ssn"`
 	HasSsn                bool     `json:"has_ssn"`
 	HousingStatus         *string  `json:"housing_status"`
 	HousingDuration       *string  `json:"housing_duration"`
@@ -90,16 +89,10 @@ func toClientResponse(c db.Client) ClientResponse {
 	return r
 }
 
-func toClientSummary(c db.Client) ClientResponse {
-	r := toClientResponse(c)
-	r.Ssn = nil
-	return r
-}
-
 func toClientResponses(cs []db.Client) []ClientResponse {
 	out := make([]ClientResponse, len(cs))
 	for i, c := range cs {
-		out[i] = toClientSummary(c)
+		out[i] = toClientResponse(c)
 	}
 	return out
 }

@@ -411,6 +411,7 @@ type AuditLog struct {
 	IpAddress     pgtype.Text        `json:"ip_address"`
 	UserAgent     pgtype.Text        `json:"user_agent"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Actor         string             `json:"actor"`
 }
 
 type Broker struct {

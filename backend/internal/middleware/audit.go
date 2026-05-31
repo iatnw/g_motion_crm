@@ -46,6 +46,7 @@ func AuditMutations(q auditLogCreator) func(http.Handler) http.Handler {
 			if _, err := q.CreateAuditLog(r.Context(), db.CreateAuditLogParams{
 				EntityType:    entityType(route),
 				EntityID:      routeEntityID(r),
+				Actor:         auditActor(r.Context()),
 				Action:        strings.ToLower(r.Method),
 				ChangedFields: metadata,
 				IpAddress:     textValue(remoteIP(r.RemoteAddr)),
@@ -55,6 +56,14 @@ func AuditMutations(q auditLogCreator) func(http.Handler) http.Handler {
 			}
 		})
 	}
+}
+
+func auditActor(ctx context.Context) string {
+	claims := GetClaims(ctx)
+	if claims == nil || claims.Subject == "" {
+		return "owner"
+	}
+	return claims.Subject
 }
 
 type statusRecorder struct {

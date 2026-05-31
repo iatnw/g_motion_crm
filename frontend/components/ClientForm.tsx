@@ -22,7 +22,7 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
     city: initial?.city ?? "",
     state: initial?.state ?? "",
     zip: initial?.zip ?? "",
-    ssn: initial?.ssn ?? "",
+    ssn: "",
     housing_status: initial?.housing_status ?? "",
     housing_duration: initial?.housing_duration ?? "",
     housing_monthly_payment: initial?.housing_monthly_payment?.toString() ?? "",

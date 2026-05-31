@@ -35,7 +35,6 @@ export interface Client {
   city?: string;
   state?: string;
   zip?: string;
-  ssn?: string;
   has_ssn?: boolean;
   housing_status?: string;
   housing_duration?: string;

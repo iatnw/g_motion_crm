@@ -201,6 +201,7 @@ func (s *AuthService) issueToken(stage string, ttl time.Duration) (string, error
 	c := Claims{
 		Stage: stage,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   "owner",
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},

@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
+	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
 
 type auditRecorder struct {
@@ -39,11 +41,24 @@ func TestAuditMutationsRecordsSuccessfulWrite(t *testing.T) {
 	if log.EntityType != "clients" || log.Action != "put" {
 		t.Fatalf("audit log = %#v, want clients put", log)
 	}
+	if log.Actor != "owner" {
+		t.Fatalf("actor = %q, want owner fallback", log.Actor)
+	}
 	if !log.EntityID.Valid {
 		t.Fatal("entity id is null, want route id")
 	}
 	if log.IpAddress.String != "192.0.2.10" || log.UserAgent.String != "audit-test" {
 		t.Fatalf("request metadata = %#v, want remote IP and user agent", log)
+	}
+}
+
+func TestAuditActorUsesClaimsSubject(t *testing.T) {
+	ctx := context.WithValue(context.Background(), claimsKey, &service.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "account-123"},
+	})
+
+	if got := auditActor(ctx); got != "account-123" {
+		t.Fatalf("auditActor = %q, want account-123", got)
 	}
 }
 

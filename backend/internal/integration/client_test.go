@@ -87,8 +87,8 @@ func TestClientSSNIsNotReturnedAndSurvivesBlankEdit(t *testing.T) {
 	if createRes.StatusCode != http.StatusCreated {
 		t.Fatalf("create: got %d, want 201", createRes.StatusCode)
 	}
-	if created["ssn"] != nil {
-		t.Fatalf("create response exposed SSN: %v", created["ssn"])
+	if _, ok := created["ssn"]; ok {
+		t.Fatal("create response contains SSN field")
 	}
 	if created["has_ssn"] != true {
 		t.Fatalf("has_ssn = %v, want true", created["has_ssn"])
@@ -106,8 +106,8 @@ func TestClientSSNIsNotReturnedAndSurvivesBlankEdit(t *testing.T) {
 	getRes := do(t, http.MethodGet, "/clients/"+id, nil, cookie)
 	var got map[string]any
 	decodeJSON(t, getRes, &got)
-	if got["ssn"] != nil {
-		t.Fatalf("get response exposed SSN: %v", got["ssn"])
+	if _, ok := got["ssn"]; ok {
+		t.Fatal("get response contains SSN field")
 	}
 
 	updateRes := do(t, http.MethodPut, "/clients/"+id, map[string]any{
@@ -123,8 +123,8 @@ func TestClientSSNIsNotReturnedAndSurvivesBlankEdit(t *testing.T) {
 	if updateRes.StatusCode != http.StatusOK {
 		t.Fatalf("update: got %d, want 200", updateRes.StatusCode)
 	}
-	if updated["ssn"] != nil {
-		t.Fatalf("update response exposed SSN: %v", updated["ssn"])
+	if _, ok := updated["ssn"]; ok {
+		t.Fatal("update response contains SSN field")
 	}
 
 	var storedAfter string

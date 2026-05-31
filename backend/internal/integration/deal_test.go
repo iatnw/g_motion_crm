@@ -130,6 +130,28 @@ func TestListDealsByDealer(t *testing.T) {
 	assertDealListLength(t, cookie, "/deals?dealer_id="+dealer["id"].(string), 1)
 }
 
+func TestListDealsRejectsInvalidDealerID(t *testing.T) {
+	cookie := login(t)
+
+	res := do(t, http.MethodGet, "/deals?dealer_id=not-a-uuid", nil, cookie)
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", res.StatusCode)
+	}
+}
+
+func TestListDealsRejectsInvalidStatusWithDealerID(t *testing.T) {
+	cookie := login(t)
+
+	res := do(t, http.MethodGet, "/deals?dealer_id=00000000-0000-0000-0000-000000000000&status=unknown", nil, cookie)
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400", res.StatusCode)
+	}
+}
+
 func TestListDealsFiltersAwaitingVIN(t *testing.T) {
 	cookie := login(t)
 	t.Cleanup(truncateData)
