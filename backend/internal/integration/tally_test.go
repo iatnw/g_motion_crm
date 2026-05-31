@@ -211,7 +211,7 @@ func TestTallyWebhookPreservesExistingClientFieldsWhenOmitted(t *testing.T) {
 	}
 }
 
-func TestTallyWebhookRetriesFailedDocumentImportWithoutDuplicatingDeal(t *testing.T) {
+func TestTallyWebhookQueuesDocumentImportWithoutDownloadingSynchronously(t *testing.T) {
 	t.Cleanup(truncateData)
 
 	body := tallyPayloadWithFile("evt-file-retry", "sub-file-retry", "555-8004", "tally-file@example.com", "File", "Retry")
@@ -219,8 +219,8 @@ func TestTallyWebhookRetriesFailedDocumentImportWithoutDuplicatingDeal(t *testin
 	for attempt := 1; attempt <= 2; attempt++ {
 		res := postTally(t, body)
 		res.Body.Close()
-		if res.StatusCode != http.StatusInternalServerError {
-			t.Fatalf("delivery %d: got %d, want 500", attempt, res.StatusCode)
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("delivery %d: got %d, want 200", attempt, res.StatusCode)
 		}
 	}
 
@@ -242,7 +242,7 @@ func TestTallyWebhookRetriesFailedDocumentImportWithoutDuplicatingDeal(t *testin
 	if clients != 1 || deals != 1 || imports != 1 {
 		t.Fatalf("clients=%d deals=%d imports=%d, want 1 each", clients, deals, imports)
 	}
-	if status != "pending" || attempts != 2 {
-		t.Fatalf("status=%q attempts=%d, want pending and 2", status, attempts)
+	if status != "pending" || attempts != 0 {
+		t.Fatalf("status=%q attempts=%d, want pending and 0", status, attempts)
 	}
 }

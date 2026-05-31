@@ -220,7 +220,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 	}
 	if !claimed {
 		_ = tx.Rollback(ctx)
-		return s.processPendingDocumentImports(ctx, tallyEventID)
+		return nil
 	}
 
 	existing, lookupErr := findExistingClient(ctx, txQueries, phone, email)
@@ -324,7 +324,7 @@ func (s *TallyService) ProcessSubmission(ctx context.Context, payload TallyWebho
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 
-	return s.processPendingDocumentImports(ctx, tallyEventID)
+	return nil
 }
 
 func claimTallyEvent(ctx context.Context, tx pgx.Tx, eventID, submissionID string) (int64, bool, error) {
