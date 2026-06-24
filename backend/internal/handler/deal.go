@@ -321,6 +321,28 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if clientIDStr := r.URL.Query().Get("cosigner_id"); clientIDStr != "" {
+		clientID, err := uuid.Parse(clientIDStr)
+		if err != nil {
+			http.Error(w, "invalid cosigner id", http.StatusBadRequest)
+			return
+		}
+		deals, err := h.deal.ListByCosigner(r.Context(), clientID, limit+1, offset)
+		if err != nil {
+			slog.Error("list deals by cosigner", "client_id", clientID, "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		deals, hasMore := paginate(deals, limit)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"data":     toDealResponses(deals),
+			"limit":    limit,
+			"offset":   offset,
+			"has_more": hasMore,
+		})
+		return
+	}
+
 	if brokerIDStr := r.URL.Query().Get("broker_id"); brokerIDStr != "" {
 		brokerID, err := uuid.Parse(brokerIDStr)
 		if err != nil {
@@ -541,4 +563,81 @@ func (h *DealHandler) MarkPaymentReminderEmailSent(w http.ResponseWriter, r *htt
 	}
 
 	writeJSON(w, http.StatusOK, toDealResponse(deal))
+}
+
+func (h *DealHandler) ListCosigners(w http.ResponseWriter, r *http.Request) {
+	dealID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	cosigners, err := h.deal.ListCosigners(r.Context(), dealID)
+	if err != nil {
+		slog.Error("list deal cosigners", "id", dealID, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, toClientResponses(cosigners))
+}
+
+func (h *DealHandler) AttachCosigner(w http.ResponseWriter, r *http.Request) {
+	dealID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		ClientID string `json:"client_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	clientID, err := uuid.Parse(req.ClientID)
+	if err != nil {
+		http.Error(w, "invalid client_id", http.StatusBadRequest)
+		return
+	}
+
+	cancelled, err := h.deal.AttachCosigner(r.Context(), dealID, clientID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "cannot attach") || strings.Contains(err.Error(), "primary client") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		slog.Error("attach deal cosigner", "deal_id", dealID, "client_id", clientID, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"cancelled_deals": toDealResponses(cancelled)})
+}
+
+func (h *DealHandler) RemoveCosigner(w http.ResponseWriter, r *http.Request) {
+	dealID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	clientID, err := uuid.Parse(chi.URLParam(r, "clientID"))
+	if err != nil {
+		http.Error(w, "invalid client id", http.StatusBadRequest)
+		return
+	}
+	if err := h.deal.RemoveCosigner(r.Context(), dealID, clientID); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		slog.Error("remove deal cosigner", "deal_id", dealID, "client_id", clientID, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

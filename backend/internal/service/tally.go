@@ -469,14 +469,26 @@ func (s *TallyService) processPendingDocumentImports(ctx context.Context, tallyE
 			return fmt.Errorf("upload tally document: %w", err)
 		}
 
+		// The import's deal can be reassigned while the external download is in
+		// progress (for example, when this client is attached as a cosigner).
+		// Complete the import and align the newly-created document with the
+		// queue's current assignment in one statement.
 		if _, err := s.pool.Exec(ctx, `
-			UPDATE tally_document_imports
-			SET status = 'completed',
-			    document_id = $2,
-			    last_error = NULL,
-			    completed_at = NOW(),
-			    updated_at = NOW()
-			WHERE id = $1
+			WITH completed_import AS (
+				UPDATE tally_document_imports
+				SET status = 'completed',
+				    document_id = $2,
+				    last_error = NULL,
+				    completed_at = NOW(),
+				    updated_at = NOW()
+				WHERE id = $1
+				RETURNING client_id, deal_id
+			)
+			UPDATE documents
+			SET client_id = completed_import.client_id,
+			    deal_id = completed_import.deal_id
+			FROM completed_import
+			WHERE documents.id = $2
 		`, id, uuid.UUID(doc.ID.Bytes)); err != nil {
 			return fmt.Errorf("complete tally document import: %w", err)
 		}

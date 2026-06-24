@@ -11,6 +11,92 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addDealCosigner = `-- name: AddDealCosigner :exec
+INSERT INTO deal_cosigners (deal_id, client_id)
+VALUES ($1, $2)
+ON CONFLICT (deal_id, client_id) DO NOTHING
+`
+
+type AddDealCosignerParams struct {
+	DealID   pgtype.UUID `json:"deal_id"`
+	ClientID pgtype.UUID `json:"client_id"`
+}
+
+func (q *Queries) AddDealCosigner(ctx context.Context, arg AddDealCosignerParams) error {
+	_, err := q.db.Exec(ctx, addDealCosigner, arg.DealID, arg.ClientID)
+	return err
+}
+
+const cancelVinlessDealsForCosigner = `-- name: CancelVinlessDealsForCosigner :many
+UPDATE deals
+SET
+    deal_status = 'cancelled',
+    notes = CONCAT_WS(E'\n', NULLIF(notes, ''), $1::text),
+    updated_at = NOW()
+WHERE client_id = $2
+  AND id <> $3
+  AND deal_status IS DISTINCT FROM 'cancelled'
+  AND NULLIF(BTRIM(vin), '') IS NULL
+RETURNING id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at
+`
+
+type CancelVinlessDealsForCosignerParams struct {
+	CancellationNote string      `json:"cancellation_note"`
+	ClientID         pgtype.UUID `json:"client_id"`
+	TargetDealID     pgtype.UUID `json:"target_deal_id"`
+}
+
+func (q *Queries) CancelVinlessDealsForCosigner(ctx context.Context, arg CancelVinlessDealsForCosignerParams) ([]Deal, error) {
+	rows, err := q.db.Query(ctx, cancelVinlessDealsForCosigner, arg.CancellationNote, arg.ClientID, arg.TargetDealID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Deal
+	for rows.Next() {
+		var i Deal
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientID,
+			&i.BrokerID,
+			&i.DealerID,
+			&i.DealDate,
+			&i.DealNumber,
+			&i.Vin,
+			&i.Make,
+			&i.Model,
+			&i.TrimLevel,
+			&i.DownPayment,
+			&i.DownPaymentMethod,
+			&i.MonthlyPayment,
+			&i.BrokerFee,
+			&i.BrokerPercent,
+			&i.BrokerCommission,
+			&i.BrokerCommissionStatus,
+			&i.BrokerCommissionPaidDate,
+			&i.YourNet,
+			&i.BrokerFeeStatus,
+			&i.BrokerFeePaidDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DealStatus,
+			&i.CollectAmount,
+			&i.DocFee,
+			&i.BrokerPaymentMethod,
+			&i.Notes,
+			&i.DealStatusPendingSince,
+			&i.PaymentReminderEmailSentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createDeal = `-- name: CreateDeal :one
 INSERT INTO deals (
     client_id,
@@ -128,6 +214,24 @@ func (q *Queries) CreateDeal(ctx context.Context, arg CreateDealParams) (Deal, e
 		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
+}
+
+const deleteDealCosigner = `-- name: DeleteDealCosigner :execrows
+DELETE FROM deal_cosigners
+WHERE deal_id = $1 AND client_id = $2
+`
+
+type DeleteDealCosignerParams struct {
+	DealID   pgtype.UUID `json:"deal_id"`
+	ClientID pgtype.UUID `json:"client_id"`
+}
+
+func (q *Queries) DeleteDealCosigner(ctx context.Context, arg DeleteDealCosignerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDealCosigner, arg.DealID, arg.ClientID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getDeal = `-- name: GetDeal :one
@@ -260,6 +364,66 @@ func (q *Queries) GetDealShow(ctx context.Context, id pgtype.UUID) (GetDealShowR
 	return i, err
 }
 
+const listDealCosigners = `-- name: ListDealCosigners :many
+SELECT c.id, c.first_name, c.last_name, c.phone, c.email, c.source, c.status, c.notes, c.created_at, c.updated_at, c.date_of_birth, c.address, c.city, c.state, c.zip, c.ssn, c.housing_status, c.housing_duration, c.housing_monthly_payment, c.employer_name, c.employer_address, c.employer_city, c.employer_state, c.employer_zip, c.occupation, c.employer_phone, c.employment_status, c.employment_duration, c.gross_monthly_income, c.other_monthly_income, c.other_income_source
+FROM deal_cosigners dc
+JOIN clients c ON c.id = dc.client_id
+WHERE dc.deal_id = $1
+ORDER BY c.first_name, c.last_name
+`
+
+func (q *Queries) ListDealCosigners(ctx context.Context, dealID pgtype.UUID) ([]Client, error) {
+	rows, err := q.db.Query(ctx, listDealCosigners, dealID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Client
+	for rows.Next() {
+		var i Client
+		if err := rows.Scan(
+			&i.ID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Phone,
+			&i.Email,
+			&i.Source,
+			&i.Status,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DateOfBirth,
+			&i.Address,
+			&i.City,
+			&i.State,
+			&i.Zip,
+			&i.Ssn,
+			&i.HousingStatus,
+			&i.HousingDuration,
+			&i.HousingMonthlyPayment,
+			&i.EmployerName,
+			&i.EmployerAddress,
+			&i.EmployerCity,
+			&i.EmployerState,
+			&i.EmployerZip,
+			&i.Occupation,
+			&i.EmployerPhone,
+			&i.EmploymentStatus,
+			&i.EmploymentDuration,
+			&i.GrossMonthlyIncome,
+			&i.OtherMonthlyIncome,
+			&i.OtherIncomeSource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDealsByBroker = `-- name: ListDealsByBroker :many
 SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at FROM deals
 WHERE deals.broker_id = $1
@@ -339,6 +503,72 @@ type ListDealsByClientParams struct {
 
 func (q *Queries) ListDealsByClient(ctx context.Context, arg ListDealsByClientParams) ([]Deal, error) {
 	rows, err := q.db.Query(ctx, listDealsByClient, arg.ClientID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Deal
+	for rows.Next() {
+		var i Deal
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientID,
+			&i.BrokerID,
+			&i.DealerID,
+			&i.DealDate,
+			&i.DealNumber,
+			&i.Vin,
+			&i.Make,
+			&i.Model,
+			&i.TrimLevel,
+			&i.DownPayment,
+			&i.DownPaymentMethod,
+			&i.MonthlyPayment,
+			&i.BrokerFee,
+			&i.BrokerPercent,
+			&i.BrokerCommission,
+			&i.BrokerCommissionStatus,
+			&i.BrokerCommissionPaidDate,
+			&i.YourNet,
+			&i.BrokerFeeStatus,
+			&i.BrokerFeePaidDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DealStatus,
+			&i.CollectAmount,
+			&i.DocFee,
+			&i.BrokerPaymentMethod,
+			&i.Notes,
+			&i.DealStatusPendingSince,
+			&i.PaymentReminderEmailSentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDealsByCosigner = `-- name: ListDealsByCosigner :many
+SELECT deals.id, deals.client_id, deals.broker_id, deals.dealer_id, deals.deal_date, deals.deal_number, deals.vin, deals.make, deals.model, deals.trim_level, deals.down_payment, deals.down_payment_method, deals.monthly_payment, deals.broker_fee, deals.broker_percent, deals.broker_commission, deals.broker_commission_status, deals.broker_commission_paid_date, deals.your_net, deals.broker_fee_status, deals.broker_fee_paid_date, deals.created_at, deals.updated_at, deals.deal_status, deals.collect_amount, deals.doc_fee, deals.broker_payment_method, deals.notes, deals.deal_status_pending_since, deals.payment_reminder_email_sent_at
+FROM deal_cosigners
+JOIN deals ON deals.id = deal_cosigners.deal_id
+WHERE deal_cosigners.client_id = $1
+ORDER BY deals.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListDealsByCosignerParams struct {
+	ClientID pgtype.UUID `json:"client_id"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
+}
+
+func (q *Queries) ListDealsByCosigner(ctx context.Context, arg ListDealsByCosignerParams) ([]Deal, error) {
+	rows, err := q.db.Query(ctx, listDealsByCosigner, arg.ClientID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -691,6 +921,56 @@ func (q *Queries) MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtyp
 		&i.PaymentReminderEmailSentAt,
 	)
 	return i, err
+}
+
+const moveCosignerDocumentsToDeal = `-- name: MoveCosignerDocumentsToDeal :exec
+UPDATE documents
+SET deal_id = $1
+WHERE documents.client_id = $2
+  AND deal_id IN (
+      SELECT source_deals.id
+      FROM deals AS source_deals
+      WHERE source_deals.client_id = $2
+        AND source_deals.id <> $1
+        AND source_deals.deal_status IS DISTINCT FROM 'cancelled'
+        AND NULLIF(BTRIM(source_deals.vin), '') IS NULL
+  )
+`
+
+type MoveCosignerDocumentsToDealParams struct {
+	TargetDealID pgtype.UUID `json:"target_deal_id"`
+	ClientID     pgtype.UUID `json:"client_id"`
+}
+
+func (q *Queries) MoveCosignerDocumentsToDeal(ctx context.Context, arg MoveCosignerDocumentsToDealParams) error {
+	_, err := q.db.Exec(ctx, moveCosignerDocumentsToDeal, arg.TargetDealID, arg.ClientID)
+	return err
+}
+
+const movePendingCosignerDocumentImportsToDeal = `-- name: MovePendingCosignerDocumentImportsToDeal :exec
+UPDATE tally_document_imports
+SET deal_id = $1,
+    updated_at = NOW()
+WHERE tally_document_imports.client_id = $2
+  AND status <> 'completed'
+  AND deal_id IN (
+      SELECT source_deals.id
+      FROM deals AS source_deals
+      WHERE source_deals.client_id = $2
+        AND source_deals.id <> $1
+        AND source_deals.deal_status IS DISTINCT FROM 'cancelled'
+        AND NULLIF(BTRIM(source_deals.vin), '') IS NULL
+  )
+`
+
+type MovePendingCosignerDocumentImportsToDealParams struct {
+	TargetDealID pgtype.UUID `json:"target_deal_id"`
+	ClientID     pgtype.UUID `json:"client_id"`
+}
+
+func (q *Queries) MovePendingCosignerDocumentImportsToDeal(ctx context.Context, arg MovePendingCosignerDocumentImportsToDealParams) error {
+	_, err := q.db.Exec(ctx, movePendingCosignerDocumentImportsToDeal, arg.TargetDealID, arg.ClientID)
+	return err
 }
 
 const nextDealNumber = `-- name: NextDealNumber :one

@@ -155,6 +155,7 @@ export const deals = {
     return request<DealsPaginatedResponse>(`/deals?${qs}`);
   },
   listByClient: (clientId: string) => fetchAll<import("./types").Deal>("/deals", { client_id: clientId }),
+  listByCosigner: (clientId: string) => fetchAll<import("./types").Deal>("/deals", { cosigner_id: clientId }),
   listByBrokerPaged: (brokerId: string, limit: number, offset: number) => {
     const qs = new URLSearchParams({ broker_id: brokerId, limit: String(limit), offset: String(offset) });
     return request<PaginatedResponse<import("./types").Deal>>(`/deals?${qs}`);
@@ -175,6 +176,15 @@ export const deals = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  listCosigners: (id: string) =>
+    request<import("./types").Client[]>(`/deals/${id}/cosigners`),
+  addCosigner: (id: string, clientId: string) =>
+    request<{ cancelled_deals: import("./types").Deal[] }>(`/deals/${id}/cosigners`, {
+      method: "POST",
+      body: JSON.stringify({ client_id: clientId }),
+    }),
+  removeCosigner: (id: string, clientId: string) =>
+    request<void>(`/deals/${id}/cosigners/${clientId}`, { method: "DELETE" }),
   updateStatus: (id: string, status: string) =>
     request<import("./types").Deal>(
       `/deals/${id}/status`,

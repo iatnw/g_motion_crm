@@ -503,6 +503,12 @@ type Deal struct {
 	PaymentReminderEmailSentAt pgtype.Timestamptz      `json:"payment_reminder_email_sent_at"`
 }
 
+type DealCosigner struct {
+	DealID    pgtype.UUID        `json:"deal_id"`
+	ClientID  pgtype.UUID        `json:"client_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Dealer struct {
 	ID                 pgtype.UUID        `json:"id"`
 	Name               string             `json:"name"`

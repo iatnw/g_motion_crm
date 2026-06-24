@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Deal, Broker, Dealer, Client, Referral } from "@/lib/types";
-import { referrals as referralsApi } from "@/lib/api";
+import { deals as dealsApi, referrals as referralsApi } from "@/lib/api";
 
 interface Props {
   deal?: Deal;
@@ -50,6 +50,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [cosignerID, setCosignerID] = useState("");
+  const [existingCosigners, setExistingCosigners] = useState<Client[]>([]);
 
   const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
   const [referralAmounts, setReferralAmounts] = useState<Record<string, string>>({});
@@ -100,6 +102,13 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       setExistingReferrals([]);
       setReferralAmounts({});
       setReferralsLoaded(true);
+    }
+    if (deal) {
+      dealsApi.listCosigners(deal.id).then((data) => {
+        if (!cancelled) setExistingCosigners(data);
+      }).catch(() => {});
+    } else {
+      setExistingCosigners([]);
     }
     referralsApi.list().then((data) => {
       if (cancelled) return;
@@ -198,6 +207,10 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       }
       const savedDeal = await onSave(payload);
 
+      if (cosignerID) {
+        await dealsApi.addCosigner(savedDeal.id, cosignerID);
+      }
+
       const validNewReferrals = newReferrals.filter((r) => r.first_name.trim());
       await Promise.all(
         validNewReferrals.map((r) =>
@@ -216,6 +229,17 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
       setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeCosigner(client: Client) {
+    if (!deal || !window.confirm(`Remove ${client.first_name} ${client.last_name} as a cosigner?`)) return;
+    setError("");
+    try {
+      await dealsApi.removeCosigner(deal.id, client.id);
+      setExistingCosigners((prev) => prev.filter((item) => item.id !== client.id));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to remove cosigner");
     }
   }
 
@@ -253,6 +277,32 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               </div>
             </section>
           )}
+
+          <section>
+            <SectionLabel>Cosigner</SectionLabel>
+            <div>
+              <FieldLabel>Add Cosigner</FieldLabel>
+              <DarkSelect value={cosignerID} onChange={(e) => setCosignerID(e.target.value)}>
+                <option value="">None</option>
+                {(clients ?? []).filter((client) => client.id !== form.client_id && !existingCosigners.some((cosigner) => cosigner.id === client.id)).map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {`${client.first_name} ${client.last_name}${client.phone ? ` — ${client.phone}` : ""}`.toUpperCase()}
+                  </option>
+                ))}
+              </DarkSelect>
+              <p className="mt-1.5 text-xs text-slate-600">Adding a cosigner cancels that client&apos;s other deals with no VIN.</p>
+            </div>
+            {existingCosigners.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {existingCosigners.map((client) => (
+                  <div key={client.id} className="flex items-center justify-between text-sm text-slate-400">
+                    <span>{client.first_name} {client.last_name}</span>
+                    <button type="button" onClick={() => removeCosigner(client)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           {/* Vehicle */}
           <section>

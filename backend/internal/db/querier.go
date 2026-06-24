@@ -12,6 +12,8 @@ import (
 )
 
 type Querier interface {
+	AddDealCosigner(ctx context.Context, arg AddDealCosignerParams) error
+	CancelVinlessDealsForCosigner(ctx context.Context, arg CancelVinlessDealsForCosignerParams) ([]Deal, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateBroker(ctx context.Context, arg CreateBrokerParams) (Broker, error)
 	CreateClient(ctx context.Context, arg CreateClientParams) (Client, error)
@@ -21,6 +23,7 @@ type Querier interface {
 	CreateReferral(ctx context.Context, arg CreateReferralParams) (Referral, error)
 	CreateSetting(ctx context.Context, arg CreateSettingParams) (Setting, error)
 	DeleteBroker(ctx context.Context, id pgtype.UUID) (Broker, error)
+	DeleteDealCosigner(ctx context.Context, arg DeleteDealCosignerParams) (int64, error)
 	DeleteDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 	DeleteDocument(ctx context.Context, id pgtype.UUID) (Document, error)
 	DeleteReferral(ctx context.Context, id pgtype.UUID) (Referral, error)
@@ -47,10 +50,12 @@ type Querier interface {
 	ListDashboardBrokerStats(ctx context.Context, arg ListDashboardBrokerStatsParams) ([]ListDashboardBrokerStatsRow, error)
 	ListDashboardDealerStats(ctx context.Context, arg ListDashboardDealerStatsParams) ([]ListDashboardDealerStatsRow, error)
 	ListDashboardRecentDeals(ctx context.Context, arg ListDashboardRecentDealsParams) ([]Deal, error)
+	ListDealCosigners(ctx context.Context, dealID pgtype.UUID) ([]Client, error)
 	ListDealerStats(ctx context.Context) ([]DealerStat, error)
 	ListDealers(ctx context.Context, arg ListDealersParams) ([]Dealer, error)
 	ListDealsByBroker(ctx context.Context, arg ListDealsByBrokerParams) ([]Deal, error)
 	ListDealsByClient(ctx context.Context, arg ListDealsByClientParams) ([]Deal, error)
+	ListDealsByCosigner(ctx context.Context, arg ListDealsByCosignerParams) ([]Deal, error)
 	ListDealsByDealer(ctx context.Context, arg ListDealsByDealerParams) ([]Deal, error)
 	ListDealsFiltered(ctx context.Context, arg ListDealsFilteredParams) ([]ListDealsFilteredRow, error)
 	ListDocumentsByClient(ctx context.Context, clientID pgtype.UUID) ([]Document, error)
@@ -59,6 +64,8 @@ type Querier interface {
 	ListReferralsByDeals(ctx context.Context, dollar_1 []pgtype.UUID) ([]Referral, error)
 	MarkDealPaymentReminderEmailSent(ctx context.Context, id pgtype.UUID) (Deal, error)
 	MergeClientFromTally(ctx context.Context, arg MergeClientFromTallyParams) (Client, error)
+	MoveCosignerDocumentsToDeal(ctx context.Context, arg MoveCosignerDocumentsToDealParams) error
+	MovePendingCosignerDocumentImportsToDeal(ctx context.Context, arg MovePendingCosignerDocumentImportsToDealParams) error
 	NextDealNumber(ctx context.Context) (int64, error)
 	SetupOwnerPassword(ctx context.Context, ownerPasswordHash string) (pgconn.CommandTag, error)
 	UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error)

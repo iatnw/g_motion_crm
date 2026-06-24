@@ -259,9 +259,73 @@ SET
 WHERE id = $1
 RETURNING *;
 
+-- name: AddDealCosigner :exec
+INSERT INTO deal_cosigners (deal_id, client_id)
+VALUES ($1, $2)
+ON CONFLICT (deal_id, client_id) DO NOTHING;
+
+-- name: DeleteDealCosigner :execrows
+DELETE FROM deal_cosigners
+WHERE deal_id = $1 AND client_id = $2;
+
+-- name: ListDealCosigners :many
+SELECT c.*
+FROM deal_cosigners dc
+JOIN clients c ON c.id = dc.client_id
+WHERE dc.deal_id = $1
+ORDER BY c.first_name, c.last_name;
+
+-- name: MoveCosignerDocumentsToDeal :exec
+UPDATE documents
+SET deal_id = sqlc.arg(target_deal_id)
+WHERE documents.client_id = sqlc.arg(client_id)
+  AND deal_id IN (
+      SELECT source_deals.id
+      FROM deals AS source_deals
+      WHERE source_deals.client_id = sqlc.arg(client_id)
+        AND source_deals.id <> sqlc.arg(target_deal_id)
+        AND source_deals.deal_status IS DISTINCT FROM 'cancelled'
+        AND NULLIF(BTRIM(source_deals.vin), '') IS NULL
+  );
+
+-- name: MovePendingCosignerDocumentImportsToDeal :exec
+UPDATE tally_document_imports
+SET deal_id = sqlc.arg(target_deal_id),
+    updated_at = NOW()
+WHERE tally_document_imports.client_id = sqlc.arg(client_id)
+  AND status <> 'completed'
+  AND deal_id IN (
+      SELECT source_deals.id
+      FROM deals AS source_deals
+      WHERE source_deals.client_id = sqlc.arg(client_id)
+        AND source_deals.id <> sqlc.arg(target_deal_id)
+        AND source_deals.deal_status IS DISTINCT FROM 'cancelled'
+        AND NULLIF(BTRIM(source_deals.vin), '') IS NULL
+  );
+
+-- name: CancelVinlessDealsForCosigner :many
+UPDATE deals
+SET
+    deal_status = 'cancelled',
+    notes = CONCAT_WS(E'\n', NULLIF(notes, ''), sqlc.arg(cancellation_note)::text),
+    updated_at = NOW()
+WHERE client_id = sqlc.arg(client_id)
+  AND id <> sqlc.arg(target_deal_id)
+  AND deal_status IS DISTINCT FROM 'cancelled'
+  AND NULLIF(BTRIM(vin), '') IS NULL
+RETURNING *;
+
 -- name: ListDealsByClient :many
 SELECT * FROM deals
 WHERE deals.client_id = $1
+ORDER BY deals.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListDealsByCosigner :many
+SELECT deals.*
+FROM deal_cosigners
+JOIN deals ON deals.id = deal_cosigners.deal_id
+WHERE deal_cosigners.client_id = $1
 ORDER BY deals.created_at DESC
 LIMIT $2 OFFSET $3;
 

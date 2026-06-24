@@ -19,6 +19,8 @@ export default function ClientDetailPage() {
 
   const [client, setClient] = useState<Client | null>(null);
   const [clientDeals, setClientDeals] = useState<Deal[]>([]);
+  const [cosignerDeals, setCosignerDeals] = useState<Deal[]>([]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [allBrokers, setAllBrokers] = useState<Broker[]>([]);
   const [allDealers, setAllDealers] = useState<Dealer[]>([]);
   const [tab, setTab] = useState<Tab>("profile");
@@ -30,14 +32,18 @@ export default function ClientDetailPage() {
   const load = useCallback(async () => {
     if (!id || id === "new") return;
     try {
-      const [c, d, b, dl] = await Promise.all([
+      const [c, d, cosigned, allC, b, dl] = await Promise.all([
         clients.get(id),
         deals.listByClient(id),
+        deals.listByCosigner(id),
+        clients.list(),
         brokers.list(),
         dealers.list(),
       ]);
       setClient(c);
       setClientDeals(d);
+      setCosignerDeals(cosigned);
+      setAllClients(allC);
       setAllBrokers(b);
       setAllDealers(dl);
     } catch {
@@ -179,6 +185,7 @@ export default function ClientDetailPage() {
       {tab === "deals" && (
         <DealsTab
           deals={clientDeals}
+          cosignerDeals={cosignerDeals}
           brokers={allBrokers}
           dealers={allDealers}
           onEdit={(deal) => setDealModal({ open: true, deal })}
@@ -192,6 +199,7 @@ export default function ClientDetailPage() {
         <DealModal
           deal={dealModal.deal}
           clientId={id}
+          clients={allClients}
           brokers={allBrokers}
           dealers={allDealers}
           onSave={handleSaveDeal}
@@ -272,12 +280,14 @@ function ProfileTab({ client }: { client: Client }) {
 
 function DealsTab({
   deals: dealList,
+  cosignerDeals,
   brokers: allBrokers,
   dealers: allDealers,
   onEdit,
   onStatusChange,
 }: {
   deals: Deal[];
+  cosignerDeals: Deal[];
   brokers: Broker[];
   dealers: Dealer[];
   onEdit: (deal: Deal) => void;
@@ -308,7 +318,7 @@ function DealsTab({
     } catch {}
   }
 
-  if (!dealList.length) {
+  if (!dealList.length && !cosignerDeals.length) {
     return (
       <div className="bg-[#0b0c0d] rounded-xl border border-[#252628] py-12 text-center text-slate-600 text-sm">
         No deals yet
@@ -318,6 +328,19 @@ function DealsTab({
 
   return (
     <div className="space-y-4">
+      {cosignerDeals.length > 0 && (
+        <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Cosigner on</p>
+          <div className="mt-2 space-y-1">
+            {cosignerDeals.map((deal) => (
+              <p key={deal.id} className="text-sm text-slate-300">
+                {deal.deal_number ? `#${deal.deal_number} · ` : ""}{[deal.make, deal.model, deal.trim_level].filter(Boolean).join(" ") || "Deal"}
+                {deal.vin ? ` · VIN: ${deal.vin}` : ""}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
       {dealList.map((deal) => (
         <div key={deal.id} className="bg-[#0b0c0d] rounded-xl border border-[#252628] p-5 hover:border-blue-500/20 transition-colors">
           <div className="flex items-start justify-between mb-4">

@@ -212,6 +212,14 @@ func (s *DealService) ListByClient(ctx context.Context, id uuid.UUID, limit, off
 	})
 }
 
+func (s *DealService) ListByCosigner(ctx context.Context, id uuid.UUID, limit, offset int32) ([]db.Deal, error) {
+	return s.q.ListDealsByCosigner(ctx, db.ListDealsByCosignerParams{
+		ClientID: toUUID(id),
+		Limit:    limit,
+		Offset:   offset,
+	})
+}
+
 func (s *DealService) ListByBroker(ctx context.Context, id uuid.UUID, limit, offset int32) ([]db.Deal, error) {
 	return s.q.ListDealsByBroker(ctx, db.ListDealsByBrokerParams{
 		BrokerID: toNullUUID(&id),
@@ -310,6 +318,82 @@ func (s *DealService) UpdateStatus(ctx context.Context, id uuid.UUID, status db.
 
 func (s *DealService) MarkPaymentReminderEmailSent(ctx context.Context, id uuid.UUID) (db.Deal, error) {
 	return s.q.MarkDealPaymentReminderEmailSent(ctx, toUUID(id))
+}
+
+// AttachCosigner links a client to a deal and cancels that client's other VIN-less
+// deals, which are no longer valid after the client is identified as a cosigner.
+func (s *DealService) AttachCosigner(ctx context.Context, dealID, clientID uuid.UUID) ([]db.Deal, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin attach cosigner transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := s.q.WithTx(tx)
+	target, err := q.GetDeal(ctx, toUUID(dealID))
+	if err != nil {
+		return nil, err
+	}
+	if target.DealStatus.Valid && target.DealStatus.DealStatus == db.DealStatusCancelled {
+		return nil, fmt.Errorf("cannot attach a cosigner to a cancelled deal")
+	}
+	if target.ClientID.Valid && uuid.UUID(target.ClientID.Bytes) == clientID {
+		return nil, fmt.Errorf("the primary client cannot also be a cosigner")
+	}
+
+	if err := q.AddDealCosigner(ctx, db.AddDealCosignerParams{
+		DealID:   toUUID(dealID),
+		ClientID: toUUID(clientID),
+	}); err != nil {
+		return nil, err
+	}
+	moveParams := db.MoveCosignerDocumentsToDealParams{
+		ClientID:     toUUID(clientID),
+		TargetDealID: toUUID(dealID),
+	}
+	if err := q.MoveCosignerDocumentsToDeal(ctx, moveParams); err != nil {
+		return nil, err
+	}
+	if err := q.MovePendingCosignerDocumentImportsToDeal(ctx, db.MovePendingCosignerDocumentImportsToDealParams(moveParams)); err != nil {
+		return nil, err
+	}
+
+	targetLabel := "this deal"
+	if target.DealNumber.Valid && target.DealNumber.String != "" {
+		targetLabel = "deal " + target.DealNumber.String
+	}
+	cancellationNote := "Cancelled automatically: client was attached as a cosigner to " + targetLabel + "."
+	cancelled, err := q.CancelVinlessDealsForCosigner(ctx, db.CancelVinlessDealsForCosignerParams{
+		ClientID:         toUUID(clientID),
+		TargetDealID:     toUUID(dealID),
+		CancellationNote: cancellationNote,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit attach cosigner transaction: %w", err)
+	}
+	return cancelled, nil
+}
+
+func (s *DealService) ListCosigners(ctx context.Context, dealID uuid.UUID) ([]db.Client, error) {
+	return s.q.ListDealCosigners(ctx, toUUID(dealID))
+}
+
+func (s *DealService) RemoveCosigner(ctx context.Context, dealID, clientID uuid.UUID) error {
+	deleted, err := s.q.DeleteDealCosigner(ctx, db.DeleteDealCosignerParams{
+		DealID:   toUUID(dealID),
+		ClientID: toUUID(clientID),
+	})
+	if err != nil {
+		return err
+	}
+	if deleted == 0 {
+		return fmt.Errorf("cosigner relationship not found")
+	}
+	return nil
 }
 
 func normalizeBrokerCommission(brokerFee *float64, docFee *float64, collectAmount *float64, brokerPercent **float64, brokerCommission **float64) error {
