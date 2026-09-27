@@ -501,6 +501,8 @@ type Deal struct {
 	Notes                      pgtype.Text             `json:"notes"`
 	DealStatusPendingSince     pgtype.Date             `json:"deal_status_pending_since"`
 	PaymentReminderEmailSentAt pgtype.Timestamptz      `json:"payment_reminder_email_sent_at"`
+	IsCashDeal                 bool                    `json:"is_cash_deal"`
+	LeaseTermMonths            pgtype.Int4             `json:"lease_term_months"`
 }
 
 type DealCosigner struct {

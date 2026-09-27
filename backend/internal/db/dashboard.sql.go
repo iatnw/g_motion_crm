@@ -13,18 +13,19 @@ import (
 
 const getDashboardAging = `-- name: GetDashboardAging :one
 WITH filtered_deals AS (
-    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
+    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at, d.is_cash_deal, d.lease_term_months
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND d.deal_status = 'pending'
       AND d.deal_status_pending_since IS NOT NULL
-      AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
-      AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $2::date)
+      AND ($1::boolean IS NOT TRUE OR d.is_cash_deal IS NOT TRUE)
+      AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $2::date)
+      AND ($3::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $3::date)
 ),
 aged AS (
     SELECT
-        id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at,
+        id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at, is_cash_deal, lease_term_months,
         GREATEST((CURRENT_DATE - deal_status_pending_since), 0)::int AS pending_days
     FROM filtered_deals
 )
@@ -40,8 +41,9 @@ FROM aged
 `
 
 type GetDashboardAgingParams struct {
-	FromDate pgtype.Date `json:"from_date"`
-	ToDate   pgtype.Date `json:"to_date"`
+	ExcludeCash pgtype.Bool `json:"exclude_cash"`
+	FromDate    pgtype.Date `json:"from_date"`
+	ToDate      pgtype.Date `json:"to_date"`
 }
 
 type GetDashboardAgingRow struct {
@@ -55,7 +57,7 @@ type GetDashboardAgingRow struct {
 }
 
 func (q *Queries) GetDashboardAging(ctx context.Context, arg GetDashboardAgingParams) (GetDashboardAgingRow, error) {
-	row := q.db.QueryRow(ctx, getDashboardAging, arg.FromDate, arg.ToDate)
+	row := q.db.QueryRow(ctx, getDashboardAging, arg.ExcludeCash, arg.FromDate, arg.ToDate)
 	var i GetDashboardAgingRow
 	err := row.Scan(
 		&i.Pending031Count,
@@ -71,12 +73,13 @@ func (q *Queries) GetDashboardAging(ctx context.Context, arg GetDashboardAgingPa
 
 const getDashboardTotals = `-- name: GetDashboardTotals :one
 WITH filtered_deals AS (
-    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
+    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at, d.is_cash_deal, d.lease_term_months
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
       AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $2::date)
+      AND ($3::boolean IS NOT TRUE OR d.is_cash_deal IS NOT TRUE)
 ),
 deal_referral_totals AS (
     SELECT deal_id, SUM(amount)::numeric AS referral_total
@@ -113,8 +116,9 @@ LEFT JOIN deal_referral_totals drt ON drt.deal_id = fd.id
 `
 
 type GetDashboardTotalsParams struct {
-	FromDate pgtype.Date `json:"from_date"`
-	ToDate   pgtype.Date `json:"to_date"`
+	FromDate    pgtype.Date `json:"from_date"`
+	ToDate      pgtype.Date `json:"to_date"`
+	ExcludeCash pgtype.Bool `json:"exclude_cash"`
 }
 
 type GetDashboardTotalsRow struct {
@@ -134,7 +138,7 @@ type GetDashboardTotalsRow struct {
 }
 
 func (q *Queries) GetDashboardTotals(ctx context.Context, arg GetDashboardTotalsParams) (GetDashboardTotalsRow, error) {
-	row := q.db.QueryRow(ctx, getDashboardTotals, arg.FromDate, arg.ToDate)
+	row := q.db.QueryRow(ctx, getDashboardTotals, arg.FromDate, arg.ToDate, arg.ExcludeCash)
 	var i GetDashboardTotalsRow
 	err := row.Scan(
 		&i.TotalDeals,
@@ -156,7 +160,7 @@ func (q *Queries) GetDashboardTotals(ctx context.Context, arg GetDashboardTotals
 
 const listDashboardBrokerStats = `-- name: ListDashboardBrokerStats :many
 WITH filtered_deals AS (
-    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
+    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at, d.is_cash_deal, d.lease_term_months
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
@@ -236,7 +240,7 @@ func (q *Queries) ListDashboardBrokerStats(ctx context.Context, arg ListDashboar
 
 const listDashboardDealerStats = `-- name: ListDashboardDealerStats :many
 WITH filtered_deals AS (
-    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
+    SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at, d.is_cash_deal, d.lease_term_months
     FROM deals d
     WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
       AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
@@ -301,8 +305,85 @@ func (q *Queries) ListDashboardDealerStats(ctx context.Context, arg ListDashboar
 	return items, nil
 }
 
+const listDashboardLeases = `-- name: ListDashboardLeases :many
+SELECT id, client_id, deal_number, deal_status, make, model, deal_date, client_name, lease_term_months, lease_months_remaining
+FROM (
+    SELECT
+        d.id,
+        d.client_id,
+        d.deal_number,
+        d.deal_status,
+        d.make,
+        d.model,
+        d.deal_date,
+        (c.first_name || ' ' || c.last_name)::text AS client_name,
+        d.lease_term_months,
+        (d.lease_term_months - (EXTRACT(YEAR FROM age(CURRENT_DATE, COALESCE(d.deal_date, d.created_at::date))) * 12 + EXTRACT(MONTH FROM age(CURRENT_DATE, COALESCE(d.deal_date, d.created_at::date))))::int)::int AS lease_months_remaining
+    FROM deals d
+    JOIN clients c ON c.id = d.client_id
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+      AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
+      AND d.lease_term_months IS NOT NULL
+      AND ($1::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= $1::date)
+      AND ($2::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= $2::date)
+      AND ($3::boolean IS NOT TRUE OR d.is_cash_deal IS NOT TRUE)
+) leases
+ORDER BY (lease_months_remaining <= 0) ASC, lease_months_remaining ASC, deal_date DESC
+LIMIT 20
+`
+
+type ListDashboardLeasesParams struct {
+	FromDate    pgtype.Date `json:"from_date"`
+	ToDate      pgtype.Date `json:"to_date"`
+	ExcludeCash pgtype.Bool `json:"exclude_cash"`
+}
+
+type ListDashboardLeasesRow struct {
+	ID                   pgtype.UUID    `json:"id"`
+	ClientID             pgtype.UUID    `json:"client_id"`
+	DealNumber           pgtype.Text    `json:"deal_number"`
+	DealStatus           NullDealStatus `json:"deal_status"`
+	Make                 pgtype.Text    `json:"make"`
+	Model                pgtype.Text    `json:"model"`
+	DealDate             pgtype.Date    `json:"deal_date"`
+	ClientName           string         `json:"client_name"`
+	LeaseTermMonths      pgtype.Int4    `json:"lease_term_months"`
+	LeaseMonthsRemaining int32          `json:"lease_months_remaining"`
+}
+
+func (q *Queries) ListDashboardLeases(ctx context.Context, arg ListDashboardLeasesParams) ([]ListDashboardLeasesRow, error) {
+	rows, err := q.db.Query(ctx, listDashboardLeases, arg.FromDate, arg.ToDate, arg.ExcludeCash)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDashboardLeasesRow
+	for rows.Next() {
+		var i ListDashboardLeasesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientID,
+			&i.DealNumber,
+			&i.DealStatus,
+			&i.Make,
+			&i.Model,
+			&i.DealDate,
+			&i.ClientName,
+			&i.LeaseTermMonths,
+			&i.LeaseMonthsRemaining,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDashboardRecentDeals = `-- name: ListDashboardRecentDeals :many
-SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at
+SELECT d.id, d.client_id, d.broker_id, d.dealer_id, d.deal_date, d.deal_number, d.vin, d.make, d.model, d.trim_level, d.down_payment, d.down_payment_method, d.monthly_payment, d.broker_fee, d.broker_percent, d.broker_commission, d.broker_commission_status, d.broker_commission_paid_date, d.your_net, d.broker_fee_status, d.broker_fee_paid_date, d.created_at, d.updated_at, d.deal_status, d.collect_amount, d.doc_fee, d.broker_payment_method, d.notes, d.deal_status_pending_since, d.payment_reminder_email_sent_at, d.is_cash_deal, d.lease_term_months
 FROM deals d
 WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
   AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
@@ -358,6 +439,8 @@ func (q *Queries) ListDashboardRecentDeals(ctx context.Context, arg ListDashboar
 			&i.Notes,
 			&i.DealStatusPendingSince,
 			&i.PaymentReminderEmailSentAt,
+			&i.IsCashDeal,
+			&i.LeaseTermMonths,
 		); err != nil {
 			return nil, err
 		}

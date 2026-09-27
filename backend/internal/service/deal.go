@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/umbrllacrp/g_motion_crm/internal/db"
 )
@@ -58,6 +59,8 @@ type CreateDealInput struct {
 	DocFee                 *float64
 	BrokerPaymentMethod    db.NullBrokerPaymentMethod
 	Notes                  *string
+	IsCashDeal             bool
+	LeaseTermMonths        *int32
 }
 
 func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, error) {
@@ -109,6 +112,8 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		DocFee:                 toNumeric(in.DocFee),
 		BrokerPaymentMethod:    in.BrokerPaymentMethod,
 		Notes:                  toText(in.Notes),
+		IsCashDeal:             in.IsCashDeal,
+		LeaseTermMonths:        toInt32(in.LeaseTermMonths),
 	})
 	if err != nil {
 		return db.Deal{}, err
@@ -136,13 +141,19 @@ type DealListCounts struct {
 	Cancelled int64
 }
 
-func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilter string, limit, offset int32) ([]db.Deal, DealListCounts, error) {
+func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilter, leaseFilter string, leaseWithin *int32, limit, offset int32) ([]db.Deal, DealListCounts, error) {
+	var leaseFilterParam pgtype.Text
+	if leaseFilter != "" {
+		leaseFilterParam = pgtype.Text{String: leaseFilter, Valid: true}
+	}
 	rows, err := s.q.ListDealsFiltered(ctx, db.ListDealsFilteredParams{
-		Status:    status,
-		Search:    search,
-		VinFilter: vinFilter,
-		Lim:       limit,
-		Off:       offset,
+		Status:      status,
+		Search:      search,
+		VinFilter:   vinFilter,
+		LeaseFilter: leaseFilterParam,
+		LeaseWithin: toInt32(leaseWithin),
+		Lim:         limit,
+		Off:         offset,
 	})
 	if err != nil {
 		return nil, DealListCounts{}, err
@@ -201,6 +212,8 @@ func dealFromFilteredRow(row db.ListDealsFilteredRow) db.Deal {
 		Notes:                      row.Notes,
 		DealStatusPendingSince:     row.DealStatusPendingSince,
 		PaymentReminderEmailSentAt: row.PaymentReminderEmailSentAt,
+		IsCashDeal:                 row.IsCashDeal.Bool,
+		LeaseTermMonths:            row.LeaseTermMonths,
 	}
 }
 
@@ -260,6 +273,8 @@ type UpdateDealInput struct {
 	DocFee                 *float64
 	BrokerPaymentMethod    db.NullBrokerPaymentMethod
 	Notes                  *string
+	IsCashDeal             bool
+	LeaseTermMonths        *int32
 }
 
 func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, error) {
@@ -291,6 +306,8 @@ func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, 
 		DocFee:                 toNumeric(in.DocFee),
 		BrokerPaymentMethod:    in.BrokerPaymentMethod,
 		Notes:                  toText(in.Notes),
+		IsCashDeal:             in.IsCashDeal,
+		LeaseTermMonths:        toInt32(in.LeaseTermMonths),
 	})
 }
 

@@ -130,6 +130,9 @@ type DealResponse struct {
 	DocFee                   *float64 `json:"doc_fee"`
 	BrokerPaymentMethod      *string  `json:"broker_payment_method"`
 	Notes                    *string  `json:"notes"`
+	IsCashDeal               bool     `json:"is_cash_deal"`
+	LeaseTermMonths          *int32   `json:"lease_term_months"`
+	LeaseMonthsRemaining     *int32   `json:"lease_months_remaining"`
 	CreatedAt                string   `json:"created_at"`
 	UpdatedAt                string   `json:"updated_at"`
 }
@@ -159,8 +162,19 @@ func toDealResponse(d db.Deal) DealResponse {
 		CollectAmount:            pgNumeric(d.CollectAmount),
 		DocFee:                   pgNumeric(d.DocFee),
 		Notes:                    pgText(d.Notes),
+		IsCashDeal:               d.IsCashDeal,
 		CreatedAt:                pgTimestamp(d.CreatedAt),
 		UpdatedAt:                pgTimestamp(d.UpdatedAt),
+	}
+	if d.LeaseTermMonths.Valid {
+		term := d.LeaseTermMonths.Int32
+		r.LeaseTermMonths = &term
+		start := d.DealDate.Time
+		if !d.DealDate.Valid {
+			start = d.CreatedAt.Time
+		}
+		remaining := leaseMonthsRemaining(term, start, time.Now())
+		r.LeaseMonthsRemaining = &remaining
 	}
 	if d.DownPaymentMethod.Valid {
 		s := string(d.DownPaymentMethod.DownPaymentMethod)
@@ -186,6 +200,14 @@ func toDealResponse(d db.Deal) DealResponse {
 		r.BrokerPaymentMethod = &s
 	}
 	return r
+}
+
+func leaseMonthsRemaining(termMonths int32, start time.Time, now time.Time) int32 {
+	months := (now.Year()-start.Year())*12 + int(now.Month()-start.Month())
+	if now.Day() < start.Day() {
+		months--
+	}
+	return termMonths - int32(months)
 }
 
 func pendingPaymentAge(pendingSince pgtype.Date) (*int, *string) {

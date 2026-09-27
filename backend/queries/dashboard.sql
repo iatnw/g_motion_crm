@@ -6,6 +6,7 @@ WITH filtered_deals AS (
       AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
+      AND (sqlc.narg('exclude_cash')::boolean IS NOT TRUE OR d.is_cash_deal IS NOT TRUE)
 ),
 deal_referral_totals AS (
     SELECT deal_id, SUM(amount)::numeric AS referral_total
@@ -48,6 +49,7 @@ WITH filtered_deals AS (
       AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
       AND d.deal_status = 'pending'
       AND d.deal_status_pending_since IS NOT NULL
+      AND (sqlc.narg('exclude_cash')::boolean IS NOT TRUE OR d.is_cash_deal IS NOT TRUE)
       AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
       AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 ),
@@ -137,3 +139,29 @@ WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
   AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
 ORDER BY COALESCE(d.deal_date, d.created_at::date) DESC, d.created_at DESC
 LIMIT $1;
+
+-- name: ListDashboardLeases :many
+SELECT *
+FROM (
+    SELECT
+        d.id,
+        d.client_id,
+        d.deal_number,
+        d.deal_status,
+        d.make,
+        d.model,
+        d.deal_date,
+        (c.first_name || ' ' || c.last_name)::text AS client_name,
+        d.lease_term_months,
+        (d.lease_term_months - (EXTRACT(YEAR FROM age(CURRENT_DATE, COALESCE(d.deal_date, d.created_at::date))) * 12 + EXTRACT(MONTH FROM age(CURRENT_DATE, COALESCE(d.deal_date, d.created_at::date))))::int)::int AS lease_months_remaining
+    FROM deals d
+    JOIN clients c ON c.id = d.client_id
+    WHERE COALESCE(d.deal_status != 'cancelled', TRUE)
+      AND NULLIF(BTRIM(d.vin), '') IS NOT NULL
+      AND d.lease_term_months IS NOT NULL
+      AND (sqlc.narg('from_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) >= sqlc.narg('from_date')::date)
+      AND (sqlc.narg('to_date')::date IS NULL OR COALESCE(d.deal_date, d.created_at::date) <= sqlc.narg('to_date')::date)
+      AND (sqlc.narg('exclude_cash')::boolean IS NOT TRUE OR d.is_cash_deal IS NOT TRUE)
+) leases
+ORDER BY (lease_months_remaining <= 0) ASC, lease_months_remaining ASC, deal_date DESC
+LIMIT 20;

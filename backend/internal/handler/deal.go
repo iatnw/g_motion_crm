@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -44,6 +45,8 @@ type dealRequest struct {
 	DocFee                 *float64 `json:"doc_fee"`
 	BrokerPaymentMethod    *string  `json:"broker_payment_method"`
 	Notes                  *string  `json:"notes"`
+	IsCashDeal             *bool    `json:"is_cash_deal"`
+	LeaseTermMonths        *int32   `json:"lease_term_months"`
 }
 
 func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +134,8 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		DocFee:                 req.DocFee,
 		BrokerPaymentMethod:    brokerPaymentMethod,
 		Notes:                  req.Notes,
+		IsCashDeal:             req.IsCashDeal != nil && *req.IsCashDeal,
+		LeaseTermMonths:        req.LeaseTermMonths,
 	})
 	if err != nil {
 		slog.Error("create deal", "client_id", clientID, "error", err)
@@ -232,6 +237,8 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 		DocFee:                 req.DocFee,
 		BrokerPaymentMethod:    brokerPaymentMethod,
 		Notes:                  req.Notes,
+		IsCashDeal:             req.IsCashDeal != nil && *req.IsCashDeal,
+		LeaseTermMonths:        req.LeaseTermMonths,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -297,6 +304,21 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 	if vinFilter != "" && vinFilter != "present" && vinFilter != "missing" {
 		http.Error(w, "invalid vin filter", http.StatusBadRequest)
 		return
+	}
+	leaseFilter := r.URL.Query().Get("lease_filter")
+	if leaseFilter != "" && leaseFilter != "any" && leaseFilter != "ended" {
+		http.Error(w, "invalid lease_filter, expected any or ended", http.StatusBadRequest)
+		return
+	}
+	var leaseWithin *int32
+	if v := r.URL.Query().Get("lease_within"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n <= 0 {
+			http.Error(w, "invalid lease_within, expected a positive number of months", http.StatusBadRequest)
+			return
+		}
+		leaseWithin = new(int32)
+		*leaseWithin = int32(n)
 	}
 
 	if clientIDStr := r.URL.Query().Get("client_id"); clientIDStr != "" {
@@ -389,7 +411,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
-	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, vinFilter, limit+1, offset)
+	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, vinFilter, leaseFilter, leaseWithin, limit+1, offset)
 	if err != nil {
 		slog.Error("list deals", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

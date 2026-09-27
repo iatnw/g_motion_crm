@@ -9,6 +9,7 @@ import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
 
 type FilterTab = "all" | "new" | "pending" | "paid" | "cancelled";
+type LeaseFilter = "" | "any" | "3" | "6" | "12" | "ended";
 const PAGE_SIZE = 20;
 const filterTabs: Array<{ value: FilterTab; label: string }> = [
   { value: "all", label: "All" },
@@ -16,6 +17,14 @@ const filterTabs: Array<{ value: FilterTab; label: string }> = [
   { value: "pending", label: "Pending" },
   { value: "paid", label: "Paid" },
   { value: "cancelled", label: "Canceled" },
+];
+const leaseFilterOptions: Array<{ value: LeaseFilter; label: string }> = [
+  { value: "", label: "All leases" },
+  { value: "any", label: "Has lease" },
+  { value: "3", label: "Ends ≤ 3 mo" },
+  { value: "6", label: "Ends ≤ 6 mo" },
+  { value: "12", label: "Ends ≤ 12 mo" },
+  { value: "ended", label: "Ended" },
 ];
 
 const statusBorder: Record<string, string> = {
@@ -44,6 +53,7 @@ export default function DealsPage() {
   const [search, setSearch] = useState("");
   const [querySearch, setQuerySearch] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
+  const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>("");
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
   const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
   const [counts, setCounts] = useState({ all: 0, new: 0, pending: 0, paid: 0, cancelled: 0 });
@@ -79,6 +89,8 @@ export default function DealsPage() {
       status: tab === "pending" || tab === "paid" || tab === "cancelled" ? tab : undefined,
       search: querySearch,
       vin: tab === "new" ? "missing" : tab === "cancelled" ? undefined : "present",
+      leaseFilter: leaseFilter === "any" || leaseFilter === "ended" ? leaseFilter : undefined,
+      leaseWithin: leaseFilter === "3" || leaseFilter === "6" || leaseFilter === "12" ? Number(leaseFilter) : undefined,
     }).then(async (res) => {
       const refs = await referralsApi.listByDeals(res.data.map((deal) => deal.id));
       if (cancelled) return;
@@ -95,7 +107,7 @@ export default function DealsPage() {
     return () => {
       cancelled = true;
     };
-  }, [tab, querySearch, offset, refreshVersion]);
+  }, [tab, querySearch, offset, refreshVersion, leaseFilter]);
 
   async function handleSave(data: object): Promise<Deal> {
     if (modal.deal) {
@@ -196,6 +208,19 @@ export default function DealsPage() {
             className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
           />
         </div>
+        <select
+          value={leaseFilter}
+          onChange={(e) => {
+            setLoading(true);
+            setLeaseFilter(e.target.value as LeaseFilter);
+            setOffset(0);
+          }}
+          className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none cursor-pointer"
+        >
+          {leaseFilterOptions.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
@@ -231,6 +256,11 @@ export default function DealsPage() {
                     {d.deal_number && (
                       <span className="text-xs font-mono bg-[#111213] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
                         #{d.deal_number}
+                      </span>
+                    )}
+                    {d.is_cash_deal && (
+                      <span className="text-xs font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded-md">
+                        CASH
                       </span>
                     )}
                     {vehicle && <span className="text-slate-300 text-sm">{vehicle}</span>}
@@ -270,6 +300,12 @@ export default function DealsPage() {
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
                   <StatCell label="Broker %" value={displayPercent ? `${Number(displayPercent).toFixed(2)}%` : undefined} />
+                  {d.lease_term_months != null && (
+                    <StatCell
+                      label="Lease Left"
+                      value={d.lease_months_remaining != null && d.lease_months_remaining > 0 ? `${d.lease_months_remaining} mo` : "Ended"}
+                    />
+                  )}
                   <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[130px]">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
                     <div className="flex items-center gap-2">

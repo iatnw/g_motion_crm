@@ -25,12 +25,14 @@ INSERT INTO deals (
     collect_amount,
     doc_fee,
     broker_payment_method,
-    notes
+    notes,
+    is_cash_deal,
+    lease_term_months
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     $16, $17, $18,
     CASE WHEN $18::deal_status = 'pending' THEN COALESCE($4::date, CURRENT_DATE) ELSE NULL END,
-    $19, $20, $21, $22
+    $19, $20, $21, $22, $23, $24
 ) RETURNING *;
 
 -- name: GetDeal :one
@@ -92,6 +94,22 @@ WITH search_filtered AS (
         OR (brokers.first_name || ' ' || brokers.last_name) ILIKE '%' || sqlc.arg(search) || '%'
         OR dealers.name ILIKE '%' || sqlc.arg(search) || '%'
       )
+      AND (
+          sqlc.narg('lease_filter')::text IS NULL
+          OR (sqlc.narg('lease_filter')::text = 'any' AND deals.lease_term_months IS NOT NULL)
+          OR (
+              sqlc.narg('lease_filter')::text = 'ended'
+              AND deals.lease_term_months IS NOT NULL
+              AND (deals.lease_term_months - (EXTRACT(YEAR FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))) * 12 + EXTRACT(MONTH FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))))::int) <= 0
+          )
+      )
+      AND (
+          sqlc.narg('lease_within')::int IS NULL
+          OR (
+              deals.lease_term_months IS NOT NULL
+              AND (deals.lease_term_months - (EXTRACT(YEAR FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))) * 12 + EXTRACT(MONTH FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))))::int) BETWEEN 1 AND sqlc.narg('lease_within')::int
+          )
+      )
 ),
 counts AS (
     SELECT
@@ -148,6 +166,8 @@ SELECT
     page.notes,
     page.deal_status_pending_since,
     page.payment_reminder_email_sent_at,
+    page.is_cash_deal,
+    page.lease_term_months,
     counts.all_count,
     counts.pending_count,
     counts.paid_count,
@@ -206,17 +226,15 @@ SET
     END,
     deal_status                 = $19,
     deal_status_pending_since   = CASE
-        WHEN $19::deal_status = 'pending'
-         AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
-        THEN CURRENT_DATE
-        WHEN $19::deal_status IS DISTINCT FROM 'pending'
-        THEN NULL
-        ELSE deal_status_pending_since
+        WHEN $19::deal_status = 'pending' THEN COALESCE($5::date, CURRENT_DATE)
+        ELSE NULL
     END,
     collect_amount              = $20,
     doc_fee                     = $21,
     broker_payment_method       = $22,
     notes                       = $23,
+    is_cash_deal                = $24,
+    lease_term_months           = $25,
     updated_at                  = NOW()
 WHERE id = $1
 RETURNING *;
@@ -240,12 +258,8 @@ SET
         ELSE broker_fee_paid_date
     END,
     deal_status_pending_since = CASE
-        WHEN $2::deal_status = 'pending'
-         AND (deal_status IS DISTINCT FROM 'pending' OR deal_status_pending_since IS NULL)
-        THEN CURRENT_DATE
-        WHEN $2::deal_status IS DISTINCT FROM 'pending'
-        THEN NULL
-        ELSE deal_status_pending_since
+        WHEN $2::deal_status = 'pending' THEN COALESCE(deal_date, CURRENT_DATE)
+        ELSE NULL
     END,
     updated_at = NOW()
 WHERE id = $1

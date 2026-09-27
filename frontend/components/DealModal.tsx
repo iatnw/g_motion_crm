@@ -47,6 +47,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     doc_fee: deal?.doc_fee?.toString() ?? "",
     broker_payment_method: deal?.broker_payment_method ?? "",
     notes: deal?.notes ?? "",
+    is_cash_deal: deal?.is_cash_deal ?? false,
+    lease_term_months: deal?.lease_term_months?.toString() ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -189,6 +191,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
         "your_net",
         "collect_amount",
         "doc_fee",
+        "lease_term_months",
       ]);
 
       // Always recompute broker_percent from commission at save time to ensure consistency
@@ -200,7 +203,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
         finalForm.your_net = netAfterReferral(saveBase, saveCom, referralTotal);
       }
 
-      const payload: Record<string, string | number> = {};
+      const payload: Record<string, string | number | boolean> = {};
       for (const [k, v] of Object.entries(finalForm)) {
         if (v === "") continue;
         payload[k] = numericFields.has(k) ? Number(v) : v;
@@ -340,6 +343,15 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 </DarkSelect>
               </div>
             </div>
+            <label className="mt-3 flex items-center gap-2.5 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={form.is_cash_deal}
+                onChange={(e) => setForm((prev) => ({ ...prev, is_cash_deal: e.target.checked }))}
+                className="w-4 h-4 rounded accent-blue-600"
+              />
+              <span className="text-sm text-slate-300">Cash deal</span>
+            </label>
           </section>
 
           {/* Financials */}
@@ -356,6 +368,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 </DarkSelect>
               </div>
               <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
+              <Field label="Lease Term (months)" type="number" value={form.lease_term_months} onChange={(v) => set("lease_term_months", v)} />
               <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, form.collect_amount, v);
                 const pct = parseFloat(form.broker_percent);

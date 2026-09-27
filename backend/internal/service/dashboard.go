@@ -16,9 +16,10 @@ func NewDashboard(q *db.Queries) *DashboardService {
 }
 
 type DashboardInput struct {
-	FromDate *time.Time
-	ToDate   *time.Time
-	Limit    int32
+	FromDate    *time.Time
+	ToDate      *time.Time
+	Limit       int32
+	ExcludeCash bool
 }
 
 type DashboardSummary struct {
@@ -27,6 +28,7 @@ type DashboardSummary struct {
 	Brokers     []db.ListDashboardBrokerStatsRow
 	Dealers     []db.ListDashboardDealerStatsRow
 	RecentDeals []db.Deal
+	Leases      []db.ListDashboardLeasesRow
 }
 
 func (s *DashboardService) Summary(ctx context.Context, in DashboardInput) (DashboardSummary, error) {
@@ -39,18 +41,21 @@ func (s *DashboardService) Summary(ctx context.Context, in DashboardInput) (Dash
 
 	fromDate := toDate(in.FromDate)
 	toDate := toDate(in.ToDate)
+	excludeCash := toBool(in.ExcludeCash)
 
 	totals, err := s.q.GetDashboardTotals(ctx, db.GetDashboardTotalsParams{
-		FromDate: fromDate,
-		ToDate:   toDate,
+		FromDate:    fromDate,
+		ToDate:      toDate,
+		ExcludeCash: excludeCash,
 	})
 	if err != nil {
 		return DashboardSummary{}, err
 	}
 
 	aging, err := s.q.GetDashboardAging(ctx, db.GetDashboardAgingParams{
-		FromDate: fromDate,
-		ToDate:   toDate,
+		FromDate:    fromDate,
+		ToDate:      toDate,
+		ExcludeCash: excludeCash,
 	})
 	if err != nil {
 		return DashboardSummary{}, err
@@ -81,11 +86,21 @@ func (s *DashboardService) Summary(ctx context.Context, in DashboardInput) (Dash
 		return DashboardSummary{}, err
 	}
 
+	leases, err := s.q.ListDashboardLeases(ctx, db.ListDashboardLeasesParams{
+		FromDate:    fromDate,
+		ToDate:      toDate,
+		ExcludeCash: excludeCash,
+	})
+	if err != nil {
+		return DashboardSummary{}, err
+	}
+
 	return DashboardSummary{
 		Totals:      totals,
 		Aging:       aging,
 		Brokers:     brokers,
 		Dealers:     dealers,
 		RecentDeals: recentDeals,
+		Leases:      leases,
 	}, nil
 }

@@ -24,6 +24,7 @@ type DashboardSummaryResponse struct {
 	Brokers     []DashboardBrokerStatResponse `json:"brokers"`
 	Dealers     []DashboardDealerStatResponse `json:"dealers"`
 	RecentDeals []DealResponse                `json:"recent_deals"`
+	Leases      []DashboardLeaseResponse      `json:"leases"`
 }
 
 type DashboardTotalsResponse struct {
@@ -71,6 +72,18 @@ type DashboardDealerStatResponse struct {
 	AvgDaysToPayment *float64 `json:"avg_days_to_payment"`
 }
 
+type DashboardLeaseResponse struct {
+	ID                   string  `json:"id"`
+	ClientID             string  `json:"client_id"`
+	DealNumber           *string `json:"deal_number"`
+	ClientName           string  `json:"client_name"`
+	Make                 *string `json:"make"`
+	Model                *string `json:"model"`
+	DealStatus           *string `json:"deal_status"`
+	LeaseTermMonths      int32   `json:"lease_term_months"`
+	LeaseMonthsRemaining int32   `json:"lease_months_remaining"`
+}
+
 func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 	fromDate, err := optionalQueryDate(r, "from")
 	if err != nil {
@@ -97,10 +110,21 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 		limit = int32(n)
 	}
 
+	excludeCash := false
+	if v := r.URL.Query().Get("exclude_cash"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			http.Error(w, "invalid exclude_cash, expected true or false", http.StatusBadRequest)
+			return
+		}
+		excludeCash = b
+	}
+
 	summary, err := h.dashboard.Summary(r.Context(), service.DashboardInput{
-		FromDate: fromDate,
-		ToDate:   toDate,
-		Limit:    limit,
+		FromDate:    fromDate,
+		ToDate:      toDate,
+		Limit:       limit,
+		ExcludeCash: excludeCash,
 	})
 	if err != nil {
 		slog.Error("dashboard summary", "error", err)
@@ -130,6 +154,7 @@ func toDashboardSummaryResponse(s service.DashboardSummary) DashboardSummaryResp
 		Brokers:     toDashboardBrokerStatResponses(s.Brokers),
 		Dealers:     toDashboardDealerStatResponses(s.Dealers),
 		RecentDeals: toDealResponses(s.RecentDeals),
+		Leases:      toDashboardLeaseResponses(s.Leases),
 	}
 }
 
@@ -189,6 +214,29 @@ func toDashboardDealerStatResponses(rows []db.ListDashboardDealerStatsRow) []Das
 			DealCount:        row.DealCount,
 			GrossRevenue:     pgNumeric(row.GrossRevenue),
 			AvgDaysToPayment: pgNumeric(row.AvgDaysToPayment),
+		}
+	}
+	return out
+}
+
+func toDashboardLeaseResponses(rows []db.ListDashboardLeasesRow) []DashboardLeaseResponse {
+	out := make([]DashboardLeaseResponse, len(rows))
+	for i, row := range rows {
+		var status *string
+		if row.DealStatus.Valid {
+			s := string(row.DealStatus.DealStatus)
+			status = &s
+		}
+		out[i] = DashboardLeaseResponse{
+			ID:                   pgUUID(row.ID),
+			ClientID:             pgUUID(row.ClientID),
+			DealNumber:           pgText(row.DealNumber),
+			ClientName:           row.ClientName,
+			Make:                 pgText(row.Make),
+			Model:                pgText(row.Model),
+			DealStatus:           status,
+			LeaseTermMonths:      row.LeaseTermMonths.Int32,
+			LeaseMonthsRemaining: row.LeaseMonthsRemaining,
 		}
 	}
 	return out

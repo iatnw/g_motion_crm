@@ -147,11 +147,13 @@ export const clients = {
 export const deals = {
   nextNumber: () => request<{ deal_number: string }>("/deals/next-number").then((r) => r.deal_number),
   list: (params: Record<string, string> = {}) => fetchAll<import("./types").Deal>("/deals", params),
-  listPaged: (params: { limit: number; offset: number; status?: string; search?: string; vin?: "present" | "missing" }) => {
+  listPaged: (params: { limit: number; offset: number; status?: string; search?: string; vin?: "present" | "missing"; leaseFilter?: string; leaseWithin?: number }) => {
     const qs = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
     if (params.status) qs.set("status", params.status);
     if (params.search) qs.set("search", params.search);
     if (params.vin) qs.set("vin", params.vin);
+    if (params.leaseFilter) qs.set("lease_filter", params.leaseFilter);
+    if (params.leaseWithin) qs.set("lease_within", String(params.leaseWithin));
     return request<DealsPaginatedResponse>(`/deals?${qs}`);
   },
   listByClient: (clientId: string) => fetchAll<import("./types").Deal>("/deals", { client_id: clientId }),
@@ -242,11 +244,12 @@ export const referrals = {
 
 // Dashboard
 export const dashboard = {
-  summary: (params: { from?: string; to?: string; limit?: number } = {}) => {
+  summary: (params: { from?: string; to?: string; limit?: number; exclude_cash?: boolean } = {}) => {
     const qs = new URLSearchParams();
     if (params.from) qs.set("from", params.from);
     if (params.to) qs.set("to", params.to);
     if (params.limit) qs.set("limit", String(params.limit));
+    if (params.exclude_cash) qs.set("exclude_cash", "true");
     const query = qs.toString();
     return request<import("./types").DashboardSummary>(
       `/dashboard/summary${query ? `?${query}` : ""}`

@@ -50,3 +50,14 @@ func toNumeric(f *float64) pgtype.Numeric {
 	}
 	return n
 }
+
+func toBool(b bool) pgtype.Bool {
+	return pgtype.Bool{Bool: b, Valid: true}
+}
+
+func toInt32(i *int32) pgtype.Int4 {
+	if i == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: *i, Valid: true}
+}

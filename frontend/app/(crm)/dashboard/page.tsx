@@ -8,12 +8,14 @@ import DealStatusSelect from "@/components/DealStatusSelect";
 import DealModal from "@/components/DealModal";
 
 type RangeMode = "all" | "month" | "custom";
+type DealScope = "all" | "no_cash";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mode, setMode] = useState<RangeMode>("all");
+  const [dealScope, setDealScope] = useState<DealScope>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -22,10 +24,10 @@ export default function DashboardPage() {
   const [editModal, setEditModal] = useState<{ deal: Deal; clients: Client[]; brokers: import("@/lib/types").Broker[]; dealers: import("@/lib/types").Dealer[] } | null>(null);
 
   const params = useMemo(() => {
-    if (mode === "all") return {};
-    if (mode === "month") return currentMonthRange();
-    return { from: from || undefined, to: to || undefined };
-  }, [mode, from, to]);
+    const base =
+      mode === "all" ? {} : mode === "month" ? currentMonthRange() : { from: from || undefined, to: to || undefined };
+    return dealScope === "no_cash" ? { ...base, exclude_cash: true as const } : base;
+  }, [mode, from, to, dealScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +106,10 @@ export default function DashboardPage() {
           <p className="text-slate-500 text-xs mt-0.5">Company overview, pending money, broker and dealer performance</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-[#111213] border border-[#1e1f21] rounded-lg p-1">
+            <SegmentedButton active={dealScope === "all"} onClick={() => setDealScope("all")}>All deals</SegmentedButton>
+            <SegmentedButton active={dealScope === "no_cash"} onClick={() => setDealScope("no_cash")}>No cash deals</SegmentedButton>
+          </div>
           <SegmentedButton active={mode === "all"} onClick={() => setMode("all")}>All time</SegmentedButton>
           <SegmentedButton active={mode === "month"} onClick={() => setMode("month")}>This month</SegmentedButton>
           <SegmentedButton active={mode === "custom"} onClick={() => setMode("custom")}>Custom</SegmentedButton>
@@ -200,6 +206,30 @@ export default function DashboardPage() {
               <StatChip label="Doc fees" value={money(totals.total_doc_fees)} />
               <StatChip label="Referral payout" value={money(totals.total_referral_payout)} />
             </div>
+          </div>
+
+          {/* Leases — ending soonest first */}
+          <div className="space-y-3">
+            <SectionLabel>Leases</SectionLabel>
+            <Panel title="Lease tracking — ending soonest first">
+              {summary.leases.length === 0 ? (
+                <div className="py-8 text-center text-sm text-slate-600">No leases tracked yet. Set a lease term on a deal to see it here.</div>
+              ) : (
+                <Table
+                  headers={["Client", "Vehicle", "Deal", "Term", "Left", "Status"]}
+                  rows={summary.leases.map((l) => [
+                    <Link key={l.id} href={`/clients/${l.client_id}`} className="hover:text-blue-400 transition-colors">
+                      {l.client_name}
+                    </Link>,
+                    [l.make, l.model].filter(Boolean).join(" ") || "—",
+                    l.deal_number ?? "—",
+                    `${l.lease_term_months} mo`,
+                    l.lease_months_remaining > 0 ? `${l.lease_months_remaining} mo` : "Ended",
+                    l.deal_status ?? "—",
+                  ])}
+                />
+              )}
+            </Panel>
           </div>
 
           {/* Brokers + Dealers */}

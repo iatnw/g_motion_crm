@@ -109,6 +109,9 @@ export interface Deal {
   doc_fee?: number;
   broker_payment_method?: BrokerPaymentMethod;
   notes?: string;
+  is_cash_deal?: boolean;
+  lease_term_months?: number;
+  lease_months_remaining?: number;
   created_at: string;
   updated_at: string;
 }
@@ -194,6 +197,19 @@ export interface DashboardSummary {
     avg_days_to_payment?: number;
   }>;
   recent_deals: Deal[];
+  leases: DashboardLease[];
+}
+
+export interface DashboardLease {
+  id: string;
+  client_id: string;
+  deal_number?: string;
+  client_name: string;
+  make?: string;
+  model?: string;
+  deal_status?: DealStatus;
+  lease_term_months: number;
+  lease_months_remaining: number;
 }
 
 export interface Document {
