@@ -36,10 +36,22 @@ func NewS3Client(cfg config.AWSConfig) (*S3Client, error) {
 		return nil, err
 	}
 
-	client := s3.NewFromConfig(awsCfg)
+	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		if cfg.S3Endpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.S3Endpoint)
+			o.UsePathStyle = true
+		}
+	})
+	presignClient := client
+	if cfg.S3PublicEndpoint != "" {
+		presignClient = s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(cfg.S3PublicEndpoint)
+			o.UsePathStyle = true
+		})
+	}
 	return &S3Client{
 		client:  client,
-		presign: s3.NewPresignClient(client),
+		presign: s3.NewPresignClient(presignClient),
 		bucket:  cfg.BucketDocs,
 	}, nil
 }

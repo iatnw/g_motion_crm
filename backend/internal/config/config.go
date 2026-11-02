@@ -29,11 +29,13 @@ type DatabaseConfig struct {
 }
 
 type AWSConfig struct {
-	Region          string
-	AccessKeyID     string
-	SecretAccessKey string
-	BucketDocs      string
-	BucketBackups   string
+	Region           string
+	AccessKeyID      string
+	SecretAccessKey  string
+	BucketDocs       string
+	BucketBackups    string
+	S3Endpoint       string
+	S3PublicEndpoint string
 }
 
 type AuthConfig struct {
@@ -122,11 +124,13 @@ func Load() (*Config, error) {
 			TOTPIssuer:  os.Getenv("TOTP_ISSUER"),
 		},
 		AWS: AWSConfig{
-			Region:          region,
-			AccessKeyID:     accessKeyID,
-			SecretAccessKey: secretAccessKey,
-			BucketDocs:      docsBucket,
-			BucketBackups:   backupsBucket,
+			Region:           region,
+			AccessKeyID:      accessKeyID,
+			SecretAccessKey:  secretAccessKey,
+			BucketDocs:       docsBucket,
+			BucketBackups:    backupsBucket,
+			S3Endpoint:       os.Getenv("S3_ENDPOINT"),
+			S3PublicEndpoint: os.Getenv("S3_PUBLIC_ENDPOINT"),
 		},
 		Tally: TallyConfig{
 			SigningSecret: os.Getenv("TALLY_SIGNING_SECRET"),

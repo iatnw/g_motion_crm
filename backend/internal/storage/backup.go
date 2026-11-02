@@ -30,8 +30,13 @@ func NewBackupStorage(cfg config.AWSConfig) (*BackupStorage, error) {
 		return nil, err
 	}
 	return &BackupStorage{
-		uploader: transfermanager.New(s3.NewFromConfig(awsCfg)),
-		bucket:   cfg.BucketBackups,
+		uploader: transfermanager.New(s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+			if cfg.S3Endpoint != "" {
+				o.BaseEndpoint = aws.String(cfg.S3Endpoint)
+				o.UsePathStyle = true
+			}
+		})),
+		bucket: cfg.BucketBackups,
 	}, nil
 }
 
