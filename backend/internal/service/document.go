@@ -105,14 +105,11 @@ func (s *DocumentService) UploadFromURL(
 	if err != nil {
 		return db.Document{}, fmt.Errorf("parse file URL: %w", err)
 	}
-	if u.Scheme != "https" {
-		return db.Document{}, fmt.Errorf("only https URLs are supported")
-	}
-	if !strings.HasSuffix(u.Host, ".tally.so") && u.Host != "tally.so" {
-		return db.Document{}, fmt.Errorf("only Tally URLs are supported")
+	if err := validateTallyDocumentURL(u); err != nil {
+		return db.Document{}, err
 	}
 
-	client := http.Client{Timeout: 90 * time.Second}
+	client := newTallyDownloadClient()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
 	if err != nil {
 		return db.Document{}, fmt.Errorf("create request: %w", err)
@@ -165,6 +162,36 @@ func (s *DocumentService) UploadFromURL(
 	}
 
 	return doc, nil
+}
+
+// Apply the same restrictions to the initial URL and every redirect target.
+func validateTallyDocumentURL(u *url.URL) error {
+	if u.Scheme != "https" {
+		return fmt.Errorf("only https URLs are supported")
+	}
+	if u.User != nil {
+		return fmt.Errorf("URL credentials are not supported")
+	}
+	host := strings.ToLower(u.Hostname())
+	if host != "tally.so" && !strings.HasSuffix(host, ".tally.so") {
+		return fmt.Errorf("only Tally URLs are supported")
+	}
+	if u.Port() != "" && u.Port() != "443" {
+		return fmt.Errorf("only the standard HTTPS port is supported")
+	}
+	return nil
+}
+
+func newTallyDownloadClient() *http.Client {
+	return &http.Client{
+		Timeout: 90 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			return validateTallyDocumentURL(req.URL)
+		},
+	}
 }
 
 // PresignUpload returns a presigned S3 PUT URL so the browser can upload directly.
