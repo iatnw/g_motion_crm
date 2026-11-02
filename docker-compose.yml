@@ -19,12 +19,20 @@ services:
   backend:
     build:
       context: ./backend/
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     env_file:
       - .env
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      APP_ENV: development
+      FRONTEND_URL: http://localhost:3000
+    volumes:
+      - ./backend:/app
+      - backend_tmp:/app/tmp
+      - go_modules:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    stop_grace_period: 10s
     ports:
       - "${APP_PORT}:${APP_PORT}"
     depends_on:
@@ -34,9 +42,13 @@ services:
   frontend:
     build:
       context: ./frontend/
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080
+      dockerfile: Dockerfile.dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:${APP_PORT}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - frontend_next:/app/.next
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -45,3 +57,7 @@ services:
 
 volumes:
   postgres_data:
+  backend_tmp:
+  go_modules:
+  go_build_cache:
+  frontend_next:
