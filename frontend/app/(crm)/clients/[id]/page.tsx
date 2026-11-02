@@ -10,6 +10,11 @@ import DocumentsTab from "@/components/DocumentsTab";
 import ClientForm from "@/components/ClientForm";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate } from "@/lib/utils";
+import {
+  ClientAvatar,
+  ClientStatusBadge,
+  clientSourceLabels,
+} from "@/components/ClientIdentity";
 
 type Tab = "profile" | "documents" | "deals";
 
@@ -26,12 +31,15 @@ export default function ClientDetailPage() {
   const [tab, setTab] = useState<Tab>("profile");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [dealModal, setDealModal] = useState<{ open: boolean; deal?: Deal }>({ open: false });
+  const [dealModal, setDealModal] = useState<{ open: boolean; deal?: Deal }>({
+    open: false,
+  });
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     if (!id || id === "new") return;
     try {
+      setError("");
       const [c, d, cosigned, allC, b, dl] = await Promise.all([
         clients.get(id),
         deals.listByClient(id),
@@ -41,6 +49,7 @@ export default function ClientDetailPage() {
         dealers.list(),
       ]);
       setClient(c);
+      setEditing(false);
       setClientDeals(d);
       setCosignerDeals(cosigned);
       setAllClients(allC);
@@ -66,7 +75,8 @@ export default function ClientDetailPage() {
     try {
       if (id === "new") {
         const created = await clients.create(data);
-        router.push(`/clients/${created.id}`);
+        setEditing(false);
+        router.replace(`/clients/${created.id}`);
       } else {
         const updated = await clients.update(id, data);
         setClient(updated);
@@ -79,8 +89,13 @@ export default function ClientDetailPage() {
 
   async function handleSaveDeal(data: object): Promise<Deal> {
     if (dealModal.deal) {
-      const updated = await deals.update(dealModal.deal.id, { ...data, client_id: id });
-      setClientDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      const updated = await deals.update(dealModal.deal.id, {
+        ...data,
+        client_id: id,
+      });
+      setClientDeals((prev) =>
+        prev.map((d) => (d.id === updated.id ? updated : d)),
+      );
       return updated;
     } else {
       const created = await deals.create({ ...data, client_id: id });
@@ -103,10 +118,12 @@ export default function ClientDetailPage() {
 
   if (id === "new" || editing) {
     return (
-      <div className="p-6">
+      <div className="mx-auto max-w-7xl p-4 normal-case sm:p-6 lg:p-8">
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => id === "new" ? router.push("/clients") : setEditing(false)}
+            onClick={() =>
+              id === "new" ? router.push("/clients") : setEditing(false)
+            }
             className="text-slate-500 hover:text-slate-300 text-sm transition-colors"
           >
             ← Back
@@ -118,7 +135,9 @@ export default function ClientDetailPage() {
         <ClientForm
           initial={client ?? undefined}
           onSave={handleSaveClient}
-          onCancel={() => id === "new" ? router.push("/clients") : setEditing(false)}
+          onCancel={() =>
+            id === "new" ? router.push("/clients") : setEditing(false)
+          }
         />
       </div>
     );
@@ -127,41 +146,99 @@ export default function ClientDetailPage() {
   if (!client) return null;
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <Link href="/clients" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">
-            ← Clients
-          </Link>
-          <h1 className="text-xl font-semibold text-white mt-1">
-            {client.first_name} {client.last_name}
-          </h1>
-          <p className="text-slate-500 text-sm mt-0.5">{[client.email, client.phone].filter(Boolean).join(" · ") || ""}</p>
+    <div className="mx-auto max-w-7xl p-4 normal-case sm:p-6 lg:p-8">
+      <Link
+        href="/clients"
+        className="mb-5 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-blue-400"
+      >
+        ← All clients
+      </Link>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-5 rounded-xl border border-[#252628] bg-[#0f1011] p-5 sm:p-6">
+        <div className="flex min-w-0 items-start gap-4">
+          <ClientAvatar client={client} large />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-white">
+                {client.first_name} {client.last_name}
+              </h1>
+              <ClientStatusBadge status={client.status} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              {client.email && (
+                <a
+                  href={`mailto:${client.email}`}
+                  className="break-all text-slate-400 hover:text-blue-400 hover:underline"
+                >
+                  {client.email}
+                </a>
+              )}
+              {client.phone && (
+                <a
+                  href={`tel:${client.phone.replace(/[^+\d]/g, "")}`}
+                  className="text-slate-400 hover:text-blue-400 hover:underline"
+                >
+                  {client.phone}
+                </a>
+              )}
+              {!client.email && !client.phone && (
+                <span className="text-slate-400">No contact details added</span>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              Added {fmtDate(client.created_at)}
+              {client.source ? ` · ${clientSourceLabels[client.source]}` : ""}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setEditing(true)}
-            className="px-3 py-1.5 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
+            className="rounded-lg border border-[#252628] px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:border-blue-500/40 hover:text-blue-400 focus-visible:outline-2 focus-visible:outline-blue-400"
           >
-            Edit
+            Edit profile
           </button>
           <button
             onClick={() => setDealModal({ open: true })}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-all glow-blue-sm"
+            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-400"
           >
-            + New Deal
+            ＋ New deal
           </button>
         </div>
+      </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Primary deals", value: clientDeals.length },
+          { label: "Cosigned deals", value: cosignerDeals.length },
+          {
+            label: "Cash deals",
+            value: clientDeals.filter((d) => d.is_cash_deal).length,
+          },
+          {
+            label: "Leases",
+            value: clientDeals.filter((d) => d.lease_term_months != null)
+              .length,
+          },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-[#252628] bg-[#0f1011] px-4 py-3"
+          >
+            <p className="text-xs text-slate-400">{item.label}</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-white">
+              {item.value}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
       <div className="border-b border-[#252628] mb-6">
-        <nav className="flex gap-0">
+        <nav className="flex gap-0" aria-label="Client sections">
           {(["profile", "documents", "deals"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
+              aria-current={tab === t ? "page" : undefined}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all capitalize -mb-px ${
                 tab === t
                   ? "border-blue-500 text-blue-400"
@@ -169,11 +246,12 @@ export default function ClientDetailPage() {
               }`}
             >
               {t}
-              {t === "deals" && clientDeals.length > 0 && (
-                <span className="ml-1.5 text-xs bg-blue-500/15 text-blue-400 border border-blue-500/25 px-1.5 py-0.5 rounded-full">
-                  {clientDeals.length}
-                </span>
-              )}
+              {t === "deals" &&
+                clientDeals.length + cosignerDeals.length > 0 && (
+                  <span className="ml-1.5 text-xs bg-blue-500/15 text-blue-400 border border-blue-500/25 px-1.5 py-0.5 rounded-full">
+                    {clientDeals.length + cosignerDeals.length}
+                  </span>
+                )}
             </button>
           ))}
         </nav>
@@ -190,7 +268,9 @@ export default function ClientDetailPage() {
           dealers={allDealers}
           onEdit={(deal) => setDealModal({ open: true, deal })}
           onStatusChange={(updated) =>
-            setClientDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
+            setClientDeals((prev) =>
+              prev.map((d) => (d.id === updated.id ? updated : d)),
+            )
           }
         />
       )}
@@ -210,70 +290,154 @@ export default function ClientDetailPage() {
   );
 }
 
+function money(value?: string | number | null) {
+  if (value == null || value === "") return undefined;
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2,
+      }).format(amount)
+    : undefined;
+}
+
 function ProfileTab({ client }: { client: Client }) {
+  const employment = {
+    full_time: "Full time",
+    part_time: "Part time",
+    self_employed: "Self employed",
+  };
+  const housing: Record<string, string> = {
+    own: "Own",
+    rent: "Rent",
+    family: "Living with family",
+  };
   const sections = [
     {
-      title: "Personal Information",
+      title: "Personal details",
+      description: "Identity and contact information",
       fields: [
-        { label: "Full Name", value: `${client.first_name} ${client.last_name}` },
+        {
+          label: "Full name",
+          value: `${client.first_name} ${client.last_name}`,
+        },
         { label: "Email", value: client.email },
         { label: "Phone", value: client.phone },
-        { label: "Date of Birth", value: client.date_of_birth },
-        { label: "SSN", value: client.has_ssn ? "Stored securely" : undefined },
-        { label: "Source", value: client.source },
-        { label: "Notes", value: client.notes },
+        {
+          label: "Date of birth",
+          value: client.date_of_birth
+            ? fmtDate(client.date_of_birth)
+            : undefined,
+        },
+        {
+          label: "Social Security number",
+          value: client.has_ssn ? "Stored securely · hidden" : "Not provided",
+        },
+        {
+          label: "Client source",
+          value: client.source ? clientSourceLabels[client.source] : undefined,
+        },
       ],
     },
     {
-      title: "Address",
+      title: "Address & housing",
+      description: "Where your client lives",
       fields: [
-        { label: "Address", value: client.address },
+        { label: "Street address", value: client.address },
         { label: "City", value: client.city },
         { label: "State", value: client.state },
-        { label: "ZIP", value: client.zip },
-        { label: "Housing Status", value: client.housing_status },
-        { label: "Housing Duration", value: client.housing_duration },
-        { label: "Monthly Payment", value: client.housing_monthly_payment ? `$${client.housing_monthly_payment}` : undefined },
+        { label: "ZIP code", value: client.zip },
+        {
+          label: "Housing",
+          value: client.housing_status
+            ? (housing[client.housing_status] ?? client.housing_status)
+            : undefined,
+        },
+        { label: "Time at address", value: client.housing_duration },
+        {
+          label: "Monthly housing payment",
+          value: money(client.housing_monthly_payment),
+        },
       ],
     },
     {
       title: "Employment",
+      description: "Work and employer information",
       fields: [
         { label: "Employer", value: client.employer_name },
-        { label: "Employer Address", value: client.employer_address },
-        { label: "Employer City", value: client.employer_city },
-        { label: "Employer State", value: client.employer_state },
-        { label: "Employer ZIP", value: client.employer_zip },
         { label: "Occupation", value: client.occupation },
-        { label: "Employer Phone", value: client.employer_phone },
-        { label: "Employment Status", value: client.employment_status },
-        { label: "Employment Duration", value: client.employment_duration },
-        { label: "Gross Monthly Income", value: client.gross_monthly_income ? `$${client.gross_monthly_income}` : undefined },
-        { label: "Other Monthly Income", value: client.other_monthly_income ? `$${client.other_monthly_income}` : undefined },
-        { label: "Other Income Source", value: client.other_income_source },
+        {
+          label: "Employment type",
+          value: client.employment_status
+            ? employment[client.employment_status]
+            : undefined,
+        },
+        { label: "Time employed", value: client.employment_duration },
+        { label: "Employer phone", value: client.employer_phone },
+        {
+          label: "Employer address",
+          value: [
+            client.employer_address,
+            client.employer_city,
+            client.employer_state,
+            client.employer_zip,
+          ]
+            .filter(Boolean)
+            .join(", "),
+        },
+      ],
+    },
+    {
+      title: "Income",
+      description: "Monthly financial information",
+      fields: [
+        {
+          label: "Gross monthly income",
+          value: money(client.gross_monthly_income),
+        },
+        {
+          label: "Other monthly income",
+          value: money(client.other_monthly_income),
+        },
+        { label: "Other income source", value: client.other_income_source },
       ],
     },
   ];
-
   return (
-    <div className="space-y-4">
-      {sections.map((section) => {
-        const visible = section.fields.filter((f) => f.value);
-        if (!visible.length) return null;
-        return (
-          <div key={section.title} className="bg-[#0b0c0d] rounded-xl border border-[#252628] p-5">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">{section.title}</h3>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
-              {visible.map(({ label, value }) => (
-                <div key={label}>
-                  <dt className="text-xs text-slate-600 font-medium uppercase tracking-wider">{label}</dt>
-                  <dd className="text-sm text-slate-200 mt-0.5">{String(value)}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        );
-      })}
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      {sections.map((section) => (
+        <section
+          key={section.title}
+          className="h-full rounded-xl border border-[#252628] bg-[#0f1011] p-5 sm:p-6"
+        >
+          <h2 className="font-semibold text-slate-200">{section.title}</h2>
+          <p className="mb-5 mt-1 text-xs text-slate-400">
+            {section.description}
+          </p>
+          <dl className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2">
+            {section.fields.map(({ label, value }) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-xs text-slate-400">{label}</dt>
+                <dd
+                  className={`mt-1 break-words text-sm ${value != null && value !== "" ? "text-slate-200" : "text-slate-500"}`}
+                >
+                  {value != null && value !== ""
+                    ? String(value)
+                    : "Not provided"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
+      <section className="rounded-xl border border-[#252628] bg-[#0f1011] p-5 sm:p-6 lg:col-span-2">
+        <h2 className="font-semibold text-slate-200">Notes</h2>
+        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-400">
+          {client.notes ||
+            "No notes added yet. Edit the profile to keep useful context here."}
+        </p>
+      </section>
     </div>
   );
 }
@@ -293,29 +457,49 @@ function DealsTab({
   onEdit: (deal: Deal) => void;
   onStatusChange: (deal: Deal) => void;
 }) {
-  const brokerMap = Object.fromEntries(allBrokers.map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
+  const [mutationError, setMutationError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const brokerMap = Object.fromEntries(
+    allBrokers.map((b) => [b.id, `${b.first_name} ${b.last_name}`]),
+  );
   const dealerMap = Object.fromEntries(allDealers.map((d) => [d.id, d.name]));
 
-  async function toggleStatus(deal: Deal, field: "broker_fee_status" | "broker_commission_status") {
+  async function toggleStatus(
+    deal: Deal,
+    field: "broker_fee_status" | "broker_commission_status",
+  ) {
+    setMutationError("");
+    setBusy(true);
     try {
       let updated: Deal;
       if (field === "broker_fee_status") {
         const next = deal.broker_fee_status === "paid" ? "pending" : "paid";
         updated = await deals.updateBrokerFeeStatus(deal.id, next);
       } else {
-        const next = deal.broker_commission_status === "paid" ? "pending" : "paid";
+        const next =
+          deal.broker_commission_status === "paid" ? "pending" : "paid";
         updated = await deals.updateBrokerCommissionStatus(deal.id, next);
       }
       onStatusChange(updated);
-    } catch {}
+    } catch {
+      setMutationError("Couldn’t update this deal. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function updateDealStatus(deal: Deal, status: Deal["deal_status"]) {
     if (!status) return;
+    setMutationError("");
+    setBusy(true);
     try {
       const updated = await deals.updateStatus(deal.id, status);
       onStatusChange(updated);
-    } catch {}
+    } catch {
+      setMutationError("Couldn’t update this deal. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!dealList.length && !cosignerDeals.length) {
@@ -327,14 +511,24 @@ function DealsTab({
   }
 
   return (
-    <div className="space-y-4">
+    <fieldset disabled={busy} className="min-w-0 space-y-4">
+      {mutationError && (
+        <p role="alert" className="text-sm text-red-400">
+          {mutationError}
+        </p>
+      )}
       {cosignerDeals.length > 0 && (
         <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Cosigner on</p>
+          <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+            Cosigner on
+          </p>
           <div className="mt-2 space-y-1">
             {cosignerDeals.map((deal) => (
               <p key={deal.id} className="text-sm text-slate-300">
-                {deal.deal_number ? `#${deal.deal_number} · ` : ""}{[deal.make, deal.model, deal.trim_level].filter(Boolean).join(" ") || "Deal"}
+                {deal.deal_number ? `#${deal.deal_number} · ` : ""}
+                {[deal.make, deal.model, deal.trim_level]
+                  .filter(Boolean)
+                  .join(" ") || "Deal"}
                 {deal.vin ? ` · VIN: ${deal.vin}` : ""}
               </p>
             ))}
@@ -342,13 +536,35 @@ function DealsTab({
         </div>
       )}
       {dealList.map((deal) => (
-        <div key={deal.id} className="bg-[#0b0c0d] rounded-xl border border-[#252628] p-5 hover:border-blue-500/20 transition-colors">
-          <div className="flex items-start justify-between mb-4">
+        <div
+          key={deal.id}
+          className="bg-[#0b0c0d] rounded-xl border border-[#252628] p-5 hover:border-blue-500/20 transition-colors"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
             <div>
               <p className="font-medium text-slate-200">
-                {[deal.make, deal.model, deal.trim_level].filter(Boolean).join(" ") || "Deal"}
+                {[deal.make, deal.model, deal.trim_level]
+                  .filter(Boolean)
+                  .join(" ") || "Deal"}
               </p>
-              <p className="text-slate-600 text-xs mt-0.5">
+              <div className="my-2 flex flex-wrap gap-2 text-xs">
+                {deal.is_cash_deal && (
+                  <span className="rounded-full border border-green-500/25 bg-green-500/10 px-2 py-0.5 text-green-400">
+                    Cash deal
+                  </span>
+                )}
+                {deal.lease_term_months != null && (
+                  <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-blue-400">
+                    {deal.lease_term_months}-month lease
+                  </span>
+                )}
+                {!deal.vin && (
+                  <span className="rounded-full border border-[#252628] px-2 py-0.5 text-slate-400">
+                    VIN not assigned
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-400 text-xs mt-0.5 break-all">
                 {deal.deal_number && `#${deal.deal_number} · `}
                 {fmtDate(deal.deal_date)}
                 {deal.vin && ` · VIN: ${deal.vin}`}
@@ -362,45 +578,70 @@ function DealsTab({
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-sm mb-4">
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4 sm:grid-cols-3">
             {deal.broker_id && (
               <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Broker</span>
-                <p className="text-slate-300 mt-0.5">{brokerMap[deal.broker_id] ?? "–"}</p>
+                <span className="text-slate-400 text-xs uppercase tracking-wider">
+                  Broker
+                </span>
+                <p className="text-slate-300 mt-0.5">
+                  {brokerMap[deal.broker_id] ?? "–"}
+                </p>
               </div>
             )}
             {deal.dealer_id && (
               <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Dealer</span>
-                <p className="text-slate-300 mt-0.5">{dealerMap[deal.dealer_id] ?? "–"}</p>
+                <span className="text-slate-400 text-xs uppercase tracking-wider">
+                  Dealer
+                </span>
+                <p className="text-slate-300 mt-0.5">
+                  {dealerMap[deal.dealer_id] ?? "–"}
+                </p>
               </div>
             )}
-            {deal.down_payment && (
+            {deal.down_payment != null && (
               <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Down Payment</span>
-                <p className="text-slate-300 mt-0.5">${deal.down_payment} {deal.down_payment_method && `(${deal.down_payment_method})`}</p>
+                <span className="text-slate-400 text-xs uppercase tracking-wider">
+                  Down Payment
+                </span>
+                <p className="text-slate-300 mt-0.5">
+                  {money(deal.down_payment)}{" "}
+                  {deal.down_payment_method && `(${deal.down_payment_method})`}
+                </p>
               </div>
             )}
-            {deal.monthly_payment && (
+            {deal.monthly_payment != null && (
               <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Monthly</span>
-                <p className="text-slate-300 mt-0.5">${deal.monthly_payment}</p>
+                <span className="text-slate-400 text-xs uppercase tracking-wider">
+                  Monthly
+                </span>
+                <p className="text-slate-300 mt-0.5">
+                  {money(deal.monthly_payment)}
+                </p>
               </div>
             )}
             {deal.collect_amount != null && (
               <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Collect</span>
-                <p className="font-semibold text-green-400 mt-0.5">${deal.collect_amount}</p>
+                <span className="text-slate-400 text-xs uppercase tracking-wider">
+                  Collect
+                </span>
+                <p className="font-semibold text-green-400 mt-0.5">
+                  {money(deal.collect_amount)}
+                </p>
               </div>
             )}
             {deal.doc_fee != null && (
               <div>
-                <span className="text-slate-600 text-xs uppercase tracking-wider">Doc Fee</span>
-                <p className="text-slate-300 mt-0.5">${deal.doc_fee}</p>
+                <span className="text-slate-400 text-xs uppercase tracking-wider">
+                  Doc Fee
+                </span>
+                <p className="text-slate-300 mt-0.5">{money(deal.doc_fee)}</p>
               </div>
             )}
             <div>
-              <span className="text-slate-600 text-xs uppercase tracking-wider">Deal Status</span>
+              <span className="text-slate-400 text-xs uppercase tracking-wider">
+                Deal Status
+              </span>
               <div className="mt-1">
                 <DealStatusSelect
                   value={deal.deal_status}
@@ -430,19 +671,28 @@ function DealsTab({
           </div>
           {deal.pending_payment_days != null && (
             <p className="text-xs text-slate-500 mt-3">
-              Pending {deal.pending_payment_days} days · {deal.pending_payment_bucket}
+              Pending {deal.pending_payment_days} days ·{" "}
+              {deal.pending_payment_bucket}
             </p>
           )}
         </div>
       ))}
-    </div>
+    </fieldset>
   );
 }
 
 function StatusButton({
-  label, amount, status, paidDate, onClick,
+  label,
+  amount,
+  status,
+  paidDate,
+  onClick,
 }: {
-  label: string; amount?: number; status?: string; paidDate?: string; onClick: () => void;
+  label: string;
+  amount?: number;
+  status?: string;
+  paidDate?: string;
+  onClick: () => void;
 }) {
   const paid = status === "paid";
   return (
@@ -455,7 +705,10 @@ function StatusButton({
       }`}
     >
       <span>{paid ? "✓" : "○"}</span>
-      <span>{label}{amount ? ` $${amount}` : ""}</span>
+      <span>
+        {label}
+        {amount != null ? ` ${money(amount)}` : ""}
+      </span>
       {paid && paidDate && (
         <span className="text-green-600 opacity-80">{fmtDate(paidDate)}</span>
       )}

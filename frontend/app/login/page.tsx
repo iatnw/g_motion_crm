@@ -16,7 +16,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    auth.setupRequired().then((res) => setSetupRequired(res.required)).catch(() => setSetupRequired(false));
+    auth
+      .setupRequired()
+      .then((res) => setSetupRequired(res.required))
+      .catch(() => setSetupRequired(false));
   }, []);
 
   async function handleSetup(e: React.FormEvent) {
@@ -70,18 +73,43 @@ export default function LoginPage() {
     }
   }
 
-  if (setupRequired === null) return null;
+  if (setupRequired === null)
+    return (
+      <div
+        role="status"
+        className="flex h-full items-center justify-center text-sm text-slate-400"
+      >
+        Connecting to your workspace…
+      </div>
+    );
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-[#0b0c0d]" style={{ backgroundImage: "radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 60%)" }}>
+    <div
+      className="min-h-full flex items-center justify-center bg-[#0b0c0d]"
+      style={{
+        backgroundImage:
+          "radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 60%)",
+      }}
+    >
       <div className="w-full max-w-sm px-4">
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 glow-blue">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">G Motion CRM</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            G Motion CRM
+          </h1>
           <p className="text-slate-500 text-sm mt-1">Auto Finance Management</p>
         </div>
 
@@ -89,8 +117,12 @@ export default function LoginPage() {
           {setupRequired ? (
             <form onSubmit={handleSetup} className="space-y-4">
               <div className="mb-2">
-                <p className="text-white text-sm font-medium">Welcome to G Motion CRM</p>
-                <p className="text-slate-500 text-xs mt-1">Set your password to get started.</p>
+                <p className="text-white text-sm font-medium">
+                  Welcome to G Motion CRM
+                </p>
+                <p className="text-slate-500 text-xs mt-1">
+                  Set your password to get started.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">

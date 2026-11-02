@@ -2,8 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { dashboard, deals, clients, brokers, dealers, referrals as referralsApi } from "@/lib/api";
-import type { DealStatus, DashboardSummary, Deal, Client, PendingPaymentBucket, Referral } from "@/lib/types";
+import {
+  dashboard,
+  deals,
+  clients,
+  brokers,
+  dealers,
+  referrals as referralsApi,
+} from "@/lib/api";
+import type {
+  DealStatus,
+  DashboardSummary,
+  Deal,
+  Client,
+  PendingPaymentBucket,
+  Referral,
+} from "@/lib/types";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import DealModal from "@/components/DealModal";
 
@@ -19,14 +33,35 @@ export default function DashboardPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const [bucketModal, setBucketModal] = useState<{ bucket: PendingPaymentBucket; deals: Deal[]; clientMap: Record<string, Client>; brokerMap: Record<string, string>; dealerMap: Record<string, string>; referralMap: Record<string, Referral[]>; allClients: Client[]; allBrokers: import("@/lib/types").Broker[]; allDealers: import("@/lib/types").Dealer[] } | null>(null);
+  const [bucketModal, setBucketModal] = useState<{
+    bucket: PendingPaymentBucket;
+    deals: Deal[];
+    clientMap: Record<string, Client>;
+    brokerMap: Record<string, string>;
+    dealerMap: Record<string, string>;
+    referralMap: Record<string, Referral[]>;
+    allClients: Client[];
+    allBrokers: import("@/lib/types").Broker[];
+    allDealers: import("@/lib/types").Dealer[];
+  } | null>(null);
   const [bucketLoading, setBucketLoading] = useState(false);
-  const [editModal, setEditModal] = useState<{ deal: Deal; clients: Client[]; brokers: import("@/lib/types").Broker[]; dealers: import("@/lib/types").Dealer[] } | null>(null);
+  const [editModal, setEditModal] = useState<{
+    deal: Deal;
+    clients: Client[];
+    brokers: import("@/lib/types").Broker[];
+    dealers: import("@/lib/types").Dealer[];
+  } | null>(null);
 
   const params = useMemo(() => {
     const base =
-      mode === "all" ? {} : mode === "month" ? currentMonthRange() : { from: from || undefined, to: to || undefined };
-    return dealScope === "no_cash" ? { ...base, exclude_cash: true as const } : base;
+      mode === "all"
+        ? {}
+        : mode === "month"
+          ? currentMonthRange()
+          : { from: from || undefined, to: to || undefined };
+    return dealScope === "no_cash"
+      ? { ...base, exclude_cash: true as const }
+      : base;
   }, [mode, from, to, dealScope]);
 
   useEffect(() => {
@@ -41,8 +76,15 @@ export default function DashboardPage() {
             setError("");
           }
         })
-        .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard"); })
-        .finally(() => { if (!cancelled) setLoading(false); });
+        .catch((e: unknown) => {
+          if (!cancelled)
+            setError(
+              e instanceof Error ? e.message : "Failed to load dashboard",
+            );
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     }
 
     function refreshWhenVisible() {
@@ -68,22 +110,47 @@ export default function DashboardPage() {
   async function openBucket(bucket: PendingPaymentBucket) {
     setBucketLoading(true);
     try {
-      const [allDeals, allClients, allBrokers, allDealers, allReferrals] = await Promise.all([
-        deals.list({ vin: "present" }), clients.list(), brokers.list(), dealers.list(), referralsApi.list(),
-      ]);
-      const filtered = (allDeals ?? []).filter((d) =>
-        d.deal_status === "pending" &&
-        d.pending_payment_bucket === bucket &&
-        isDealInRange(d, params)
+      const [allDeals, allClients, allBrokers, allDealers, allReferrals] =
+        await Promise.all([
+          deals.list({ vin: "present" }),
+          clients.list(),
+          brokers.list(),
+          dealers.list(),
+          referralsApi.list(),
+        ]);
+      const filtered = (allDeals ?? []).filter(
+        (d) =>
+          d.deal_status === "pending" &&
+          d.pending_payment_bucket === bucket &&
+          isDealInRange(d, params),
       );
-      const clientMap = Object.fromEntries((allClients ?? []).map((c) => [c.id, c]));
-      const brokerMap = Object.fromEntries((allBrokers ?? []).map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
-      const dealerMap = Object.fromEntries((allDealers ?? []).map((d) => [d.id, d.name]));
+      const clientMap = Object.fromEntries(
+        (allClients ?? []).map((c) => [c.id, c]),
+      );
+      const brokerMap = Object.fromEntries(
+        (allBrokers ?? []).map((b) => [b.id, `${b.first_name} ${b.last_name}`]),
+      );
+      const dealerMap = Object.fromEntries(
+        (allDealers ?? []).map((d) => [d.id, d.name]),
+      );
       const referralMap: Record<string, Referral[]> = {};
       for (const r of allReferrals ?? []) {
-        if (r.deal_id) { if (!referralMap[r.deal_id]) referralMap[r.deal_id] = []; referralMap[r.deal_id].push(r); }
+        if (r.deal_id) {
+          if (!referralMap[r.deal_id]) referralMap[r.deal_id] = [];
+          referralMap[r.deal_id].push(r);
+        }
       }
-      setBucketModal({ bucket, deals: filtered, clientMap, brokerMap, dealerMap, referralMap, allClients: allClients ?? [], allBrokers: allBrokers ?? [], allDealers: allDealers ?? [] });
+      setBucketModal({
+        bucket,
+        deals: filtered,
+        clientMap,
+        brokerMap,
+        dealerMap,
+        referralMap,
+        allClients: allClients ?? [],
+        allBrokers: allBrokers ?? [],
+        allDealers: allDealers ?? [],
+      });
     } finally {
       setBucketLoading(false);
     }
@@ -95,7 +162,8 @@ export default function DashboardPage() {
   const paidRev = totals?.paid_revenue ?? 0;
   const pendingRev = totals?.pending_revenue ?? 0;
   const grossRev = totals?.gross_revenue ?? 0;
-  const collectionPct = grossRev > 0 ? Math.round((paidRev / grossRev) * 100) : 0;
+  const collectionPct =
+    grossRev > 0 ? Math.round((paidRev / grossRev) * 100) : 0;
 
   return (
     <div className="p-6">
@@ -103,19 +171,59 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Dashboard</h1>
-          <p className="text-slate-500 text-xs mt-0.5">Company overview, pending money, broker and dealer performance</p>
+          <p className="text-slate-500 text-xs mt-0.5">
+            Revenue, outstanding payments, and partner performance at a glance
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 bg-[#111213] border border-[#1e1f21] rounded-lg p-1">
-            <SegmentedButton active={dealScope === "all"} onClick={() => setDealScope("all")}>All deals</SegmentedButton>
-            <SegmentedButton active={dealScope === "no_cash"} onClick={() => setDealScope("no_cash")}>No cash deals</SegmentedButton>
+            <SegmentedButton
+              active={dealScope === "all"}
+              onClick={() => setDealScope("all")}
+            >
+              All deals
+            </SegmentedButton>
+            <SegmentedButton
+              active={dealScope === "no_cash"}
+              onClick={() => setDealScope("no_cash")}
+            >
+              No cash deals
+            </SegmentedButton>
           </div>
-          <SegmentedButton active={mode === "all"} onClick={() => setMode("all")}>All time</SegmentedButton>
-          <SegmentedButton active={mode === "month"} onClick={() => setMode("month")}>This month</SegmentedButton>
-          <SegmentedButton active={mode === "custom"} onClick={() => setMode("custom")}>Custom</SegmentedButton>
+          <SegmentedButton
+            active={mode === "all"}
+            onClick={() => setMode("all")}
+          >
+            All time
+          </SegmentedButton>
+          <SegmentedButton
+            active={mode === "month"}
+            onClick={() => setMode("month")}
+          >
+            This month
+          </SegmentedButton>
+          <SegmentedButton
+            active={mode === "custom"}
+            onClick={() => setMode("custom")}
+          >
+            Custom
+          </SegmentedButton>
         </div>
       </div>
 
+      {!loading && summary && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+          <p className="text-sm text-slate-300">
+            Keep collections moving and follow up on outstanding deals.
+          </p>
+          <Link
+            href="/deals?status=pending"
+            className="text-sm font-medium text-blue-400 hover:underline"
+          >
+            Review pending deals →
+          </Link>
+        </div>
+      )}
       {mode === "custom" && (
         <div className="flex items-center gap-3 mb-5">
           <DateInput label="From" value={from} onChange={setFrom} />
@@ -124,12 +232,13 @@ export default function DashboardPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-slate-600 text-sm">Loading...</div>
+        <div className="text-center py-12 text-slate-600 text-sm">
+          Loading...
+        </div>
       ) : error ? (
         <div className="text-red-400 text-sm">{error}</div>
       ) : summary && totals && aging ? (
         <div className="space-y-6">
-
           {/* Hero row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <HeroCard
@@ -155,35 +264,57 @@ export default function DashboardPage() {
           {/* Collection status */}
           <div className="bg-[#111213] border border-[#1e1f21] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Revenue collection</p>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                collectionPct >= 80
-                  ? "bg-green-500/15 text-green-400"
-                  : collectionPct >= 50
-                    ? "bg-yellow-500/15 text-yellow-400"
-                    : "bg-red-500/15 text-red-400"
-              }`}>{collectionPct}% collected</span>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                Revenue collection
+              </p>
+              <span
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  collectionPct >= 80
+                    ? "bg-green-500/15 text-green-400"
+                    : collectionPct >= 50
+                      ? "bg-yellow-500/15 text-yellow-400"
+                      : "bg-red-500/15 text-red-400"
+                }`}
+              >
+                {collectionPct}% collected
+              </span>
             </div>
             <div className="w-full h-2.5 bg-[#1e1f21] rounded-full overflow-hidden mb-4">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${
-                  collectionPct >= 80 ? "bg-green-500" : collectionPct >= 50 ? "bg-yellow-500" : "bg-red-500"
+                  collectionPct >= 80
+                    ? "bg-green-500"
+                    : collectionPct >= 50
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
                 }`}
                 style={{ width: `${collectionPct}%` }}
               />
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Gross</p>
-                <p className="text-base font-semibold text-white">{money(grossRev)}</p>
+                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">
+                  Gross
+                </p>
+                <p className="text-base font-semibold text-white">
+                  {money(grossRev)}
+                </p>
               </div>
               <div>
-                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Collected</p>
-                <p className="text-base font-semibold text-green-400">{money(paidRev)}</p>
+                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">
+                  Collected
+                </p>
+                <p className="text-base font-semibold text-green-400">
+                  {money(paidRev)}
+                </p>
               </div>
               <div>
-                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Outstanding</p>
-                <p className="text-base font-semibold text-yellow-400">{money(pendingRev)}</p>
+                <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">
+                  Outstanding
+                </p>
+                <p className="text-base font-semibold text-yellow-400">
+                  {money(pendingRev)}
+                </p>
               </div>
             </div>
           </div>
@@ -192,9 +323,30 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <SectionLabel>Pending by date</SectionLabel>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <AgingCard title="0–31 days" count={aging.pending_0_31_count} amount={aging.pending_0_31_revenue} tone="green" badge="On time" onClick={() => openBucket("green")} />
-              <AgingCard title="32–40 days" count={aging.pending_32_40_count} amount={aging.pending_32_40_revenue} tone="yellow" badge="Watch" onClick={() => openBucket("yellow")} />
-              <AgingCard title="41+ days" count={aging.pending_41_plus_count} amount={aging.pending_41_plus_revenue} tone="red" badge="Overdue" onClick={() => openBucket("red")} />
+              <AgingCard
+                title="0–31 days"
+                count={aging.pending_0_31_count}
+                amount={aging.pending_0_31_revenue}
+                tone="green"
+                badge="On time"
+                onClick={() => openBucket("green")}
+              />
+              <AgingCard
+                title="32–40 days"
+                count={aging.pending_32_40_count}
+                amount={aging.pending_32_40_revenue}
+                tone="yellow"
+                badge="Watch"
+                onClick={() => openBucket("yellow")}
+              />
+              <AgingCard
+                title="41+ days"
+                count={aging.pending_41_plus_count}
+                amount={aging.pending_41_plus_revenue}
+                tone="red"
+                badge="Overdue"
+                onClick={() => openBucket("red")}
+              />
             </div>
           </div>
 
@@ -202,9 +354,15 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <SectionLabel>Costs</SectionLabel>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <StatChip label="Broker payout" value={money(totals.broker_payout)} />
+              <StatChip
+                label="Broker payout"
+                value={money(totals.broker_payout)}
+              />
               <StatChip label="Doc fees" value={money(totals.total_doc_fees)} />
-              <StatChip label="Referral payout" value={money(totals.total_referral_payout)} />
+              <StatChip
+                label="Referral payout"
+                value={money(totals.total_referral_payout)}
+              />
             </div>
           </div>
 
@@ -213,18 +371,34 @@ export default function DashboardPage() {
             <SectionLabel>Leases</SectionLabel>
             <Panel title="Lease tracking — ending soonest first">
               {summary.leases.length === 0 ? (
-                <div className="py-8 text-center text-sm text-slate-600">No leases tracked yet. Set a lease term on a deal to see it here.</div>
+                <div className="py-8 text-center text-sm text-slate-600">
+                  No leases tracked yet. Set a lease term on a deal to see it
+                  here.
+                </div>
               ) : (
                 <Table
-                  headers={["Client", "Vehicle", "Deal", "Term", "Left", "Status"]}
+                  headers={[
+                    "Client",
+                    "Vehicle",
+                    "Deal",
+                    "Term",
+                    "Left",
+                    "Status",
+                  ]}
                   rows={summary.leases.map((l) => [
-                    <Link key={l.id} href={`/clients/${l.client_id}`} className="hover:text-blue-400 transition-colors">
+                    <Link
+                      key={l.id}
+                      href={`/clients/${l.client_id}`}
+                      className="hover:text-blue-400 transition-colors"
+                    >
                       {l.client_name}
                     </Link>,
                     [l.make, l.model].filter(Boolean).join(" ") || "—",
                     l.deal_number ?? "—",
                     `${l.lease_term_months} mo`,
-                    l.lease_months_remaining > 0 ? `${l.lease_months_remaining} mo` : "Ended",
+                    l.lease_months_remaining > 0
+                      ? `${l.lease_months_remaining} mo`
+                      : "Ended",
                     l.deal_status ?? "—",
                   ])}
                 />
@@ -252,7 +426,11 @@ export default function DashboardPage() {
                 <Table
                   headers={["Dealer", "Deals", "Revenue", "Avg days"]}
                   rows={summary.dealers.map((d) => [
-                    <Link key={d.id} href={`/dealers/${d.id}`} className="hover:text-blue-400 transition-colors">
+                    <Link
+                      key={d.id}
+                      href={`/dealers/${d.id}`}
+                      className="hover:text-blue-400 transition-colors"
+                    >
                       {d.name}
                     </Link>,
                     d.deal_count.toLocaleString(),
@@ -267,29 +445,47 @@ export default function DashboardPage() {
           {/* Recent deals */}
           <Panel title="Recent deals">
             <div className="overflow-x-auto">
-            <div className="divide-y divide-[#1e1f20] min-w-[460px]">
-              {summary.recent_deals.length === 0 ? (
-                <div className="py-8 text-center text-sm text-slate-600">No recent deals</div>
-              ) : (
-                summary.recent_deals.map((deal) => (
-                  <div key={deal.id} className="grid grid-cols-5 gap-3 px-4 py-3 text-sm hover:bg-blue-500/5 transition-colors">
-                    <span className="text-slate-200">{[deal.make, deal.model].filter(Boolean).join(" ") || "Deal"}</span>
-                    <span className="text-slate-500">{deal.deal_date ?? "—"}</span>
-                    <span className="text-slate-400">{money(deal.broker_fee)}</span>
-                    <DealStatusSelect
-                      value={deal.deal_status}
-                      days={deal.pending_payment_days}
-                      bucket={deal.pending_payment_bucket}
-                      onChange={(status) => handleDealStatusChange(deal.id, status)}
-                    />
-                    <Link href="/deals" className="text-right text-blue-400 hover:text-blue-300">View</Link>
+              <div className="divide-y divide-[#1e1f20] min-w-[460px]">
+                {summary.recent_deals.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-slate-600">
+                    No recent deals
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  summary.recent_deals.map((deal) => (
+                    <div
+                      key={deal.id}
+                      className="grid grid-cols-5 gap-3 px-4 py-3 text-sm hover:bg-blue-500/5 transition-colors"
+                    >
+                      <span className="text-slate-200">
+                        {[deal.make, deal.model].filter(Boolean).join(" ") ||
+                          "Deal"}
+                      </span>
+                      <span className="text-slate-500">
+                        {deal.deal_date ?? "—"}
+                      </span>
+                      <span className="text-slate-400">
+                        {money(deal.broker_fee)}
+                      </span>
+                      <DealStatusSelect
+                        value={deal.deal_status}
+                        days={deal.pending_payment_days}
+                        bucket={deal.pending_payment_bucket}
+                        onChange={(status) =>
+                          handleDealStatusChange(deal.id, status)
+                        }
+                      />
+                      <Link
+                        href="/deals"
+                        className="text-right text-blue-400 hover:text-blue-300"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </Panel>
-
         </div>
       ) : null}
 
@@ -337,27 +533,70 @@ export default function DashboardPage() {
 
 // --- Components ---
 
-function HeroCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: "blue" | "green" | "default" }) {
-  const border = accent === "green" ? "border-green-500/25" : accent === "blue" ? "border-blue-500/20" : "border-[#252628]";
-  const valueColor = accent === "green" ? "text-green-400" : accent === "blue" ? "text-blue-400" : "text-white";
-  const dot = accent === "green" ? "bg-green-400" : accent === "blue" ? "bg-blue-500" : "bg-slate-500";
+function HeroCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  accent: "blue" | "green" | "default";
+}) {
+  const border =
+    accent === "green"
+      ? "border-green-500/25"
+      : accent === "blue"
+        ? "border-blue-500/20"
+        : "border-[#252628]";
+  const valueColor =
+    accent === "green"
+      ? "text-green-400"
+      : accent === "blue"
+        ? "text-blue-400"
+        : "text-white";
+  const dot =
+    accent === "green"
+      ? "bg-green-400"
+      : accent === "blue"
+        ? "bg-blue-500"
+        : "bg-slate-500";
   return (
-    <div className={`bg-[#111213] border ${border} rounded-2xl p-6 flex flex-col gap-2`}>
+    <div
+      className={`bg-[#111213] border ${border} rounded-2xl p-6 flex flex-col gap-2`}
+    >
       <div className="flex items-center gap-2">
         <span className={`w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{label}</p>
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">
+          {label}
+        </p>
       </div>
-      <p className={`text-4xl font-bold tracking-tight ${valueColor}`}>{value}</p>
+      <p className={`text-4xl font-bold tracking-tight ${valueColor}`}>
+        {value}
+      </p>
       <p className="text-xs text-slate-600">{sub}</p>
     </div>
   );
 }
 
-function StatChip({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+function StatChip({
+  label,
+  value,
+  warn,
+}: {
+  label: string;
+  value: string;
+  warn?: boolean;
+}) {
   return (
     <div className="bg-[#111213] border border-[#1e1f21] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
       <p className="text-xs text-slate-500 truncate">{label}</p>
-      <p className={`text-sm font-semibold shrink-0 ${warn ? "text-red-400" : "text-slate-200"}`}>{value}</p>
+      <p
+        className={`text-sm font-semibold shrink-0 ${warn ? "text-red-400" : "text-slate-200"}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -368,28 +607,87 @@ function formatDays(value?: number) {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
-function AgingCard({ title, count, amount, tone, badge, onClick }: { title: string; count: number; amount?: number; tone: "green" | "yellow" | "red"; badge: string; onClick: () => void }) {
-  const bg = tone === "green" ? "bg-green-500/5" : tone === "yellow" ? "bg-yellow-500/5" : "bg-red-500/5";
-  const border = tone === "green" ? "border-green-500/20" : tone === "yellow" ? "border-yellow-500/20" : "border-red-500/20";
-  const countColor = tone === "green" ? "text-green-400" : tone === "yellow" ? "text-yellow-400" : "text-red-400";
-  const badgeCls = tone === "green" ? "bg-green-500/15 text-green-400" : tone === "yellow" ? "bg-yellow-500/15 text-yellow-400" : "bg-red-500/15 text-red-400";
+function AgingCard({
+  title,
+  count,
+  amount,
+  tone,
+  badge,
+  onClick,
+}: {
+  title: string;
+  count: number;
+  amount?: number;
+  tone: "green" | "yellow" | "red";
+  badge: string;
+  onClick: () => void;
+}) {
+  const bg =
+    tone === "green"
+      ? "bg-green-500/5"
+      : tone === "yellow"
+        ? "bg-yellow-500/5"
+        : "bg-red-500/5";
+  const border =
+    tone === "green"
+      ? "border-green-500/20"
+      : tone === "yellow"
+        ? "border-yellow-500/20"
+        : "border-red-500/20";
+  const countColor =
+    tone === "green"
+      ? "text-green-400"
+      : tone === "yellow"
+        ? "text-yellow-400"
+        : "text-red-400";
+  const badgeCls =
+    tone === "green"
+      ? "bg-green-500/15 text-green-400"
+      : tone === "yellow"
+        ? "bg-yellow-500/15 text-yellow-400"
+        : "bg-red-500/15 text-red-400";
   return (
-    <button onClick={onClick} className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4 text-left w-full hover:brightness-110 transition-all cursor-pointer`}>
+    <button
+      onClick={onClick}
+      className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4 text-left w-full hover:brightness-110 transition-all cursor-pointer`}
+    >
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{title}</p>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}>{badge}</span>
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">
+          {title}
+        </p>
+        <span
+          className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}
+        >
+          {badge}
+        </span>
       </div>
       <div>
-        <p className={`text-4xl font-bold tracking-tight ${countColor}`}>{count}</p>
+        <p className={`text-4xl font-bold tracking-tight ${countColor}`}>
+          {count}
+        </p>
         <p className="text-sm text-slate-400 mt-1">{money(amount)}</p>
       </div>
     </button>
   );
 }
 
-const bucketLabel: Record<string, string> = { green: "0–31 days", yellow: "32–40 days", red: "41+ days" };
+const bucketLabel: Record<string, string> = {
+  green: "0–31 days",
+  yellow: "32–40 days",
+  red: "41+ days",
+};
 
-function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, referralMap, onClose, onEdit }: {
+function BucketModal({
+  loading,
+  bucket,
+  deals,
+  clientMap,
+  brokerMap,
+  dealerMap,
+  referralMap,
+  onClose,
+  onEdit,
+}: {
   loading: boolean;
   bucket?: string;
   deals: Deal[];
@@ -400,89 +698,185 @@ function BucketModal({ loading, bucket, deals, clientMap, brokerMap, dealerMap, 
   onClose: () => void;
   onEdit: (deal: Deal) => void;
 }) {
-  const tone = bucket === "green" ? "text-green-400" : bucket === "yellow" ? "text-yellow-400" : "text-red-400";
-  const borderColor = bucket === "green" ? "border-l-green-500" : bucket === "yellow" ? "border-l-amber-500" : "border-l-red-500";
+  const tone =
+    bucket === "green"
+      ? "text-green-400"
+      : bucket === "yellow"
+        ? "text-yellow-400"
+        : "text-red-400";
+  const borderColor =
+    bucket === "green"
+      ? "border-l-green-500"
+      : bucket === "yellow"
+        ? "border-l-amber-500"
+        : "border-l-red-500";
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="bg-[#0b0c0d] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628] shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-white">Pending deals</h2>
-            {bucket && <p className={`text-xs mt-0.5 font-medium ${tone}`}>{bucketLabel[bucket]}</p>}
+            <h2 className="text-base font-semibold text-white">
+              Pending deals
+            </h2>
+            {bucket && (
+              <p className={`text-xs mt-0.5 font-medium ${tone}`}>
+                {bucketLabel[bucket]}
+              </p>
+            )}
           </div>
-          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
+          <button
+            onClick={onClose}
+            className="text-slate-600 hover:text-slate-300 text-xl transition-colors"
+          >
+            ✕
+          </button>
         </div>
         <div className="overflow-y-auto flex-1 p-4 space-y-2">
           {loading ? (
-            <div className="py-16 text-center text-sm text-slate-600">Loading...</div>
+            <div className="py-16 text-center text-sm text-slate-600">
+              Loading...
+            </div>
           ) : deals.length === 0 ? (
-            <div className="py-16 text-center text-sm text-slate-600">No deals in this range</div>
-          ) : deals.map((d) => {
-            const client = clientMap[d.client_id];
-            const vehicle = [d.make, d.model].filter(Boolean).join(" ");
-            const dealReferrals = referralMap[d.id] ?? [];
-            const referralTotal = dealReferrals.reduce((s, r) => s + (r.amount ?? 0), 0);
-            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
-            const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
-            const computedNet = base > 0 ? base - commission - referralTotal : null;
-            return (
-              <div key={d.id} className={`bg-[#111213] border border-[#252628] border-l-4 ${borderColor} rounded-xl`}>
-                {/* Top bar */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1f20]">
-                  <div className="flex items-center gap-3 flex-wrap min-w-0">
-                    <span className="text-white font-semibold">
-                      {client ? `${client.first_name} ${client.last_name}` : "Unknown"}
-                    </span>
-                    {d.deal_number && (
-                      <span className="text-xs font-mono bg-[#0b0c0d] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
-                        #{d.deal_number}
+            <div className="py-16 text-center text-sm text-slate-600">
+              No deals in this range
+            </div>
+          ) : (
+            deals.map((d) => {
+              const client = clientMap[d.client_id];
+              const vehicle = [d.make, d.model].filter(Boolean).join(" ");
+              const dealReferrals = referralMap[d.id] ?? [];
+              const referralTotal = dealReferrals.reduce(
+                (s, r) => s + (r.amount ?? 0),
+                0,
+              );
+              const base =
+                (d.broker_fee ?? 0) +
+                (d.collect_amount ?? 0) -
+                (d.doc_fee ?? 0);
+              const commission =
+                d.broker_commission ||
+                (d.broker_percent != null && base > 0
+                  ? (base * d.broker_percent) / 100
+                  : 0);
+              const computedNet =
+                base > 0 ? base - commission - referralTotal : null;
+              return (
+                <div
+                  key={d.id}
+                  className={`bg-[#111213] border border-[#252628] border-l-4 ${borderColor} rounded-xl`}
+                >
+                  {/* Top bar */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1f20]">
+                    <div className="flex items-center gap-3 flex-wrap min-w-0">
+                      <span className="text-white font-semibold">
+                        {client
+                          ? `${client.first_name} ${client.last_name}`
+                          : "Unknown"}
                       </span>
+                      {d.deal_number && (
+                        <span className="text-xs font-mono bg-[#0b0c0d] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
+                          #{d.deal_number}
+                        </span>
+                      )}
+                      {vehicle && (
+                        <span className="text-slate-300 text-sm">
+                          {vehicle}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <span className={`text-sm font-semibold ${tone}`}>
+                        {d.pending_payment_days ?? "—"}d pending
+                      </span>
+                      <button
+                        onClick={() => onEdit(d)}
+                        className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                  {/* Stats */}
+                  <div className="flex divide-x divide-[#1e1f20]">
+                    {d.broker_id && (
+                      <BucketStat
+                        label="Broker"
+                        value={brokerMap[d.broker_id]}
+                      />
                     )}
-                    {vehicle && <span className="text-slate-300 text-sm">{vehicle}</span>}
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-3">
-                    <span className={`text-sm font-semibold ${tone}`}>
-                      {d.pending_payment_days ?? "—"}d pending
-                    </span>
-                    <button
-                      onClick={() => onEdit(d)}
-                      className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
-                    >
-                      Edit
-                    </button>
+                    {d.dealer_id && (
+                      <BucketStat
+                        label="Dealer"
+                        value={dealerMap[d.dealer_id]}
+                      />
+                    )}
+                    {d.broker_fee != null && (
+                      <BucketStat
+                        label="Broker Fee"
+                        value={money(d.broker_fee)}
+                        highlight="green"
+                      />
+                    )}
+                    {computedNet != null && (
+                      <BucketStat
+                        label="Net"
+                        value={money(computedNet)}
+                        highlight="blue"
+                      />
+                    )}
+                    {d.broker_commission != null && (
+                      <BucketStat
+                        label="Commission"
+                        value={money(d.broker_commission)}
+                      />
+                    )}
+                    {d.doc_fee != null && (
+                      <BucketStat label="Doc Fee" value={money(d.doc_fee)} />
+                    )}
                   </div>
                 </div>
-                {/* Stats */}
-                <div className="flex divide-x divide-[#1e1f20]">
-                  {d.broker_id && <BucketStat label="Broker" value={brokerMap[d.broker_id]} />}
-                  {d.dealer_id && <BucketStat label="Dealer" value={dealerMap[d.dealer_id]} />}
-                  {d.broker_fee != null && <BucketStat label="Broker Fee" value={money(d.broker_fee)} highlight="green" />}
-                  {computedNet != null && <BucketStat label="Net" value={money(computedNet)} highlight="blue" />}
-                  {d.broker_commission != null && <BucketStat label="Commission" value={money(d.broker_commission)} />}
-                  {d.doc_fee != null && <BucketStat label="Doc Fee" value={money(d.doc_fee)} />}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function BucketStat({ label, value, highlight }: { label: string; value?: string; highlight?: "green" | "blue" }) {
+function BucketStat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value?: string;
+  highlight?: "green" | "blue";
+}) {
   if (!value) return null;
-  const cls = highlight === "green" ? "text-green-400 font-bold" : highlight === "blue" ? "text-blue-400 font-bold" : "text-slate-300";
+  const cls =
+    highlight === "green"
+      ? "text-green-400 font-bold"
+      : highlight === "blue"
+        ? "text-blue-400 font-bold"
+        : "text-slate-300";
   return (
     <div className="flex-1 px-3 py-2 flex flex-col gap-0.5 min-w-0">
-      <span className="text-xs text-slate-600 uppercase tracking-wider">{label}</span>
+      <span className="text-xs text-slate-600 uppercase tracking-wider">
+        {label}
+      </span>
       <span className={`text-sm truncate ${cls}`}>{value}</span>
     </div>
   );
@@ -491,13 +885,21 @@ function BucketStat({ label, value, highlight }: { label: string; value?: string
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{children}</p>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+        {children}
+      </p>
       <div className="flex-1 h-px bg-[#1e1f21]" />
     </div>
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="bg-[#111213] border border-[#1e1f21] rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-[#1e1f21] flex items-center gap-2">
@@ -509,14 +911,28 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) {
-  if (!rows.length) return <div className="py-8 text-center text-sm text-slate-600">No data</div>;
+function Table({
+  headers,
+  rows,
+}: {
+  headers: string[];
+  rows: React.ReactNode[][];
+}) {
+  if (!rows.length)
+    return (
+      <div className="py-8 text-center text-sm text-slate-600">No data</div>
+    );
   return (
     <table className="w-full text-sm">
       <thead className="border-b border-[#252628]">
         <tr>
           {headers.map((h) => (
-            <th key={h} className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider">{h}</th>
+            <th
+              key={h}
+              className="text-left px-4 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider"
+            >
+              {h}
+            </th>
           ))}
         </tr>
       </thead>
@@ -524,7 +940,16 @@ function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][]
         {rows.map((row, i) => (
           <tr key={i}>
             {row.map((cell, j) => (
-              <td key={j} className={j === 0 ? "px-4 py-3 text-slate-200" : "px-4 py-3 text-slate-400"}>{cell}</td>
+              <td
+                key={j}
+                className={
+                  j === 0
+                    ? "px-4 py-3 text-slate-200"
+                    : "px-4 py-3 text-slate-400"
+                }
+              >
+                {cell}
+              </td>
             ))}
           </tr>
         ))}
@@ -533,12 +958,22 @@ function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][]
   );
 }
 
-function SegmentedButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function SegmentedButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-        active ? "bg-blue-600/15 text-blue-400 border-blue-500/30" : "text-slate-500 border-[#252628] hover:text-slate-300"
+        active
+          ? "bg-blue-600/15 text-blue-400 border-blue-500/30"
+          : "text-slate-500 border-[#252628] hover:text-slate-300"
       }`}
     >
       {children}
@@ -546,7 +981,15 @@ function SegmentedButton({ active, onClick, children }: { active: boolean; onCli
   );
 }
 
-function DateInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function DateInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <label className="text-xs text-slate-500 uppercase tracking-wider">
       <span className="mr-2">{label}</span>

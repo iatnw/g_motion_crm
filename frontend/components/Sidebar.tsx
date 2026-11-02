@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { auth } from "@/lib/api";
 
 const links = [
@@ -10,7 +10,16 @@ const links = [
     href: "/dashboard",
     label: "Dashboard",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <rect x="3" y="3" width="7" height="8" rx="1" />
         <rect x="14" y="3" width="7" height="5" rx="1" />
         <rect x="14" y="12" width="7" height="9" rx="1" />
@@ -22,7 +31,16 @@ const links = [
     href: "/clients",
     label: "Clients",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
         <circle cx="12" cy="7" r="4" />
       </svg>
@@ -32,7 +50,16 @@ const links = [
     href: "/deals",
     label: "Deals",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <rect x="2" y="3" width="20" height="14" rx="2" />
         <path d="M8 21h8M12 17v4" />
       </svg>
@@ -42,7 +69,16 @@ const links = [
     href: "/brokers",
     label: "Brokers",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
@@ -53,7 +89,16 @@ const links = [
     href: "/referrals",
     label: "Referrals",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 11l-4 4-2-2" />
@@ -64,7 +109,16 @@ const links = [
     href: "/dealers",
     label: "Dealers",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
       </svg>
@@ -74,7 +128,16 @@ const links = [
     href: "/settings",
     label: "Settings",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="12" cy="12" r="3" />
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
       </svg>
@@ -82,114 +145,134 @@ const links = [
   },
 ];
 
-export default function Sidebar() {
+function subscribeTheme(callback: () => void) {
+  window.addEventListener("crm-theme-change", callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener("crm-theme-change", callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+function readTheme() {
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? "light"
+    : "dark";
+}
+
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme") as "dark" | "light" | null;
-    if (saved && saved !== theme) setTheme(saved);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "dark");
+  const [signingOut, setSigningOut] = useState(false);
+  const [error, setError] = useState("");
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    localStorage.setItem("theme", next);
     document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      /* The current theme still works when storage is unavailable. */
+    }
+    window.dispatchEvent(new Event("crm-theme-change"));
   }
-
   async function handleLogout() {
-    await auth.logout();
-    router.push("/login");
+    setSigningOut(true);
+    setError("");
+    try {
+      await auth.logout();
+      onNavigate?.();
+      router.replace("/login");
+    } catch {
+      setError("Couldn’t sign out. Please try again.");
+      setSigningOut(false);
+    }
   }
-
+  function navLink(href: string) {
+    const item = links.find((link) => link.href === href)!;
+    const active = pathname === href || pathname.startsWith(href + "/");
+    return (
+      <Link
+        key={href}
+        href={href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={`crm-nav-link ${active ? "crm-nav-active" : ""}`}
+      >
+        <span aria-hidden="true">{item.icon}</span>
+        {item.label}
+        {active && (
+          <span
+            aria-hidden="true"
+            className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400"
+          />
+        )}
+      </Link>
+    );
+  }
   return (
-    <>
-    <aside className="hidden md:flex w-56 flex-col h-full bg-[#08080f] border-r border-[#252628]">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-[#252628]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center glow-blue-sm">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
+    <aside className="crm-sidebar flex h-full w-60 flex-col">
+      <Link
+        href="/dashboard"
+        onClick={onNavigate}
+        className="flex items-center gap-3 border-b border-[#252628] px-5 py-6"
+      >
+        <span
+          aria-hidden="true"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold text-white"
+        >
+          GM
+        </span>
+        <span>
+          <span className="block text-sm font-semibold tracking-tight text-white">
+            G Motion
+          </span>
+          <span className="mt-0.5 block text-[11px] text-slate-400">
+            Auto finance workspace
+          </span>
+        </span>
+      </Link>
+      <nav
+        aria-label="Main navigation"
+        className="flex-1 space-y-6 overflow-y-auto px-3 py-6"
+      >
+        <div>
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            Workspace
+          </p>
+          <div className="space-y-1">
+            {["/dashboard", "/deals", "/clients"].map(navLink)}
           </div>
-          <span className="text-white font-semibold text-sm tracking-tight">G Motion CRM</span>
         </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {links.map(({ href, label, icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                active
-                  ? "bg-blue-600/15 text-blue-400 border border-blue-500/25 glow-blue-sm"
-                  : "text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent"
-              }`}
-            >
-              <span className={active ? "text-blue-400" : "text-slate-600"}>{icon}</span>
-              {label}
-            </Link>
-          );
-        })}
+        <div>
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            Network
+          </p>
+          <div className="space-y-1">
+            {["/brokers", "/dealers", "/referrals"].map(navLink)}
+          </div>
+        </div>
       </nav>
-
-      {/* Theme toggle + Logout */}
-      <div className="px-3 py-4 border-t border-[#252628] space-y-0.5">
-        <button
-          onClick={toggleTheme}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-200 hover:bg-white/5 w-full transition-all duration-150 border border-transparent"
-        >
-          {theme === "dark" ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          )}
-          {theme === "dark" ? "Light mode" : "Dark mode"}
+      <div className="space-y-1 border-t border-[#252628] p-3">
+        {navLink("/settings")}
+        <button onClick={toggleTheme} className="crm-nav-link w-full">
+          <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+          {theme === "dark" ? "Light appearance" : "Dark appearance"}
         </button>
         <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-200 hover:bg-white/5 w-full transition-all duration-150 border border-transparent"
+          onClick={() => void handleLogout()}
+          disabled={signingOut}
+          className="crm-nav-link w-full disabled:opacity-50"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          Sign out
+          <span aria-hidden="true">↪</span>
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
+        {error && (
+          <p role="alert" className="px-3 py-2 text-xs text-red-400">
+            {error}
+          </p>
+        )}
+        <p className="px-3 pt-3 text-[10px] text-slate-400">Owner workspace</p>
       </div>
     </aside>
-
-    {/* Mobile bottom tab bar */}
-    <nav className="fixed bottom-0 left-0 right-0 flex md:hidden bg-[#08080f] border-t border-[#252628] z-50 h-14">
-      {links.map(({ href, label, icon }) => {
-        const active = pathname === href || pathname.startsWith(href + "/");
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
-              active ? "text-blue-400" : "text-slate-600 hover:text-slate-400"
-            }`}
-          >
-            <span>{icon}</span>
-            <span className="text-[8px] font-medium uppercase tracking-wide leading-none">{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-    </>
   );
 }

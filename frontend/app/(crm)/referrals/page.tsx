@@ -14,7 +14,14 @@ interface ReferralForm {
   status: ReferralStatus;
 }
 
-const emptyForm: ReferralForm = { deal_id: "", first_name: "", last_name: "", phone: "", amount: "", status: "none" };
+const emptyForm: ReferralForm = {
+  deal_id: "",
+  first_name: "",
+  last_name: "",
+  phone: "",
+  amount: "",
+  status: "none",
+};
 
 function formFromReferral(ref: Referral): ReferralForm {
   return {
@@ -28,36 +35,43 @@ function formFromReferral(ref: Referral): ReferralForm {
 }
 
 const statusStyles: Record<ReferralStatus, string> = {
-  paid:    "bg-green-500/10 border-green-500/25 text-green-400",
+  paid: "bg-green-500/10 border-green-500/25 text-green-400",
   pending: "bg-[#0a0a1e] border-[#1e1e45] text-slate-400",
-  none:    "bg-[#111213] border-[#252628] text-slate-600",
+  none: "bg-[#111213] border-[#252628] text-slate-600",
 };
 
 export default function ReferralsPage() {
   const [list, setList] = useState<Referral[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Referral | null>(null);
   const [modal, setModal] = useState(false);
 
   useEffect(() => {
     if (!modal) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setModal(false); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModal(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [modal]);
   const [form, setForm] = useState<ReferralForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      referralsApi.list(),
-      dealsApi.list(),
-    ]).then(([refs, ds]) => {
-      setList(refs ?? []);
-      setDeals(ds ?? []);
-    }).finally(() => setLoading(false));
+    Promise.all([referralsApi.list(), dealsApi.list()])
+      .then(([refs, ds]) => {
+        setList(refs ?? []);
+        setDeals(ds ?? []);
+      })
+      .catch(() =>
+        setLoadError("Couldn’t load your referrals. Please reload the page."),
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   function openCreate() {
@@ -76,7 +90,10 @@ export default function ReferralsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.first_name) { setError("First name is required"); return; }
+    if (!form.first_name) {
+      setError("First name is required");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -92,8 +109,19 @@ export default function ReferralsPage() {
         if (form.status !== editing.status) {
           updated = await referralsApi.updateStatus(editing.id, form.status);
         }
-        const deal = deals.find((d) => d.id === (form.deal_id || updated.deal_id));
-        setList((prev) => prev.map((r) => r.id === editing.id ? { ...updated, deal_number: deal?.deal_number ?? updated.deal_number } : r));
+        const deal = deals.find(
+          (d) => d.id === (form.deal_id || updated.deal_id),
+        );
+        setList((prev) =>
+          prev.map((r) =>
+            r.id === editing.id
+              ? {
+                  ...updated,
+                  deal_number: deal?.deal_number ?? updated.deal_number,
+                }
+              : r,
+          ),
+        );
       } else {
         const ref = await referralsApi.create({
           deal_id: form.deal_id || undefined,
@@ -103,18 +131,28 @@ export default function ReferralsPage() {
           amount: form.amount ? parseFloat(form.amount) : undefined,
         });
         const deal = deals.find((d) => d.id === form.deal_id);
-        setList((prev) => [{ ...ref, deal_number: deal?.deal_number }, ...prev]);
+        setList((prev) => [
+          { ...ref, deal_number: deal?.deal_number },
+          ...prev,
+        ]);
       }
       setModal(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : editing ? "Failed to update referral" : "Failed to create referral");
+      setError(
+        err instanceof Error
+          ? err.message
+          : editing
+            ? "Failed to update referral"
+            : "Failed to create referral",
+      );
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(ref: Referral) {
-    if (!confirm(`Delete referral for ${ref.first_name} ${ref.last_name}?`)) return;
+    if (!confirm(`Delete referral for ${ref.first_name} ${ref.last_name}?`))
+      return;
     try {
       await referralsApi.delete(ref.id);
       setList((prev) => prev.filter((r) => r.id !== ref.id));
@@ -126,18 +164,39 @@ export default function ReferralsPage() {
   async function handleStatusChange(ref: Referral, status: ReferralStatus) {
     try {
       const updated = await referralsApi.updateStatus(ref.id, status);
-      setList((prev) => prev.map((r) => r.id === ref.id ? { ...updated, deal_number: r.deal_number } : r));
+      setList((prev) =>
+        prev.map((r) =>
+          r.id === ref.id ? { ...updated, deal_number: r.deal_number } : r,
+        ),
+      );
     } catch {
       alert("Failed to update status");
     }
   }
 
+  const filtered = list.filter(
+    (ref) =>
+      (!statusFilter || ref.status === statusFilter) &&
+      [ref.first_name, ref.last_name, ref.phone, ref.deal_number]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
+  );
+  const currency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value);
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Referrals</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{list.length} total</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {list.length} referrals · Track introductions and payouts
+          </p>
         </div>
         <button
           onClick={openCreate}
@@ -147,39 +206,132 @@ export default function ReferralsPage() {
         </button>
       </div>
 
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          { label: "All referrals", value: list.length },
+          {
+            label: "Pending payouts",
+            value: currency(
+              list
+                .filter((ref) => ref.status === "pending")
+                .reduce((sum, ref) => sum + Number(ref.amount ?? 0), 0),
+            ),
+          },
+          {
+            label: "Paid out",
+            value: currency(
+              list
+                .filter((ref) => ref.status === "paid")
+                .reduce((sum, ref) => sum + Number(ref.amount ?? 0), 0),
+            ),
+          },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-[#252628] bg-[#0f1011] p-4"
+          >
+            <p className="text-xs text-slate-400">{item.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-white">
+              {loading ? "—" : item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mb-5 flex flex-wrap gap-3">
+        <input
+          type="search"
+          aria-label="Search referrals"
+          placeholder="Search name, phone, or deal number…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-[#252628] bg-[#0b0c0d] px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500"
+        />
+        <select
+          aria-label="Filter referrals by status"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          className="rounded-lg border border-[#252628] bg-[#0b0c0d] px-3 py-2.5 text-sm text-slate-300"
+        >
+          <option value="">All statuses</option>
+          <option value="none">Not paid</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+      {loadError && (
+        <p role="alert" className="mb-4 text-sm text-red-400">
+          {loadError}{" "}
+          <button
+            onClick={() => window.location.reload()}
+            className="underline"
+          >
+            Reload
+          </button>
+        </p>
+      )}
       {loading ? (
         <p className="text-slate-500 text-sm">Loading…</p>
-      ) : list.length === 0 ? (
-        <p className="text-slate-500 text-sm">No referrals yet.</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-slate-500 text-sm">
+          {list.length
+            ? "No matching referrals. Try another search or status."
+            : "No referrals yet. Create one to track your first introduction."}
+        </p>
       ) : (
-        <div className="bg-[#0f1011] rounded-2xl border border-[#252628] overflow-hidden">
+        <div className="bg-[#0f1011] rounded-2xl border border-[#252628] crm-table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#252628]">
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Deal</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Commission</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Deal
+                </th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Commission
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Date
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[#252628]">
-              {list.map((ref) => (
-                <tr key={ref.id} className="hover:bg-white/[0.02] transition-colors">
+              {filtered.map((ref) => (
+                <tr
+                  key={ref.id}
+                  className="hover:bg-white/[0.02] transition-colors"
+                >
                   <td className="px-4 py-3 text-slate-200 font-medium">
                     {ref.first_name} {ref.last_name}
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{ref.phone ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate-400">{ref.deal_number ?? "—"}</td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {ref.phone ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {ref.deal_number ?? "—"}
+                  </td>
                   <td className="px-4 py-3 text-right text-slate-300">
-                    {ref.amount != null ? `$${Number(ref.amount).toLocaleString()}` : "—"}
+                    {ref.amount != null
+                      ? `$${Number(ref.amount).toLocaleString()}`
+                      : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <select
                       value={ref.status}
-                      onChange={(e) => handleStatusChange(ref, e.target.value as ReferralStatus)}
+                      onChange={(e) =>
+                        handleStatusChange(
+                          ref,
+                          e.target.value as ReferralStatus,
+                        )
+                      }
                       className={`text-xs font-medium px-2 py-0.5 rounded-full border bg-transparent cursor-pointer focus:outline-none ${statusStyles[ref.status]}`}
                     >
                       <option value="none">NOT PAID</option>
@@ -215,44 +367,60 @@ export default function ReferralsPage() {
 
       {modal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0f1011] rounded-2xl border border-[#252628] w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="bg-[#0f1011] rounded-2xl border border-[#252628] w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-base font-semibold text-white mb-5">
               {editing ? "Edit Referral" : "Create Referral"}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Deal (optional)</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Deal (optional)
+                </label>
                 <select
                   value={form.deal_id}
-                  onChange={(e) => setForm((p) => ({ ...p, deal_id: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, deal_id: e.target.value }))
+                  }
                   className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                 >
                   <option value="">No deal</option>
                   {deals.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.deal_number ?? d.id.slice(0, 8)} — {d.make ?? ""} {d.model ?? ""}
+                      {d.deal_number ?? d.id.slice(0, 8)} — {d.make ?? ""}{" "}
+                      {d.model ?? ""}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">First Name</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    First Name
+                  </label>
                   <input
                     type="text"
                     value={form.first_name}
-                    onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, first_name: e.target.value }))
+                    }
                     required
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
                     placeholder="First name"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Last Name</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Last Name
+                  </label>
                   <input
                     type="text"
                     value={form.last_name}
-                    onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, last_name: e.target.value }))
+                    }
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
                     placeholder="Optional"
                   />
@@ -260,21 +428,29 @@ export default function ReferralsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Phone</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Phone
+                  </label>
                   <input
                     type="text"
                     value={form.phone}
-                    onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, phone: e.target.value }))
+                    }
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
                     placeholder="Optional"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Commission ($)</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Commission ($)
+                  </label>
                   <input
                     type="number"
                     value={form.amount}
-                    onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, amount: e.target.value }))
+                    }
                     onWheel={(e) => e.currentTarget.blur()}
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-white focus:outline-none"
                     placeholder="0"
@@ -283,10 +459,17 @@ export default function ReferralsPage() {
               </div>
               {editing && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Status</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Status
+                  </label>
                   <select
                     value={form.status}
-                    onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as ReferralStatus }))}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        status: e.target.value as ReferralStatus,
+                      }))
+                    }
                     className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                   >
                     <option value="none">NOT PAID</option>

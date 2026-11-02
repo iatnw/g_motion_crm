@@ -22,25 +22,39 @@ export default function SettingsPage() {
       await auth.setPassword(newPassword, currentPassword);
       window.location.href = "/login";
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to change password");
+      setError(
+        err instanceof Error ? err.message : "Failed to change password",
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="p-6 max-w-md">
-      <h1 className="text-xl font-semibold text-white mb-6">Settings</h1>
+    <div className="p-6">
+      <h1 className="text-xl font-semibold text-white">Settings</h1>
+      <p className="mb-7 mt-2 text-sm text-slate-400">
+        Manage your account and keep your workspace secure.
+      </p>
 
-      <div className="bg-[#0f1011] rounded-2xl border border-[#252628] p-6">
-        <h2 className="text-sm font-medium text-white mb-4">Change Password</h2>
+      <div className="max-w-xl bg-[#0f1011] rounded-2xl border border-[#252628] p-6">
+        <h2 className="text-base font-semibold text-white">Change password</h2>
+        <p className="mb-6 mt-2 text-sm leading-relaxed text-slate-400">
+          Changing your password signs out every device. You’ll sign in again
+          with your new password.
+        </p>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label
+              htmlFor="current-password"
+              className="block text-xs font-medium text-slate-400 mb-1.5"
+            >
               Current Password
             </label>
             <input
               type="password"
+              id="current-password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
@@ -49,11 +63,16 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label
+              htmlFor="new-password"
+              className="block text-xs font-medium text-slate-400 mb-1.5"
+            >
               New Password
             </label>
             <input
               type="password"
+              id="new-password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
@@ -63,11 +82,16 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+            <label
+              htmlFor="confirm-password"
+              className="block text-xs font-medium text-slate-400 mb-1.5"
+            >
               Confirm New Password
             </label>
             <input
               type="password"
+              id="confirm-password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -75,7 +99,11 @@ export default function SettingsPage() {
               placeholder="Repeat new password"
             />
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && (
+            <p role="alert" className="text-red-400 text-sm">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading}

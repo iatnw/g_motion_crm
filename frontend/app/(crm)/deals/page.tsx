@@ -1,9 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { deals, clients, brokers, dealers, referrals as referralsApi } from "@/lib/api";
-import type { Deal, Client, Broker, Dealer, DealStatus, Referral, ReferralStatus } from "@/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  deals,
+  clients,
+  brokers,
+  dealers,
+  referrals as referralsApi,
+} from "@/lib/api";
+import type {
+  Deal,
+  Client,
+  Broker,
+  Dealer,
+  DealStatus,
+  Referral,
+  ReferralStatus,
+} from "@/lib/types";
 import DealModal from "@/components/DealModal";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
@@ -28,7 +43,7 @@ const leaseFilterOptions: Array<{ value: LeaseFilter; label: string }> = [
 ];
 
 const statusBorder: Record<string, string> = {
-  paid:    "border-l-green-500",
+  paid: "border-l-green-500",
   pending: "border-l-amber-500",
 };
 
@@ -42,6 +57,21 @@ function belongsToTab(deal: Deal, tab: FilterTab) {
 }
 
 export default function DealsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 text-sm text-slate-400">Loading deals…</div>
+      }
+    >
+      <DealsWorkspace />
+    </Suspense>
+  );
+}
+function DealsWorkspace() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const createRequested = searchParams.get("new");
+  const [listError, setListError] = useState("");
   const [dealList, setDealList] = useState<Deal[]>([]);
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [clientMap, setClientMap] = useState<Record<string, Client>>({});
@@ -52,15 +82,55 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [querySearch, setQuerySearch] = useState("");
-  const [tab, setTab] = useState<FilterTab>("all");
+  const [tab, setTab] = useState<FilterTab>(() => {
+    const value = searchParams.get("status");
+    return filterTabs.some((tab) => tab.value === value)
+      ? (value as FilterTab)
+      : "all";
+  });
   const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>("");
-  const [modal, setModal] = useState<{ open: boolean; deal?: Deal; nextNumber?: string }>({ open: false });
-  const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>({});
-  const [counts, setCounts] = useState({ all: 0, new: 0, pending: 0, paid: 0, cancelled: 0 });
+  const [modal, setModal] = useState<{
+    open: boolean;
+    deal?: Deal;
+    nextNumber?: string;
+  }>({ open: false });
+  const [referralMap, setReferralMap] = useState<Record<string, Referral[]>>(
+    {},
+  );
+  const [counts, setCounts] = useState({
+    all: 0,
+    new: 0,
+    pending: 0,
+    paid: 0,
+    cancelled: 0,
+  });
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [refreshVersion, setRefreshVersion] = useState(0);
 
+  useEffect(() => {
+    if (createRequested !== "1") return;
+    let cancelled = false;
+    deals
+      .nextNumber()
+      .catch(() => "")
+      .then((nextNumber) => {
+        if (!cancelled) setModal({ open: true, nextNumber });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [createRequested]);
+  function closeModal() {
+    setModal({ open: false });
+    if (createRequested) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("new");
+      router.replace(`/deals${params.size ? `?${params}` : ""}`, {
+        scroll: false,
+      });
+    }
+  }
   useEffect(() => {
     Promise.all([clients.list(), brokers.list(), dealers.list()])
       .then(([c, b, dl]) => {
@@ -68,9 +138,18 @@ export default function DealsPage() {
         setClientMap(Object.fromEntries((c ?? []).map((x) => [x.id, x])));
         setAllBrokers(b ?? []);
         setAllDealers(dl ?? []);
-        setBrokerMap(Object.fromEntries((b ?? []).map((x) => [x.id, `${x.first_name} ${x.last_name}`])));
+        setBrokerMap(
+          Object.fromEntries(
+            (b ?? []).map((x) => [x.id, `${x.first_name} ${x.last_name}`]),
+          ),
+        );
         setDealerMap(Object.fromEntries((dl ?? []).map((x) => [x.id, x.name])));
-      });
+      })
+      .catch(() =>
+        setListError(
+          "Couldn’t load clients and partners. Please reload the page.",
+        ),
+      );
   }, []);
 
   useEffect(() => {
@@ -83,27 +162,52 @@ export default function DealsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    deals.listPaged({
-      limit: PAGE_SIZE,
-      offset,
-      status: tab === "pending" || tab === "paid" || tab === "cancelled" ? tab : undefined,
-      search: querySearch,
-      vin: tab === "new" ? "missing" : tab === "cancelled" ? undefined : "present",
-      leaseFilter: leaseFilter === "any" || leaseFilter === "ended" ? leaseFilter : undefined,
-      leaseWithin: leaseFilter === "3" || leaseFilter === "6" || leaseFilter === "12" ? Number(leaseFilter) : undefined,
-    }).then(async (res) => {
-      const refs = await referralsApi.listByDeals(res.data.map((deal) => deal.id));
-      if (cancelled) return;
-      setDealList((prev) => offset === 0 ? res.data : [...prev, ...res.data]);
-      setReferralMap((prev) => {
-        const pageMap = groupReferralsByDeal(refs ?? []);
-        return offset === 0 ? pageMap : { ...prev, ...pageMap };
+    deals
+      .listPaged({
+        limit: PAGE_SIZE,
+        offset,
+        status:
+          tab === "pending" || tab === "paid" || tab === "cancelled"
+            ? tab
+            : undefined,
+        search: querySearch,
+        vin:
+          tab === "new"
+            ? "missing"
+            : tab === "cancelled"
+              ? undefined
+              : "present",
+        leaseFilter:
+          leaseFilter === "any" || leaseFilter === "ended"
+            ? leaseFilter
+            : undefined,
+        leaseWithin:
+          leaseFilter === "3" || leaseFilter === "6" || leaseFilter === "12"
+            ? Number(leaseFilter)
+            : undefined,
+      })
+      .then(async (res) => {
+        const refs = await referralsApi.listByDeals(
+          res.data.map((deal) => deal.id),
+        );
+        if (cancelled) return;
+        setDealList((prev) =>
+          offset === 0 ? res.data : [...prev, ...res.data],
+        );
+        setReferralMap((prev) => {
+          const pageMap = groupReferralsByDeal(refs ?? []);
+          return offset === 0 ? pageMap : { ...prev, ...pageMap };
+        });
+        setHasMore(res.has_more);
+        if (res.counts) setCounts(res.counts);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setListError("Couldn’t load your deals. Please reload the page.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-      setHasMore(res.has_more);
-      if (res.counts) setCounts(res.counts);
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
     return () => {
       cancelled = true;
     };
@@ -136,7 +240,10 @@ export default function DealsPage() {
     setRefreshVersion((version) => version + 1);
   }
 
-  async function handleCommissionMethod(deal: Deal, status: "paid" | "pending") {
+  async function handleCommissionMethod(
+    deal: Deal,
+    status: "paid" | "pending",
+  ) {
     const updated = await deals.updateBrokerCommissionStatus(deal.id, status);
     setDealList((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
   }
@@ -147,7 +254,9 @@ export default function DealsPage() {
       if (!ref.deal_id) return prev;
       return {
         ...prev,
-        [ref.deal_id]: (prev[ref.deal_id] ?? []).map((r) => (r.id === ref.id ? { ...r, ...updated } : r)),
+        [ref.deal_id]: (prev[ref.deal_id] ?? []).map((r) =>
+          r.id === ref.id ? { ...r, ...updated } : r,
+        ),
       };
     });
   }
@@ -155,10 +264,12 @@ export default function DealsPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Deals</h1>
-          <p className="text-slate-500 text-xs mt-0.5">{counts.all} total</p>
+          <p className="text-slate-500 text-xs mt-0.5">
+            {counts.all} assigned deals · Vehicles, payments, and partners
+          </p>
         </div>
         <button
           onClick={async () => {
@@ -172,11 +283,12 @@ export default function DealsPage() {
       </div>
 
       {/* Filter tabs + search */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex bg-[#0b0c0d] border border-[#252628] rounded-lg p-0.5 gap-0.5">
+      <div className="flex flex-col items-stretch gap-3 mb-5 xl:flex-row xl:items-center">
+        <div className="flex overflow-x-auto shrink-0 bg-[#0b0c0d] border border-[#252628] rounded-lg p-1 gap-1">
           {filterTabs.map(({ value, label }) => (
             <button
               key={value}
+              aria-pressed={tab === value}
               onClick={() => {
                 if (value === tab) return;
                 setLoading(true);
@@ -189,17 +301,34 @@ export default function DealsPage() {
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
-              {label} <span className={`ml-1 ${tab === value ? "text-slate-400" : "text-slate-600"}`}>{counts[value]}</span>
+              {label}{" "}
+              <span
+                className={`ml-1 ${tab === value ? "text-slate-400" : "text-slate-600"}`}
+              >
+                {counts[value]}
+              </span>
             </button>
           ))}
         </div>
         <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
           </svg>
           <input
             type="text"
-            placeholder="Search by client, broker, dealer, car, VIN, deal #…"
+            aria-label="Search deals"
+            placeholder="Search client, vehicle, VIN, or deal number…"
             value={search}
             onChange={(e) => {
               setLoading(true);
@@ -209,6 +338,7 @@ export default function DealsPage() {
           />
         </div>
         <select
+          aria-label="Filter deals by lease term"
           value={leaseFilter}
           onChange={(e) => {
             setLoading(true);
@@ -218,40 +348,76 @@ export default function DealsPage() {
           className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none cursor-pointer"
         >
           {leaseFilterOptions.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
+            <option key={value} value={value}>
+              {label}
+            </option>
           ))}
         </select>
       </div>
 
+      {listError && (
+        <div
+          role="alert"
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/25 bg-red-500/5 p-4 text-sm text-red-400"
+        >
+          <p>{listError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="font-medium underline"
+          >
+            Reload page
+          </button>
+        </div>
+      )}
       {loading ? (
         <div className="text-center py-12 text-slate-600 text-sm">Loading…</div>
       ) : dealList.length === 0 ? (
-        <div className="text-center py-12 text-slate-600 text-sm">No deals found</div>
+        <div className="text-center py-12 text-slate-600 text-sm">
+          No deals found
+        </div>
       ) : (
         <div className="space-y-3">
           {dealList.map((d) => {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
-            const borderColor = statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
+            const borderColor =
+              statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
             const dealReferrals = referralMap[d.id] ?? [];
-            const referralTotal = dealReferrals.reduce((sum, r) => sum + (r.amount ?? 0), 0);
-            const base = (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
-            const commission = d.broker_commission || (d.broker_percent != null && base > 0 ? base * d.broker_percent / 100 : 0);
-            const displayPercent = d.broker_percent || (commission > 0 && base > 0 ? commission / base * 100 : null);
+            const referralTotal = dealReferrals.reduce(
+              (sum, r) => sum + (r.amount ?? 0),
+              0,
+            );
+            const base =
+              (d.broker_fee ?? 0) + (d.collect_amount ?? 0) - (d.doc_fee ?? 0);
+            const commission =
+              d.broker_commission ||
+              (d.broker_percent != null && base > 0
+                ? (base * d.broker_percent) / 100
+                : 0);
+            const displayPercent =
+              d.broker_percent ||
+              (commission > 0 && base > 0 ? (commission / base) * 100 : null);
             const computedNet = base - commission - referralTotal;
 
             return (
-              <div key={d.id} className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}>
-
+              <div
+                key={d.id}
+                className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}
+              >
                 {/* Top bar */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1e1f20]">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-5 border-b border-[#1e1f20]">
                   <div className="flex items-center gap-4 min-w-0 flex-wrap">
                     {client ? (
-                      <Link href={`/clients/${d.client_id}`} className="text-white font-semibold hover:text-blue-400 transition-colors whitespace-nowrap">
+                      <Link
+                        href={`/clients/${d.client_id}`}
+                        className="text-white font-semibold hover:text-blue-400 transition-colors whitespace-nowrap"
+                      >
                         {client.first_name} {client.last_name}
                       </Link>
                     ) : (
-                      <span className="text-slate-600 font-semibold">Unknown</span>
+                      <span className="text-slate-600 font-semibold">
+                        Unknown
+                      </span>
                     )}
                     {d.deal_number && (
                       <span className="text-xs font-mono bg-[#111213] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
@@ -263,14 +429,16 @@ export default function DealsPage() {
                         CASH
                       </span>
                     )}
-                    {vehicle && <span className="text-slate-300 text-sm">{vehicle}</span>}
+                    {vehicle && (
+                      <span className="text-slate-300 text-sm">{vehicle}</span>
+                    )}
                     {(d.trim_level || d.vin) && (
                       <span className="text-slate-600 text-xs hidden lg:inline">
                         {[d.trim_level, d.vin].filter(Boolean).join(" · ")}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                  <div className="flex items-center gap-3 flex-shrink-0">
                     {d.deal_date && (
                       <span className="text-slate-600 text-xs hidden sm:inline">
                         {fmtDate(d.deal_date)}
@@ -293,26 +461,61 @@ export default function DealsPage() {
 
                 {/* Stats bar — 2-col grid on mobile, horizontal flex on desktop */}
                 <div className="border-t border-[#1e1f20] grid grid-cols-2 md:flex">
-                  <StatCell label="Broker" value={d.broker_id ? brokerMap[d.broker_id] : undefined} />
-                  <StatCell label="Dealer" value={d.dealer_id ? dealerMap[d.dealer_id] : undefined} />
-                  <StatCell label="Broker Fee" value={money(d.broker_fee)} highlight="green" />
-                  <StatCell label="Net" value={money(computedNet)} highlight="blue" />
+                  <StatCell
+                    label="Broker"
+                    value={d.broker_id ? brokerMap[d.broker_id] : undefined}
+                  />
+                  <StatCell
+                    label="Dealer"
+                    value={d.dealer_id ? dealerMap[d.dealer_id] : undefined}
+                  />
+                  <StatCell
+                    label="Broker Fee"
+                    value={money(d.broker_fee)}
+                    highlight="green"
+                  />
+                  <StatCell
+                    label="Net"
+                    value={money(computedNet)}
+                    highlight="blue"
+                  />
                   <StatCell label="Collect" value={money(d.collect_amount)} />
                   <StatCell label="Doc Fee" value={money(d.doc_fee)} />
-                  <StatCell label="Broker %" value={displayPercent ? `${Number(displayPercent).toFixed(2)}%` : undefined} />
+                  <StatCell
+                    label="Broker %"
+                    value={
+                      displayPercent
+                        ? `${Number(displayPercent).toFixed(2)}%`
+                        : undefined
+                    }
+                  />
                   {d.lease_term_months != null && (
                     <StatCell
                       label="Lease Left"
-                      value={d.lease_months_remaining != null && d.lease_months_remaining > 0 ? `${d.lease_months_remaining} mo` : "Ended"}
+                      value={
+                        d.lease_months_remaining != null &&
+                        d.lease_months_remaining > 0
+                          ? `${d.lease_months_remaining} mo`
+                          : "Ended"
+                      }
                     />
                   )}
                   <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[130px]">
-                    <span className="text-xs text-slate-600 uppercase tracking-wider">Commission</span>
+                    <span className="text-xs text-slate-600 uppercase tracking-wider">
+                      Commission
+                    </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-300">{money(commission) ?? "—"}</span>
+                      <span className="text-sm text-slate-300">
+                        {money(commission) ?? "—"}
+                      </span>
                       <select
                         value={d.broker_commission_status ?? "pending"}
-                        onChange={(e) => handleCommissionMethod(d, e.target.value as "paid" | "pending")}
+                        onChange={(e) =>
+                          handleCommissionMethod(
+                            d,
+                            e.target.value as "paid" | "pending",
+                          )
+                        }
                         onClick={(e) => e.stopPropagation()}
                         className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
                           d.broker_commission_status === "paid"
@@ -331,18 +534,31 @@ export default function DealsPage() {
                 {dealReferrals.length > 0 && (
                   <div className="border-t border-[#1e1f20] flex flex-col md:flex-row md:divide-x md:divide-[#1e1f20]">
                     {dealReferrals.map((ref, idx) => (
-                      <div key={ref.id} className={`px-4 py-2.5 flex items-center justify-between gap-3 md:flex-col md:items-start md:justify-start md:gap-0.5 md:flex-1 md:min-w-[160px]${idx < dealReferrals.length - 1 ? " border-b border-[#1e1f20] md:border-b-0" : ""}`}>
+                      <div
+                        key={ref.id}
+                        className={`px-4 py-2.5 flex items-center justify-between gap-3 md:flex-col md:items-start md:justify-start md:gap-0.5 md:flex-1 md:min-w-[160px]${idx < dealReferrals.length - 1 ? " border-b border-[#1e1f20] md:border-b-0" : ""}`}
+                      >
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <span className="text-xs text-slate-600 uppercase tracking-wider">
-                            Referral{ref.amount != null ? ` · $${Number(ref.amount).toLocaleString()}` : ""}
+                            Referral
+                            {ref.amount != null
+                              ? ` · $${Number(ref.amount).toLocaleString()}`
+                              : ""}
                           </span>
                           <span className="text-sm text-slate-300 truncate">
-                            {[ref.first_name, ref.last_name].filter(Boolean).join(" ")}
+                            {[ref.first_name, ref.last_name]
+                              .filter(Boolean)
+                              .join(" ")}
                           </span>
                         </div>
                         <select
                           value={ref.status}
-                          onChange={(e) => handleReferralStatus(ref, e.target.value as ReferralStatus)}
+                          onChange={(e) =>
+                            handleReferralStatus(
+                              ref,
+                              e.target.value as ReferralStatus,
+                            )
+                          }
                           onClick={(e) => e.stopPropagation()}
                           className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer shrink-0 ${
                             ref.status === "paid"
@@ -386,7 +602,7 @@ export default function DealsPage() {
           brokers={allBrokers}
           dealers={allDealers}
           onSave={handleSave}
-          onClose={() => setModal({ open: false })}
+          onClose={closeModal}
         />
       )}
     </div>
@@ -394,18 +610,34 @@ export default function DealsPage() {
 }
 
 function money(value?: number) {
-  return value != null ? `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : undefined;
+  return value != null
+    ? `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    : undefined;
 }
 
-
-function StatCell({ label, value, highlight }: { label: string; value?: string; highlight?: "green" | "blue" }) {
-  const valCls = highlight === "green" ? "text-green-400 font-bold text-base"
-    : highlight === "blue" ? "text-blue-400 font-bold text-base"
-    : "text-slate-300 text-sm";
+function StatCell({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value?: string;
+  highlight?: "green" | "blue";
+}) {
+  const valCls =
+    highlight === "green"
+      ? "text-green-400 font-bold text-base"
+      : highlight === "blue"
+        ? "text-blue-400 font-bold text-base"
+        : "text-slate-300 text-sm";
   return (
     <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[90px]">
-      <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">{label}</span>
-      <span className={value ? valCls + " truncate" : "text-slate-600 text-sm"}>{value ?? "—"}</span>
+      <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">
+        {label}
+      </span>
+      <span className={value ? valCls + " truncate" : "text-slate-600 text-sm"}>
+        {value ?? "—"}
+      </span>
     </div>
   );
 }
