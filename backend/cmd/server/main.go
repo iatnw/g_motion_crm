@@ -149,12 +149,12 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(httprate.LimitByIP(10, time.Minute))
-		r.Use(middleware.Auth(authService.ParseToken, "totp_pending"))
+		r.Use(middleware.Auth(authService.ParseToken, authService.SessionValid, "totp_pending"))
 		r.Post("/auth/totp/verify", authHandler.VerifyTOTP)
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
+		r.Use(middleware.Auth(authService.ParseToken, authService.SessionValid, "authenticated"))
 		r.Use(chimiddleware.RequestSize(1 << 20)) // 1 MB for all standard endpoints
 		r.Use(middleware.AuditMutations(queries))
 
@@ -162,7 +162,7 @@ func main() {
 		r.Post("/auth/logout", authHandler.Logout)
 		r.Post("/auth/totp/setup", authHandler.SetUpTOTP)
 		r.Post("/auth/totp/enable", authHandler.EnableTOTP)
-		r.Post("/auth/totp/disable", authHandler.DisableTOTP)
+		r.With(httprate.LimitByIP(10, time.Minute)).Post("/auth/totp/disable", authHandler.DisableTOTP)
 		r.Post("/auth/password", authHandler.SetPassword)
 
 		// Dashboard
@@ -227,7 +227,7 @@ func main() {
 
 	// Document uploads get a 20 MB limit (driver's license, insurance card photos)
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(authService.ParseToken, "authenticated"))
+		r.Use(middleware.Auth(authService.ParseToken, authService.SessionValid, "authenticated"))
 		r.Use(chimiddleware.RequestSize(20 << 20))
 		r.Use(middleware.AuditMutations(queries))
 

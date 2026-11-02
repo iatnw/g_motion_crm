@@ -71,8 +71,12 @@ export const auth = {
       method: "POST",
       body: JSON.stringify({ secret, code }),
     }),
-  disableTOTP: () =>
-    request<void>("/auth/totp/disable", { method: "POST" }),
+  disableTOTP: (currentPassword: string, code: string) =>
+    request<void>("/auth/totp/disable", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, code }),
+      skipAuthRedirect: true,
+    }),
 };
 
 type PaginatedResponse<T> = { data: T[]; limit: number; offset: number; has_more: boolean };

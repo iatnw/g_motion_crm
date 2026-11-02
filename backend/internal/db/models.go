@@ -561,6 +561,7 @@ type Setting struct {
 	OwnerTotpSecret   pgtype.Text        `json:"owner_totp_secret"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	SessionVersion    int64              `json:"session_version"`
 }
 
 type TallyDocumentImport struct {

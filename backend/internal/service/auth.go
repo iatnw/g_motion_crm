@@ -32,7 +32,8 @@ type AuthService struct {
 }
 
 type Claims struct {
-	Stage string `json:"stage"`
+	Stage          string `json:"stage"`
+	SessionVersion int64  `json:"session_version"`
 	jwt.RegisteredClaims
 }
 
@@ -90,21 +91,21 @@ func (s *AuthService) Login(ctx context.Context, password string) (LoginResult, 
 	}
 
 	if setting.OwnerTotpSecret.Valid {
-		token, err := s.issueToken("totp_pending", 5*time.Minute)
+		token, err := s.issueToken("totp_pending", 5*time.Minute, setting.SessionVersion)
 		if err != nil {
 			return LoginResult{}, ErrInvalidCredentials
 		}
 		return LoginResult{Token: token, TOTPRequired: true}, nil
 	}
 
-	token, err := s.issueToken("authenticated", 24*time.Hour)
+	token, err := s.issueToken("authenticated", 24*time.Hour, setting.SessionVersion)
 	if err != nil {
 		return LoginResult{}, ErrInvalidCredentials
 	}
 	return LoginResult{Token: token, TOTPRequired: false}, nil
 }
 
-func (s *AuthService) VerifyTOTP(ctx context.Context, code string) (string, error) {
+func (s *AuthService) VerifyTOTP(ctx context.Context, code string, sessionVersion int64) (string, error) {
 	setting, err := s.q.GetSetting(ctx)
 	if err != nil {
 		return "", err
@@ -118,7 +119,8 @@ func (s *AuthService) VerifyTOTP(ctx context.Context, code string) (string, erro
 		return "", ErrInvalidTOTP
 	}
 
-	return s.issueToken("authenticated", 24*time.Hour)
+	// Preserve the pending token version so concurrent revocation cannot create a fresh session.
+	return s.issueToken("authenticated", 24*time.Hour, sessionVersion)
 }
 
 func (s *AuthService) SetUpTOTP(ctx context.Context) (secret, keyURI string, err error) {
@@ -146,14 +148,41 @@ func (s *AuthService) EnableTOTP(ctx context.Context, secret, code string) error
 	if !totp.Validate(code, secret) {
 		return ErrInvalidTOTP
 	}
-
-	_, err := s.q.UpdateOwnerTOTP(ctx, toText(&secret))
-	return err
+	rows, err := s.q.EnableOwnerTOTP(ctx, toText(&secret))
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrTOTPAlreadyEnabled
+	}
+	return nil
 }
 
-func (s *AuthService) DisableTOTP(ctx context.Context) error {
-	_, err := s.q.UpdateOwnerTOTP(ctx, toText(nil))
-	return err
+func (s *AuthService) DisableTOTP(ctx context.Context, currentPassword, code string) error {
+	setting, err := s.q.GetSetting(ctx)
+	if err != nil {
+		return err
+	}
+	if !setting.OwnerTotpSecret.Valid {
+		return ErrTOTPNotEnabled
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(setting.OwnerPasswordHash), []byte(currentPassword)); err != nil {
+		return ErrInvalidCredentials
+	}
+	if !totp.Validate(code, setting.OwnerTotpSecret.String) {
+		return ErrInvalidCredentials
+	}
+	rows, err := s.q.DisableOwnerTOTP(ctx, db.DisableOwnerTOTPParams{
+		OwnerPasswordHash: setting.OwnerPasswordHash,
+		OwnerTotpSecret:   setting.OwnerTotpSecret,
+	})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrInvalidCredentials
+	}
+	return nil
 }
 
 func (s *AuthService) SetPassword(ctx context.Context, currentPassword, password string) error {
@@ -196,10 +225,11 @@ func (s *AuthService) ParseToken(tokenStr string) (*Claims, error) {
 	return c, nil
 }
 
-func (s *AuthService) issueToken(stage string, ttl time.Duration) (string, error) {
+func (s *AuthService) issueToken(stage string, ttl time.Duration, sessionVersion int64) (string, error) {
 	now := time.Now()
 	c := Claims{
-		Stage: stage,
+		Stage:          stage,
+		SessionVersion: sessionVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   "owner",
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -207,4 +237,16 @@ func (s *AuthService) issueToken(stage string, ttl time.Duration) (string, error
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(s.jwtSecret)
+}
+
+func (s *AuthService) SessionValid(ctx context.Context, claims *Claims) (bool, error) {
+	setting, err := s.q.GetSetting(ctx)
+	if err != nil {
+		return false, err
+	}
+	return claims.SessionVersion > 0 && claims.SessionVersion == setting.SessionVersion, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context) error {
+	return s.q.RevokeOwnerSessions(ctx)
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/umbrllacrp/g_motion_crm/internal/middleware"
 	"github.com/umbrllacrp/g_motion_crm/internal/service"
 )
 
@@ -75,7 +76,7 @@ func (h *AuthHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.auth.VerifyTOTP(r.Context(), req.Code)
+	token, err := h.auth.VerifyTOTP(r.Context(), req.Code, middleware.GetClaims(r.Context()).SessionVersion)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidTOTP) {
 			http.Error(w, "invalid TOTP code", http.StatusUnauthorized)
@@ -121,6 +122,10 @@ func (h *AuthHandler) EnableTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.auth.EnableTOTP(r.Context(), req.Secret, req.Code); err != nil {
+		if errors.Is(err, service.ErrTOTPAlreadyEnabled) {
+			http.Error(w, "TOTP already enabled", http.StatusConflict)
+			return
+		}
 		if errors.Is(err, service.ErrInvalidTOTP) {
 			http.Error(w, "invalid TOTP code", http.StatusUnauthorized)
 			return
@@ -176,12 +181,35 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if err := h.auth.Logout(r.Context()); err != nil {
+		slog.Error("logout", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 	h.setTokenCookie(w, "", -1)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+type disableTOTPRequest struct {
+	CurrentPassword string `json:"current_password"`
+	Code            string `json:"code"`
+}
+
 func (h *AuthHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
-	if err := h.auth.DisableTOTP(r.Context()); err != nil {
+	var req disableTOTPRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CurrentPassword == "" || req.Code == "" {
+		http.Error(w, "current password and TOTP code are required", http.StatusBadRequest)
+		return
+	}
+	if err := h.auth.DisableTOTP(r.Context(), req.CurrentPassword, req.Code); err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		if errors.Is(err, service.ErrTOTPNotEnabled) {
+			http.Error(w, "TOTP not enabled", http.StatusConflict)
+			return
+		}
 		slog.Error("disable totp", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -214,5 +242,6 @@ func (h *AuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	h.setTokenCookie(w, "", -1)
 	w.WriteHeader(http.StatusNoContent)
 }

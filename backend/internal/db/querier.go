@@ -27,6 +27,8 @@ type Querier interface {
 	DeleteDealer(ctx context.Context, id pgtype.UUID) (Dealer, error)
 	DeleteDocument(ctx context.Context, id pgtype.UUID) (Document, error)
 	DeleteReferral(ctx context.Context, id pgtype.UUID) (Referral, error)
+	DisableOwnerTOTP(ctx context.Context, arg DisableOwnerTOTPParams) (int64, error)
+	EnableOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (int64, error)
 	GetBroker(ctx context.Context, id pgtype.UUID) (Broker, error)
 	GetBrokerStats(ctx context.Context, id pgtype.UUID) (BrokerStat, error)
 	GetClient(ctx context.Context, id pgtype.UUID) (Client, error)
@@ -68,6 +70,7 @@ type Querier interface {
 	MoveCosignerDocumentsToDeal(ctx context.Context, arg MoveCosignerDocumentsToDealParams) error
 	MovePendingCosignerDocumentImportsToDeal(ctx context.Context, arg MovePendingCosignerDocumentImportsToDealParams) error
 	NextDealNumber(ctx context.Context) (int64, error)
+	RevokeOwnerSessions(ctx context.Context) error
 	SetupOwnerPassword(ctx context.Context, ownerPasswordHash string) (pgconn.CommandTag, error)
 	UpdateBroker(ctx context.Context, arg UpdateBrokerParams) (Broker, error)
 	UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error)

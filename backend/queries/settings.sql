@@ -12,6 +12,7 @@ WHERE id = 1;
 UPDATE settings
 SET
     owner_password_hash = $1,
+    session_version = session_version + 1,
     updated_at = NOW()
 WHERE id = 1
 RETURNING *;
@@ -30,3 +31,20 @@ SET
     updated_at = NOW()
 WHERE id = 1
 RETURNING *;
+
+-- name: RevokeOwnerSessions :exec
+UPDATE settings
+SET
+    session_version = session_version + 1,
+    updated_at = NOW()
+WHERE id = 1;
+
+-- name: EnableOwnerTOTP :execrows
+UPDATE settings
+SET owner_totp_secret = $1, updated_at = NOW()
+WHERE id = 1 AND owner_totp_secret IS NULL;
+
+-- name: DisableOwnerTOTP :execrows
+UPDATE settings
+SET owner_totp_secret = NULL, updated_at = NOW()
+WHERE id = 1 AND owner_password_hash = $1 AND owner_totp_secret = $2;

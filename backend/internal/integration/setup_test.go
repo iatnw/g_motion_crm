@@ -130,17 +130,19 @@ func setup() {
 	r.Post("/auth/login", authH.Login)
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(authSvc.ParseToken, "totp_pending"))
+		r.Use(middleware.Auth(authSvc.ParseToken, authSvc.SessionValid, "totp_pending"))
 		r.Post("/auth/totp/verify", authH.VerifyTOTP)
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(authSvc.ParseToken, "authenticated"))
+		r.Use(middleware.Auth(authSvc.ParseToken, authSvc.SessionValid, "authenticated"))
 		r.Use(middleware.AuditMutations(queries))
 
 		r.Get("/auth/me", authH.Me)
 		r.Post("/auth/logout", authH.Logout)
 		r.Post("/auth/password", authH.SetPassword)
+		r.Post("/auth/totp/enable", authH.EnableTOTP)
+		r.Post("/auth/totp/disable", authH.DisableTOTP)
 
 		r.Get("/clients", clientH.List)
 		r.Post("/clients", clientH.Create)

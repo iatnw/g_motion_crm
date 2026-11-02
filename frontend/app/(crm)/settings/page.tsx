@@ -9,7 +9,6 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -19,13 +18,9 @@ export default function SettingsPage() {
     }
     setLoading(true);
     setError("");
-    setSuccess(false);
     try {
       await auth.setPassword(newPassword, currentPassword);
-      setSuccess(true);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      window.location.href = "/login";
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to change password");
     } finally {
@@ -81,7 +76,6 @@ export default function SettingsPage() {
             />
           </div>
           {error && <p className="text-red-400 text-sm">{error}</p>}
-          {success && <p className="text-green-400 text-sm">Password changed successfully.</p>}
           <button
             type="submit"
             disabled={loading}

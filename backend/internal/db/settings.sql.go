@@ -16,7 +16,7 @@ const createSetting = `-- name: CreateSetting :one
 INSERT INTO settings (
     owner_password_hash,
     owner_totp_secret
-) VALUES ($1, $2) RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at
+) VALUES ($1, $2) RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at, session_version
 `
 
 type CreateSettingParams struct {
@@ -33,12 +33,46 @@ func (q *Queries) CreateSetting(ctx context.Context, arg CreateSettingParams) (S
 		&i.OwnerTotpSecret,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionVersion,
 	)
 	return i, err
 }
 
+const disableOwnerTOTP = `-- name: DisableOwnerTOTP :execrows
+UPDATE settings
+SET owner_totp_secret = NULL, updated_at = NOW()
+WHERE id = 1 AND owner_password_hash = $1 AND owner_totp_secret = $2
+`
+
+type DisableOwnerTOTPParams struct {
+	OwnerPasswordHash string      `json:"owner_password_hash"`
+	OwnerTotpSecret   pgtype.Text `json:"owner_totp_secret"`
+}
+
+func (q *Queries) DisableOwnerTOTP(ctx context.Context, arg DisableOwnerTOTPParams) (int64, error) {
+	result, err := q.db.Exec(ctx, disableOwnerTOTP, arg.OwnerPasswordHash, arg.OwnerTotpSecret)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const enableOwnerTOTP = `-- name: EnableOwnerTOTP :execrows
+UPDATE settings
+SET owner_totp_secret = $1, updated_at = NOW()
+WHERE id = 1 AND owner_totp_secret IS NULL
+`
+
+func (q *Queries) EnableOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (int64, error) {
+	result, err := q.db.Exec(ctx, enableOwnerTOTP, ownerTotpSecret)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getSetting = `-- name: GetSetting :one
-SELECT id, owner_password_hash, owner_totp_secret, created_at, updated_at FROM settings
+SELECT id, owner_password_hash, owner_totp_secret, created_at, updated_at, session_version FROM settings
 WHERE id = 1
 `
 
@@ -51,8 +85,22 @@ func (q *Queries) GetSetting(ctx context.Context) (Setting, error) {
 		&i.OwnerTotpSecret,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionVersion,
 	)
 	return i, err
+}
+
+const revokeOwnerSessions = `-- name: RevokeOwnerSessions :exec
+UPDATE settings
+SET
+    session_version = session_version + 1,
+    updated_at = NOW()
+WHERE id = 1
+`
+
+func (q *Queries) RevokeOwnerSessions(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, revokeOwnerSessions)
+	return err
 }
 
 const setupOwnerPassword = `-- name: SetupOwnerPassword :execresult
@@ -71,9 +119,10 @@ const updateOwnerPassword = `-- name: UpdateOwnerPassword :one
 UPDATE settings
 SET
     owner_password_hash = $1,
+    session_version = session_version + 1,
     updated_at = NOW()
 WHERE id = 1
-RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at
+RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at, session_version
 `
 
 func (q *Queries) UpdateOwnerPassword(ctx context.Context, ownerPasswordHash string) (Setting, error) {
@@ -85,6 +134,7 @@ func (q *Queries) UpdateOwnerPassword(ctx context.Context, ownerPasswordHash str
 		&i.OwnerTotpSecret,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionVersion,
 	)
 	return i, err
 }
@@ -95,7 +145,7 @@ SET
     owner_totp_secret = $1,
     updated_at = NOW()
 WHERE id = 1
-RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at
+RETURNING id, owner_password_hash, owner_totp_secret, created_at, updated_at, session_version
 `
 
 func (q *Queries) UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Text) (Setting, error) {
@@ -107,6 +157,7 @@ func (q *Queries) UpdateOwnerTOTP(ctx context.Context, ownerTotpSecret pgtype.Te
 		&i.OwnerTotpSecret,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionVersion,
 	)
 	return i, err
 }
