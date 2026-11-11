@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
+import Modal from "@/components/Modal";
+import StatusSelect, { dealOptions, referralOptions } from "@/components/StatusSelect";
+import useConfirmDialog from "@/components/useConfirmDialog";
 import type { Deal, Broker, Dealer, Client, Referral } from "@/lib/types";
 import { deals as dealsApi, referrals as referralsApi } from "@/lib/api";
 
@@ -18,11 +21,7 @@ interface Props {
 type ReferralDraft = { first_name: string; last_name: string; phone: string; amount: string };
 
 export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose }: Props) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [form, setForm] = useState({
     client_id: clientId ?? deal?.client_id ?? "",
     deal_date: deal?.deal_date?.slice(0, 10) ?? formatDateInput(),
@@ -130,14 +129,9 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function toggleReferralStatus(ref: Referral) {
-    const next = ref.status === "paid" ? "pending" : "paid";
-    try {
-      const updated = await referralsApi.updateStatus(ref.id, next);
-      setExistingReferrals((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-    } catch {
-      setError("Failed to update referral status");
-    }
+  async function updateReferralStatus(ref: Referral, status: string) {
+    const updated = await referralsApi.updateStatus(ref.id, status);
+    setExistingReferrals((previous) => previous.map((r) => r.id === updated.id ? updated : r));
   }
 
   async function saveReferralAmount(ref: Referral) {
@@ -236,7 +230,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   }
 
   async function removeCosigner(client: Client) {
-    if (!deal || !window.confirm(`Remove ${client.first_name} ${client.last_name} as a cosigner?`)) return;
+    if (!deal || !(await confirmAction(`${client.first_name} ${client.last_name} will be unlinked from this deal. Their client profile will be kept.`, "Remove cosigner?", "Remove cosigner"))) return;
     setError("");
     try {
       await dealsApi.removeCosigner(deal.id, client.id);
@@ -249,23 +243,15 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const showClientSelector = !clientId && !!clients;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0b0c0d] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-[#252628] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
-          <h2 className="text-base font-semibold text-white">
-            {deal ? "Edit Deal" : "New Deal"}
-          </h2>
-          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 text-xl transition-colors">✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+    <Modal title={deal ? "Edit Deal" : "New Deal"} description="Vehicle details, partners, and finances — all in one place." onClose={onClose} size="large" busy={saving}>
+        <form onSubmit={handleSubmit} className="crm-modal-form crm-deal-form">
           {/* Client selector */}
           {showClientSelector && (
             <section>
               <div>
                 <FieldLabel>Client *</FieldLabel>
                 <DarkSelect
+                  aria-label="Client"
                   value={form.client_id}
                   onChange={(e) => set("client_id", e.target.value)}
                   required
@@ -285,7 +271,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             <SectionLabel>Cosigner</SectionLabel>
             <div>
               <FieldLabel>Add Cosigner</FieldLabel>
-              <DarkSelect value={cosignerID} onChange={(e) => setCosignerID(e.target.value)}>
+              <DarkSelect aria-label="Add cosigner" value={cosignerID} onChange={(e) => setCosignerID(e.target.value)}>
                 <option value="">None</option>
                 {(clients ?? []).filter((client) => client.id !== form.client_id && !existingCosigners.some((cosigner) => cosigner.id === client.id)).map((client) => (
                   <option key={client.id} value={client.id}>
@@ -326,7 +312,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               <Field label="Deal Date" type="date" value={form.deal_date} onChange={(v) => set("deal_date", v)} />
               <div>
                 <FieldLabel>Broker</FieldLabel>
-                <DarkSelect value={form.broker_id} onChange={(e) => set("broker_id", e.target.value)}>
+                <DarkSelect aria-label="Broker" value={form.broker_id} onChange={(e) => set("broker_id", e.target.value)}>
                   <option value="">None</option>
                   {brokers.map((b) => (
                     <option key={b.id} value={b.id}>{`${b.first_name} ${b.last_name}`.toUpperCase()}</option>
@@ -335,7 +321,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
               </div>
               <div>
                 <FieldLabel>Dealer</FieldLabel>
-                <DarkSelect value={form.dealer_id} onChange={(e) => set("dealer_id", e.target.value)}>
+                <DarkSelect aria-label="Dealer" value={form.dealer_id} onChange={(e) => set("dealer_id", e.target.value)}>
                   <option value="">None</option>
                   {dealers.map((d) => (
                     <option key={d.id} value={d.id}>{d.name.toUpperCase()}</option>
@@ -343,33 +329,34 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                 </DarkSelect>
               </div>
             </div>
-            <label className="mt-3 flex items-center gap-2.5 cursor-pointer select-none w-fit">
-              <input
-                type="checkbox"
-                checked={form.is_cash_deal}
-                onChange={(e) => setForm((prev) => ({ ...prev, is_cash_deal: e.target.checked }))}
-                className="w-4 h-4 rounded accent-blue-600"
-              />
-              <span className="text-sm text-slate-300">Cash deal</span>
-            </label>
+            <button type="button" role="switch" aria-label="Cash deal" aria-checked={form.is_cash_deal}
+              onClick={() => setForm((previous) => ({ ...previous, is_cash_deal: !previous.is_cash_deal }))}
+              className="crm-cash-toggle mt-3">
+              <span className="crm-cash-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="3" /><circle cx="12" cy="12" r="2.5" /><path d="M6 10v4M18 10v4" /></svg>
+              </span>
+              <span className="crm-cash-label">Cash deal</span>
+              <span className="crm-cash-state" aria-hidden="true">{form.is_cash_deal ? "On" : "Off"}</span>
+              <span className="crm-cash-track" aria-hidden="true"><span /></span>
+            </button>
           </section>
 
           {/* Financials */}
           <section>
             <SectionLabel>Financials</SectionLabel>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Down Payment ($)" type="number" value={form.down_payment} onChange={(v) => set("down_payment", v)} />
+              <Field label="Down Payment ($)" unit="$" type="number" value={form.down_payment} onChange={(v) => set("down_payment", v)} />
               <div>
                 <FieldLabel>Down Payment Method</FieldLabel>
-                <DarkSelect value={form.down_payment_method} onChange={(e) => set("down_payment_method", e.target.value)}>
+                <DarkSelect aria-label="Down payment method" value={form.down_payment_method} onChange={(e) => set("down_payment_method", e.target.value)}>
                   <option value="">None</option>
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
                 </DarkSelect>
               </div>
-              <Field label="Monthly Payment ($)" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
+              <Field label="Monthly Payment ($)" unit="$" type="number" value={form.monthly_payment} onChange={(v) => set("monthly_payment", v)} />
               <Field label="Lease Term (months)" type="number" value={form.lease_term_months} onChange={(v) => set("lease_term_months", v)} />
-              <Field label="Doc Fee ($)" type="number" value={form.doc_fee} onChange={(v) => {
+              <Field label="Doc Fee ($)" unit="$" type="number" value={form.doc_fee} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, form.collect_amount, v);
                 const pct = parseFloat(form.broker_percent);
                 setForm((prev) => {
@@ -385,7 +372,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   return { ...prev, ...next };
                 });
               }} />
-              <Field label="Broker Fee ($)" type="number" value={form.broker_fee} onChange={(v) => {
+              <Field label="Broker Fee ($)" unit="$" type="number" value={form.broker_fee} onChange={(v) => {
                 const base = commissionBase(v, form.collect_amount, form.doc_fee);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
@@ -402,7 +389,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   return { ...prev, ...next };
                 });
               }} />
-              <Field label="Collect ($)" type="number" value={form.collect_amount} onChange={(v) => {
+              <Field label="Collect ($)" unit="$" type="number" value={form.collect_amount} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, v, form.doc_fee);
                 const pct = parseFloat(form.broker_percent);
                 const com = parseFloat(form.broker_commission);
@@ -419,7 +406,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   return { ...prev, ...next };
                 });
               }} />
-              <Field label="Broker %" type="number" value={form.broker_percent} onChange={(v) => {
+              <Field label="Broker %" unit="%" type="number" value={form.broker_percent} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
                 const pct = parseFloat(v);
                 setForm((prev) => {
@@ -428,7 +415,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   return { ...prev, broker_percent: v, broker_commission: commission.toFixed(2), your_net: netAfterReferral(base, commission, referralTotal) };
                 });
               }} />
-              <Field label="Broker Commission ($)" type="number" value={form.broker_commission} onChange={(v) => {
+              <Field label="Broker Commission ($)" unit="$" type="number" value={form.broker_commission} onChange={(v) => {
                 const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
                 const com = parseFloat(v);
                 setForm((prev) => {
@@ -438,20 +425,16 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                   return { ...prev, ...next };
                 });
               }} />
-              <Field label="Your Net ($)" type="number" value={form.your_net} onChange={() => {}} readOnly />
+              <Field label="Your Net ($)" unit="$" type="number" value={form.your_net} onChange={() => {}} readOnly />
               {deal && (
                 <div>
                   <FieldLabel>Deal Status</FieldLabel>
-                  <DarkSelect value={form.deal_status} onChange={(e) => set("deal_status", e.target.value)}>
-                    <option value="pending">NOT PAID</option>
-                    <option value="paid">PAID</option>
-                    <option value="cancelled">Cancelled</option>
-                  </DarkSelect>
+                  <StatusSelect label="Deal status" value={form.deal_status} options={dealOptions} fullWidth onChange={(status) => set("deal_status", status)} />
                 </div>
               )}
               <div>
                 <FieldLabel>Broker Payment Type</FieldLabel>
-                <DarkSelect value={form.broker_payment_method} onChange={(e) => set("broker_payment_method", e.target.value)}>
+                <DarkSelect aria-label="Broker payment type" value={form.broker_payment_method} onChange={(e) => set("broker_payment_method", e.target.value)}>
                   <option value="">None</option>
                   <option value="zelle_gmotion">Zelle G Motion</option>
                   <option value="zelle_personal">Zelle Personal</option>
@@ -462,6 +445,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             <div className="mt-3">
               <FieldLabel>Notes</FieldLabel>
               <textarea
+                aria-label="Notes"
                 value={form.notes}
                 onChange={(e) => set("notes", e.target.value)}
                 rows={3}
@@ -474,7 +458,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
           {/* Referrals */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Referrals</h3>
+              <h3 className="crm-deal-section-title text-xs font-semibold text-slate-500 uppercase tracking-wider">Referrals</h3>
               <button
                 type="button"
                 onClick={addReferralRow}
@@ -491,13 +475,14 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             {existingReferrals.length > 0 && (
               <div className="space-y-2 mb-2">
                 {existingReferrals.map((ref) => (
-                  <div key={ref.id} className="flex items-center gap-2 bg-[#111213] border border-[#252628] rounded-lg px-3 py-2">
+                  <div key={ref.id} className="flex flex-wrap items-center gap-2 bg-[#111213] border border-[#252628] rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-200 truncate">{ref.first_name} {ref.last_name}</p>
                       {ref.phone && <p className="text-xs text-slate-600">{ref.phone}</p>}
                     </div>
                     <input
                       type="number"
+                      aria-label={`Referral amount for ${ref.first_name} ${ref.last_name}`}
                       value={referralAmounts[ref.id] ?? ""}
                       onChange={(e) => setReferralAmounts((prev) => ({ ...prev, [ref.id]: e.target.value }))}
                       onBlur={() => saveReferralAmount(ref)}
@@ -505,17 +490,8 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
                       placeholder="$0"
                       className="w-20 bg-[#0b0c0d] border border-[#252628] rounded-md px-2 py-0.5 text-sm text-slate-300 focus:outline-none shrink-0"
                     />
-                    <button
-                      type="button"
-                      onClick={() => toggleReferralStatus(ref)}
-                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium transition-colors ${
-                        ref.status === "paid"
-                          ? "bg-green-500/10 border-green-500/25 text-green-400"
-                          : "bg-[#0a0a1e] border-[#1e1e45] text-slate-500 hover:text-slate-300"
-                      }`}
-                    >
-                      {ref.status === "paid" ? "Paid" : "Pending"}
-                    </button>
+                    <StatusSelect label="Referral status" value={ref.status} options={referralOptions}
+                      onChange={(status) => updateReferralStatus(ref, status)} />
                     <button
                       type="button"
                       onClick={() => deleteReferral(ref.id)}
@@ -613,12 +589,13 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             )}
           </section>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p role="alert" className="crm-deal-form-error text-red-400 text-sm">{error}</p>}
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="crm-modal-footer">
             <button
               type="button"
               onClick={onClose}
+              disabled={saving}
               className="px-4 py-2 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
             >
               Cancel
@@ -632,20 +609,20 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      {confirmationDialog}
+    </Modal>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{children}</h3>
+    <h3 className="crm-deal-section-title text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{children}</h3>
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">{children}</label>
+    <label htmlFor={htmlFor} className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">{children}</label>
   );
 }
 
@@ -666,24 +643,32 @@ function Field({
   onChange,
   type = "text",
   readOnly,
+  unit,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
   readOnly?: boolean;
+  unit?: "$" | "%";
 }) {
+  const inputId = useId();
   return (
-    <div>
-      <FieldLabel>{label}</FieldLabel>
+    <div className="crm-deal-field">
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
+      <div className="crm-deal-field-control" data-unit={unit}>
+        {unit && <span className="crm-deal-unit" aria-hidden="true">{unit}</span>}
       <input
+        id={inputId}
         type={type}
+        inputMode={type === "number" ? "decimal" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onWheel={type === "number" ? (e) => e.currentTarget.blur() : undefined}
         readOnly={readOnly}
         className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus:outline-none transition-colors read-only:text-slate-500"
       />
+      </div>
     </div>
   );
 }

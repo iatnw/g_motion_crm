@@ -1,3 +1,4 @@
+import type { StatusOption } from "@/components/StatusSelect";
 import type { Client, ClientSource, ClientStatus } from "@/lib/types";
 
 export const clientStatusLabels: Record<ClientStatus, string> = {
@@ -12,6 +13,17 @@ export const clientSourceLabels: Record<ClientSource, string> = {
   organic: "Organic",
   repeat_client: "Repeat client",
 };
+
+const sourceDescriptions: Record<ClientSource, string> = {
+  instagram: "Introduced through Instagram",
+  telegram: "Introduced through Telegram",
+  referall: "Introduced by another person",
+  organic: "Found your business directly",
+  repeat_client: "Returning for another deal",
+};
+export const clientSourceOptions: StatusOption[] = Object.entries(clientSourceLabels).map(([value, label]) => ({
+  value, label, description: sourceDescriptions[value as ClientSource], tone: "blue",
+}));
 
 export function ClientAvatar({
   client,

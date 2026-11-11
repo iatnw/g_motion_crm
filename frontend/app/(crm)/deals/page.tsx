@@ -20,6 +20,8 @@ import type {
   ReferralStatus,
 } from "@/lib/types";
 import DealModal from "@/components/DealModal";
+import StatusSelect, { paymentOptions, referralOptions, type StatusOption } from "@/components/StatusSelect";
+import PageHeading from "@/components/PageHeading";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
 
@@ -33,13 +35,13 @@ const filterTabs: Array<{ value: FilterTab; label: string }> = [
   { value: "paid", label: "Paid" },
   { value: "cancelled", label: "Canceled" },
 ];
-const leaseFilterOptions: Array<{ value: LeaseFilter; label: string }> = [
-  { value: "", label: "All leases" },
-  { value: "any", label: "Has lease" },
-  { value: "3", label: "Ends ≤ 3 mo" },
-  { value: "6", label: "Ends ≤ 6 mo" },
-  { value: "12", label: "Ends ≤ 12 mo" },
-  { value: "ended", label: "Ended" },
+const leaseFilterOptions: StatusOption[] = [
+  { value: "", label: "All lease terms", description: "Deals with or without a lease", tone: "slate" },
+  { value: "any", label: "Has a lease", description: "All deals with a lease term", tone: "blue" },
+  { value: "3", label: "Ends within 3 months", description: "Active leases ending in 1–3 months", tone: "amber" },
+  { value: "6", label: "Ends within 6 months", description: "Active leases ending in 1–6 months", tone: "amber" },
+  { value: "12", label: "Ends within 12 months", description: "Active leases ending in 1–12 months", tone: "blue" },
+  { value: "ended", label: "Lease ended", description: "Leases that have reached their end", tone: "slate" },
 ];
 
 const statusBorder: Record<string, string> = {
@@ -263,28 +265,21 @@ function DealsWorkspace() {
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Deals</h1>
-          <p className="text-slate-500 text-xs mt-0.5">
-            {counts.all} assigned deals · Vehicles, payments, and partners
-          </p>
-        </div>
+      <PageHeading eyebrow="Deal management" title="Your deals" description={`${counts.all} assigned deals. Every vehicle, payment, and partner in one place.`} actions={
         <button
           onClick={async () => {
             const num = await deals.nextNumber().catch(() => "");
             setModal({ open: true, nextNumber: num });
           }}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-all glow-blue-sm hover:glow-blue"
+          className="crm-primary-button"
         >
           + New Deal
         </button>
-      </div>
+      } />
 
       {/* Filter tabs + search */}
-      <div className="flex flex-col items-stretch gap-3 mb-5 xl:flex-row xl:items-center">
-        <div className="flex overflow-x-auto shrink-0 bg-[#0b0c0d] border border-[#252628] rounded-lg p-1 gap-1">
+      <div className="crm-filter-toolbar flex flex-col items-stretch gap-3 mb-5 xl:flex-row xl:items-center">
+        <div className="crm-segmented-group crm-deal-segments" role="group" aria-label="Filter deals by status">
           {filterTabs.map(({ value, label }) => (
             <button
               key={value}
@@ -295,22 +290,18 @@ function DealsWorkspace() {
                 setTab(value);
                 setOffset(0);
               }}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                tab === value
-                  ? "bg-[#1a1b1d] text-white"
-                  : "text-slate-500 hover:text-slate-300"
-              }`}
+              className="crm-filter-text crm-segment-button"
             >
               {label}{" "}
               <span
-                className={`ml-1 ${tab === value ? "text-slate-400" : "text-slate-600"}`}
+                className="crm-filter-count"
               >
                 {counts[value]}
               </span>
             </button>
           ))}
         </div>
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
             width="14"
@@ -334,25 +325,15 @@ function DealsWorkspace() {
               setLoading(true);
               setSearch(e.target.value);
             }}
-            className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
+            className="crm-filter-text w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
           />
         </div>
-        <select
-          aria-label="Filter deals by lease term"
-          value={leaseFilter}
-          onChange={(e) => {
+        <StatusSelect label="Filter deals by lease term" value={leaseFilter} options={leaseFilterOptions} variant="filter"
+          onChange={(value) => {
             setLoading(true);
-            setLeaseFilter(e.target.value as LeaseFilter);
+            setLeaseFilter(value as LeaseFilter);
             setOffset(0);
-          }}
-          className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none cursor-pointer"
-        >
-          {leaseFilterOptions.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          }} />
       </div>
 
       {listError && (
@@ -372,8 +353,14 @@ function DealsWorkspace() {
       {loading ? (
         <div className="text-center py-12 text-slate-600 text-sm">Loading…</div>
       ) : dealList.length === 0 ? (
-        <div className="text-center py-12 text-slate-600 text-sm">
-          No deals found
+        <div className="crm-empty-state">
+          <span className="crm-empty-symbol" aria-hidden="true">◇</span>
+          <h2>{search || tab !== "all" || leaseFilter !== "" ? "No deals match these filters" : "Your next deal starts here"}</h2>
+          <p>{search || tab !== "all" || leaseFilter !== "" ? "Try a different search or reset your filters to see more deals." : "Create a deal to keep its vehicle, payments, and partners together."}</p>
+          <button className="crm-primary-button" onClick={async () => {
+            if (search || tab !== "all" || leaseFilter !== "") { setSearch(""); setTab("all"); setLeaseFilter(""); setOffset(0); }
+            else { const num = await deals.nextNumber().catch(() => ""); setModal({ open: true, nextNumber: num }); }
+          }}>{search || tab !== "all" || leaseFilter !== "" ? "Reset filters" : "+ Create your first deal"}</button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -459,8 +446,8 @@ function DealsWorkspace() {
                   </div>
                 </div>
 
-                {/* Stats bar — 2-col grid on mobile, horizontal flex on desktop */}
-                <div className="border-t border-[#1e1f20] grid grid-cols-2 md:flex">
+                {/* Stats wrap as space runs out; commission reserves room for its control. */}
+                <div className="crm-deal-stats border-t border-[#1e1f20]">
                   <StatCell
                     label="Broker"
                     value={d.broker_id ? brokerMap[d.broker_id] : undefined}
@@ -500,33 +487,16 @@ function DealsWorkspace() {
                       }
                     />
                   )}
-                  <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[130px]">
+                  <div className="crm-deal-commission px-4 py-2.5 flex flex-col gap-0.5 border-b border-r border-[#1e1f20]">
                     <span className="text-xs text-slate-600 uppercase tracking-wider">
                       Commission
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-300">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="min-w-0 text-sm text-slate-300 tabular-nums [overflow-wrap:anywhere]">
                         {money(commission) ?? "—"}
                       </span>
-                      <select
-                        value={d.broker_commission_status ?? "pending"}
-                        onChange={(e) =>
-                          handleCommissionMethod(
-                            d,
-                            e.target.value as "paid" | "pending",
-                          )
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer ${
-                          d.broker_commission_status === "paid"
-                            ? "bg-green-500/10 border-green-500/25 text-green-400"
-                            : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                        }`}
-                        style={{ backgroundColor: "transparent" }}
-                      >
-                        <option value="pending">NOT PAID</option>
-                        <option value="paid">PAID</option>
-                      </select>
+                      <StatusSelect label="Commission payment status" value={d.broker_commission_status ?? "pending"} options={paymentOptions}
+                        onChange={(status) => handleCommissionMethod(d, status as "paid" | "pending")} />
                     </div>
                   </div>
                 </div>
@@ -551,25 +521,8 @@ function DealsWorkspace() {
                               .join(" ")}
                           </span>
                         </div>
-                        <select
-                          value={ref.status}
-                          onChange={(e) =>
-                            handleReferralStatus(
-                              ref,
-                              e.target.value as ReferralStatus,
-                            )
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                          className={`text-xs border rounded-md px-1.5 py-0.5 focus:outline-none cursor-pointer shrink-0 ${
-                            ref.status === "paid"
-                              ? "bg-green-500/10 border-green-500/25 text-green-400"
-                              : "bg-amber-500/10 border-amber-500/25 text-amber-400"
-                          }`}
-                          style={{ backgroundColor: "transparent" }}
-                        >
-                          <option value="none">NOT PAID</option>
-                          <option value="paid">PAID</option>
-                        </select>
+                        <StatusSelect label="Referral status" value={ref.status} options={referralOptions}
+                          onChange={(status) => handleReferralStatus(ref, status as ReferralStatus)} />
                       </div>
                     ))}
                   </div>
@@ -631,7 +584,7 @@ function StatCell({
         ? "text-blue-400 font-bold text-base"
         : "text-slate-300 text-sm";
   return (
-    <div className="px-4 py-2.5 flex flex-col gap-0.5 border-b border-[#1e1f20] even:border-l md:border-b-0 md:border-l-0 md:border-r md:flex-1 md:min-w-[90px]">
+    <div className="crm-deal-stat px-4 py-2.5 flex flex-col gap-0.5 border-b border-r border-[#1e1f20]">
       <span className="text-xs text-slate-600 uppercase tracking-wider whitespace-nowrap">
         {label}
       </span>

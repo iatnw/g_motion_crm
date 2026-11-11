@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/lib/api";
 
 export default function LoginPage() {
@@ -84,14 +85,22 @@ export default function LoginPage() {
     );
 
   return (
-    <div
-      className="min-h-full flex items-center justify-center bg-[#0b0c0d]"
-      style={{
-        backgroundImage:
-          "radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 60%)",
-      }}
-    >
-      <div className="w-full max-w-sm px-4">
+    <div className="crm-login">
+      <section className="crm-login-story" aria-label="G Motion workspace">
+        <Link href="/" className="crm-login-brand"><span>GM</span> G Motion</Link>
+        <div className="crm-login-story-copy">
+          <p className="crm-eyebrow">Your business. In motion.</p>
+          <h2>More clarity.<br />Less busywork.</h2>
+          <p>One home for your clients, deals, and every detail in between.</p>
+          <div className="crm-login-preview" aria-hidden="true">
+            <div><span className="crm-login-preview-dot" /> YOUR WORKSPACE</div>
+            <p>Everything, connected.</p>
+            <div className="crm-login-preview-grid"><span>Clients<strong>Relationships</strong></span><span>Deals<strong>Opportunities</strong></span><span>Payments<strong>Peace of mind</strong></span></div>
+          </div>
+        </div>
+        <p className="crm-login-story-footer">Built around the way you work.</p>
+      </section>
+      <div className="crm-login-form w-full max-w-sm px-4">
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 glow-blue">
             <svg
@@ -108,9 +117,9 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            G Motion CRM
+            {setupRequired ? "Make yourself at home" : totpRequired ? "One more step" : "Welcome back"}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Auto Finance Management</p>
+          <p className="text-slate-500 text-sm mt-1">{setupRequired ? "Let’s set up your workspace." : totpRequired ? "Enter your authenticator code to continue." : "Sign in to your G Motion workspace."}</p>
         </div>
 
         <div className="bg-[#0b0c0d] rounded-2xl p-8 border border-[#252628] border-glow">

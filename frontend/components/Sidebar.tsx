@@ -210,7 +210,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     );
   }
   return (
-    <aside className="crm-sidebar flex h-full w-60 flex-col">
+    <aside className="crm-sidebar flex h-full w-64 flex-col">
       <Link
         href="/dashboard"
         onClick={onNavigate}
@@ -271,7 +271,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             {error}
           </p>
         )}
-        <p className="px-3 pt-3 text-[10px] text-slate-400">Owner workspace</p>
+        <p className="crm-sidebar-caption">Auto finance, organized.</p>
       </div>
     </aside>
   );

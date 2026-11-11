@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, useState } from "react";
+import StatusSelect, { clientOptions } from "@/components/StatusSelect";
+import { clientSourceOptions } from "@/components/ClientIdentity";
 import type { Client } from "@/lib/types";
 
 interface Props {
@@ -120,29 +122,16 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
               initial ? "Leave blank to keep existing SSN" : "123456789"
             }
           />
-          <SelectField
-            label="Client status"
-            value={form.status}
-            onChange={(v) => set("status", v)}
-            options={[
-              { value: "active", label: "Active" },
-              { value: "closed", label: "Closed" },
-              { value: "no_deal", label: "No deal" },
-            ]}
-          />
-          <SelectField
-            label="Source"
-            value={form.source}
-            onChange={(v) => set("source", v)}
-            options={[
-              { value: "", label: "None" },
-              { value: "instagram", label: "Instagram" },
-              { value: "telegram", label: "Telegram" },
-              { value: "referall", label: "Referral" },
-              { value: "organic", label: "Organic" },
-              { value: "repeat_client", label: "Repeat Client" },
-            ]}
-          />
+          <div>
+            <p className="crm-choice-label mb-1.5">Client status</p>
+            <StatusSelect label="Client status" value={form.status} options={clientOptions} fullWidth onChange={(status) => set("status", status)} />
+          </div>
+          <div>
+            <p className="crm-choice-label mb-1.5">Source</p>
+            <StatusSelect label="Source" value={form.source} options={[
+              { value: "", label: "Not specified", description: "No source recorded for this client", tone: "slate" }, ...clientSourceOptions,
+            ]} fullWidth variant="filter" filterIcon="source" onChange={(value) => set("source", value)} />
+          </div>
         </div>
         <div className="mt-3">
           <label htmlFor={notesId} className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">
@@ -179,17 +168,10 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
             onChange={(v) => set("state", v)}
           />
           <Field label="ZIP" value={form.zip} onChange={(v) => set("zip", v)} />
-          <SelectField
-            label="Housing Status"
-            value={form.housing_status}
-            onChange={(v) => set("housing_status", v)}
-            options={[
-              { value: "", label: "None" },
-              { value: "own", label: "Own" },
-              { value: "rent", label: "Rent" },
-              { value: "family", label: "Family" },
-            ]}
-          />
+          <div>
+            <p className="crm-choice-label mb-1.5">Housing Status</p>
+            <StatusSelect label="Housing Status" value={form.housing_status} options={[{value:"",label:"Not specified",description:"No housing information recorded",tone:"slate"},{value:"own",label:"Own",description:"Client owns their home",tone:"blue"},{value:"rent",label:"Rent",description:"Client rents their home",tone:"blue"},{value:"family",label:"Family",description:"Client lives with family",tone:"blue"}]} fullWidth onChange={(value) => set("housing_status", value)} />
+          </div>
           <Field
             label="Housing Duration"
             value={form.housing_duration}
@@ -223,17 +205,10 @@ export default function ClientForm({ initial, onSave, onCancel }: Props) {
             value={form.employer_phone}
             onChange={(v) => set("employer_phone", v)}
           />
-          <SelectField
-            label="Employment Status"
-            value={form.employment_status}
-            onChange={(v) => set("employment_status", v)}
-            options={[
-              { value: "", label: "None" },
-              { value: "full_time", label: "Full Time" },
-              { value: "part_time", label: "Part Time" },
-              { value: "self_employed", label: "Self Employed" },
-            ]}
-          />
+          <div>
+            <p className="crm-choice-label mb-1.5">Employment Status</p>
+            <StatusSelect label="Employment Status" value={form.employment_status} options={[{value:"",label:"Not specified",description:"No employment information recorded",tone:"slate"},{value:"full_time",label:"Full time",description:"Full-time employment",tone:"blue"},{value:"part_time",label:"Part time",description:"Part-time employment",tone:"blue"},{value:"self_employed",label:"Self employed",description:"Works independently or runs a business",tone:"blue"}]} fullWidth onChange={(value) => set("employment_status", value)} />
+          </div>
           <Field
             label="Employment Duration"
             value={form.employment_duration}
@@ -356,42 +331,6 @@ function Field({
         placeholder={placeholder}
         className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-700 focus-visible:outline-2 focus-visible:outline-blue-400 transition-colors"
       />
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  const inputId = useId();
-  return (
-    <div>
-      <label
-        htmlFor={inputId}
-        className="block text-xs font-medium text-slate-400 mb-1.5"
-      >
-        {label}
-      </label>
-      <select
-        id={inputId}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white focus-visible:outline-2 focus-visible:outline-blue-400 transition-colors"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }

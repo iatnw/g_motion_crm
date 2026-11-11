@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Modal from "@/components/Modal";
+import useConfirmDialog from "@/components/useConfirmDialog";
 import { dealers as dealersApi } from "@/lib/api";
 import type { Dealer } from "@/lib/types";
 
@@ -24,6 +26,7 @@ const empty: DealerForm = {
 };
 
 export default function DealersPage() {
+  const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [list, setList] = useState<Dealer[]>([]);
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -32,14 +35,7 @@ export default function DealersPage() {
     open: false,
   });
 
-  useEffect(() => {
-    if (!modal.open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setModal({ open: false });
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [modal.open]);
+
   const [form, setForm] = useState<DealerForm>(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -74,12 +70,12 @@ export default function DealersPage() {
   }
 
   async function handleDelete(dealer: Dealer) {
-    if (!confirm(`Delete ${dealer.name}? This cannot be undone.`)) return;
+    if (!(await confirmAction(`${dealer.name} will be permanently removed.`))) return;
     try {
       await dealersApi.delete(dealer.id);
       setList((prev) => prev.filter((d) => d.id !== dealer.id));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed to delete dealer");
+      setLoadError(e instanceof Error ? e.message : "Failed to delete dealer");
     }
   }
 
@@ -244,23 +240,8 @@ export default function DealersPage() {
       )}
 
       {modal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-[#0b0c0d] rounded-2xl w-full max-w-md border border-[#252628] shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
-              <h2 className="text-base font-semibold text-white">
-                {modal.dealer ? "Edit Dealer" : "New Dealer"}
-              </h2>
-              <button
-                onClick={() => setModal({ open: false })}
-                className="text-slate-600 hover:text-slate-300 text-xl transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+        <Modal title={modal.dealer ? "Edit Dealer" : "New Dealer"} description="Keep dealership and contact details together." onClose={() => setModal({ open: false })} busy={saving}>
+            <form onSubmit={handleSave} className="crm-modal-form">
               <FormField
                 label="Dealership Name *"
                 value={form.name}
@@ -303,10 +284,11 @@ export default function DealersPage() {
                 />
               </div>
               {error && <p className="text-red-400 text-sm">{error}</p>}
-              <div className="flex justify-end gap-3 pt-1">
+              <div className="crm-modal-footer">
                 <button
                   type="button"
                   onClick={() => setModal({ open: false })}
+                  disabled={saving}
                   className="px-4 py-2 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
                 >
                   Cancel
@@ -320,9 +302,9 @@ export default function DealersPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
+      {confirmationDialog}
     </div>
   );
 }

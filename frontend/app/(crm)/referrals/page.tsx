@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { referrals as referralsApi, deals as dealsApi } from "@/lib/api";
 import type { Referral, Deal, ReferralStatus } from "@/lib/types";
 import { fmtDate } from "@/lib/utils";
+import Modal from "@/components/Modal";
+import StatusSelect, { referralOptions } from "@/components/StatusSelect";
+import useConfirmDialog from "@/components/useConfirmDialog";
 
 interface ReferralForm {
   deal_id: string;
@@ -34,13 +37,8 @@ function formFromReferral(ref: Referral): ReferralForm {
   };
 }
 
-const statusStyles: Record<ReferralStatus, string> = {
-  paid: "bg-green-500/10 border-green-500/25 text-green-400",
-  pending: "bg-[#0a0a1e] border-[#1e1e45] text-slate-400",
-  none: "bg-[#111213] border-[#252628] text-slate-600",
-};
-
 export default function ReferralsPage() {
+  const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [list, setList] = useState<Referral[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [search, setSearch] = useState("");
@@ -50,14 +48,7 @@ export default function ReferralsPage() {
   const [editing, setEditing] = useState<Referral | null>(null);
   const [modal, setModal] = useState(false);
 
-  useEffect(() => {
-    if (!modal) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setModal(false);
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [modal]);
+
   const [form, setForm] = useState<ReferralForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -151,27 +142,18 @@ export default function ReferralsPage() {
   }
 
   async function handleDelete(ref: Referral) {
-    if (!confirm(`Delete referral for ${ref.first_name} ${ref.last_name}?`))
-      return;
+    if (!(await confirmAction(`The referral for ${ref.first_name} ${ref.last_name} will be permanently removed.`))) return;
     try {
       await referralsApi.delete(ref.id);
       setList((prev) => prev.filter((r) => r.id !== ref.id));
     } catch {
-      alert("Failed to delete referral");
+      setLoadError("Failed to delete referral");
     }
   }
 
   async function handleStatusChange(ref: Referral, status: ReferralStatus) {
-    try {
-      const updated = await referralsApi.updateStatus(ref.id, status);
-      setList((prev) =>
-        prev.map((r) =>
-          r.id === ref.id ? { ...updated, deal_number: r.deal_number } : r,
-        ),
-      );
-    } catch {
-      alert("Failed to update status");
-    }
+    const updated = await referralsApi.updateStatus(ref.id, status);
+    setList((previous) => previous.map((r) => r.id === ref.id ? { ...updated, deal_number: r.deal_number } : r));
   }
 
   const filtered = list.filter(
@@ -246,17 +228,9 @@ export default function ReferralsPage() {
           onChange={(event) => setSearch(event.target.value)}
           className="min-w-0 flex-1 rounded-lg border border-[#252628] bg-[#0b0c0d] px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500"
         />
-        <select
-          aria-label="Filter referrals by status"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-          className="rounded-lg border border-[#252628] bg-[#0b0c0d] px-3 py-2.5 text-sm text-slate-300"
-        >
-          <option value="">All statuses</option>
-          <option value="none">Not paid</option>
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-        </select>
+        <StatusSelect label="Filter referrals by status" value={statusFilter}
+          options={[{ value: "", label: "All statuses", description: "Show every referral", tone: "blue" }, ...referralOptions]}
+          onChange={setStatusFilter} />
       </div>
       {loadError && (
         <p role="alert" className="mb-4 text-sm text-red-400">
@@ -324,20 +298,8 @@ export default function ReferralsPage() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <select
-                      value={ref.status}
-                      onChange={(e) =>
-                        handleStatusChange(
-                          ref,
-                          e.target.value as ReferralStatus,
-                        )
-                      }
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full border bg-transparent cursor-pointer focus:outline-none ${statusStyles[ref.status]}`}
-                    >
-                      <option value="none">NOT PAID</option>
-                      <option value="pending">PENDING</option>
-                      <option value="paid">PAID</option>
-                    </select>
+                    <StatusSelect label="Referral status" value={ref.status} options={referralOptions}
+                      onChange={(status) => handleStatusChange(ref, status as ReferralStatus)} />
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {ref.paid_date ? fmtDate(ref.paid_date) : "—"}
@@ -366,15 +328,8 @@ export default function ReferralsPage() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-[#0f1011] rounded-2xl border border-[#252628] w-full max-w-md p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-white mb-5">
-              {editing ? "Edit Referral" : "Create Referral"}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <Modal title={editing ? "Edit Referral" : "Create Referral"} description="Track a referral and its payout, with or without a deal." onClose={() => setModal(false)} busy={saving}>
+            <form onSubmit={handleSubmit} className="crm-modal-form">
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
                   Deal (optional)
@@ -462,27 +417,16 @@ export default function ReferralsPage() {
                   <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
                     Status
                   </label>
-                  <select
-                    value={form.status}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        status: e.target.value as ReferralStatus,
-                      }))
-                    }
-                    className="w-full bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
-                  >
-                    <option value="none">NOT PAID</option>
-                    <option value="pending">PENDING</option>
-                    <option value="paid">PAID</option>
-                  </select>
+                  <StatusSelect label="Referral status" value={form.status} options={referralOptions} fullWidth
+                    onChange={(status) => setForm((previous) => ({ ...previous, status: status as ReferralStatus }))} />
                 </div>
               )}
               {error && <p className="text-red-400 text-sm">{error}</p>}
-              <div className="flex justify-end gap-3 pt-1">
+              <div className="crm-modal-footer">
                 <button
                   type="button"
                   onClick={() => setModal(false)}
+                  disabled={saving}
                   className="px-4 py-2 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white transition-colors"
                 >
                   Cancel
@@ -496,9 +440,9 @@ export default function ReferralsPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
+      {confirmationDialog}
     </div>
   );
 }

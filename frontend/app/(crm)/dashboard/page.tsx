@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   dashboard,
@@ -20,6 +20,8 @@ import type {
 } from "@/lib/types";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import DealModal from "@/components/DealModal";
+import PageHeading from "@/components/PageHeading";
+import Modal from "@/components/Modal";
 
 type RangeMode = "all" | "month" | "custom";
 type DealScope = "all" | "no_cash";
@@ -45,6 +47,8 @@ export default function DashboardPage() {
     allDealers: import("@/lib/types").Dealer[];
   } | null>(null);
   const [bucketLoading, setBucketLoading] = useState(false);
+  const [collectionError, setCollectionError] = useState("");
+  const bucketRequest = useRef(0);
   const [editModal, setEditModal] = useState<{
     deal: Deal;
     clients: Client[];
@@ -52,7 +56,7 @@ export default function DashboardPage() {
     dealers: import("@/lib/types").Dealer[];
   } | null>(null);
 
-  const params = useMemo(() => {
+  const params = useMemo<{ from?: string; to?: string; exclude_cash?: boolean }>(() => {
     const base =
       mode === "all"
         ? {}
@@ -108,6 +112,8 @@ export default function DashboardPage() {
   }
 
   async function openBucket(bucket: PendingPaymentBucket) {
+    const request = ++bucketRequest.current;
+    setCollectionError("");
     setBucketLoading(true);
     try {
       const [allDeals, allClients, allBrokers, allDealers, allReferrals] =
@@ -122,7 +128,8 @@ export default function DashboardPage() {
         (d) =>
           d.deal_status === "pending" &&
           d.pending_payment_bucket === bucket &&
-          isDealInRange(d, params),
+          isDealInRange(d, params) &&
+          !(params.exclude_cash && d.is_cash_deal),
       );
       const clientMap = Object.fromEntries(
         (allClients ?? []).map((c) => [c.id, c]),
@@ -140,6 +147,8 @@ export default function DashboardPage() {
           referralMap[r.deal_id].push(r);
         }
       }
+      if (request !== bucketRequest.current) return;
+      filtered.sort((a, b) => (b.pending_payment_days ?? 0) - (a.pending_payment_days ?? 0));
       setBucketModal({
         bucket,
         deals: filtered,
@@ -151,9 +160,17 @@ export default function DashboardPage() {
         allBrokers: allBrokers ?? [],
         allDealers: allDealers ?? [],
       });
+    } catch {
+      if (request === bucketRequest.current) setCollectionError("Couldn’t load these collections. Please try again.");
     } finally {
-      setBucketLoading(false);
+      if (request === bucketRequest.current) setBucketLoading(false);
     }
+  }
+
+  function closeBucket() {
+    bucketRequest.current++;
+    setBucketLoading(false);
+    setBucketModal(null);
   }
 
   const totals = summary?.totals;
@@ -167,69 +184,42 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Dashboard</h1>
-          <p className="text-slate-500 text-xs mt-0.5">
-            Revenue, outstanding payments, and partner performance at a glance
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 bg-[#111213] border border-[#1e1f21] rounded-lg p-1">
-            <SegmentedButton
-              active={dealScope === "all"}
-              onClick={() => setDealScope("all")}
-            >
-              All deals
-            </SegmentedButton>
-            <SegmentedButton
-              active={dealScope === "no_cash"}
-              onClick={() => setDealScope("no_cash")}
-            >
-              No cash deals
-            </SegmentedButton>
+      <PageHeading eyebrow="Your business at a glance" title="Overview" description="A clear view of your deals, collections, and what comes next." />
+      <section className="crm-reporting-panel" aria-label="Report settings">
+        <div className="crm-reporting-main">
+          <div className="crm-reporting-heading">
+            <span className="crm-reporting-icon" aria-hidden="true">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M8 3v4M16 3v4M3 11h18M8 15h3" /></svg>
+            </span>
+            <div><h2>Reporting period</h2><p>Choose what your overview includes.</p></div>
           </div>
-          <SegmentedButton
-            active={mode === "all"}
-            onClick={() => setMode("all")}
-          >
-            All time
-          </SegmentedButton>
-          <SegmentedButton
-            active={mode === "month"}
-            onClick={() => setMode("month")}
-          >
-            This month
-          </SegmentedButton>
-          <SegmentedButton
-            active={mode === "custom"}
-            onClick={() => setMode("custom")}
-          >
-            Custom
-          </SegmentedButton>
+          <div className="crm-reporting-controls">
+            <div className="crm-reporting-control">
+              <p>Period</p>
+              <div className="crm-segmented-group" role="group" aria-label="Reporting period">
+                <SegmentedButton active={mode === "all"} onClick={() => setMode("all")}>All time</SegmentedButton>
+                <SegmentedButton active={mode === "month"} onClick={() => setMode("month")}>This month</SegmentedButton>
+                <SegmentedButton active={mode === "custom"} onClick={() => setMode("custom")}>Custom range</SegmentedButton>
+              </div>
+            </div>
+            <div className="crm-reporting-control">
+              <p>Deal scope</p>
+              <div className="crm-segmented-group" role="group" aria-label="Deal scope">
+                <SegmentedButton active={dealScope === "all"} onClick={() => setDealScope("all")}>All deals</SegmentedButton>
+                <SegmentedButton active={dealScope === "no_cash"} onClick={() => setDealScope("no_cash")}>Exclude cash</SegmentedButton>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+        {mode === "custom" && (
+          <div className="crm-reporting-dates">
+            <DateInput label="From" value={from} onChange={setFrom} />
+            <span className="crm-date-range-arrow" aria-hidden="true">→</span>
+            <DateInput label="To" value={to} onChange={setTo} />
+          </div>
+        )}
+      </section>
 
-      {!loading && summary && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
-          <p className="text-sm text-slate-300">
-            Keep collections moving and follow up on outstanding deals.
-          </p>
-          <Link
-            href="/deals?status=pending"
-            className="text-sm font-medium text-blue-400 hover:underline"
-          >
-            Review pending deals →
-          </Link>
-        </div>
-      )}
-      {mode === "custom" && (
-        <div className="flex items-center gap-3 mb-5">
-          <DateInput label="From" value={from} onChange={setFrom} />
-          <DateInput label="To" value={to} onChange={setTo} />
-        </div>
-      )}
 
       {loading ? (
         <div className="text-center py-12 text-slate-600 text-sm">
@@ -240,7 +230,7 @@ export default function DashboardPage() {
       ) : summary && totals && aging ? (
         <div className="space-y-6">
           {/* Hero row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="crm-dashboard-metrics grid gap-4">
             <HeroCard
               label="Total deals"
               value={totals.total_deals.toLocaleString()}
@@ -320,14 +310,19 @@ export default function DashboardPage() {
           </div>
 
           {/* Aging — most actionable, shown high */}
-          <div className="space-y-3">
-            <SectionLabel>Pending by date</SectionLabel>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <section className="crm-collections" aria-labelledby="collections-title">
+            <div className="crm-collections-heading">
+              <div><h2 id="collections-title">Collections to follow up</h2><p>See what’s outstanding and where to focus next.</p></div>
+              <div className="crm-collections-total"><span>Total outstanding</span><strong>{money(pendingRev)}</strong></div>
+            </div>
+            {collectionError && <p role="alert" className="crm-collection-error">{collectionError}</p>}
+            <div className="crm-collections-grid">
               <AgingCard
                 title="0–31 days"
                 count={aging.pending_0_31_count}
                 amount={aging.pending_0_31_revenue}
                 tone="green"
+                disabled={bucketLoading}
                 badge="On time"
                 onClick={() => openBucket("green")}
               />
@@ -336,7 +331,8 @@ export default function DashboardPage() {
                 count={aging.pending_32_40_count}
                 amount={aging.pending_32_40_revenue}
                 tone="yellow"
-                badge="Watch"
+                disabled={bucketLoading}
+                badge="Needs attention"
                 onClick={() => openBucket("yellow")}
               />
               <AgingCard
@@ -344,15 +340,16 @@ export default function DashboardPage() {
                 count={aging.pending_41_plus_count}
                 amount={aging.pending_41_plus_revenue}
                 tone="red"
+                disabled={bucketLoading}
                 badge="Overdue"
                 onClick={() => openBucket("red")}
               />
             </div>
-          </div>
+          </section>
 
           {/* Secondary stats — compact */}
           <div className="space-y-3">
-            <SectionLabel>Costs</SectionLabel>
+            <SectionLabel>Where your revenue goes</SectionLabel>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <StatChip
                 label="Broker payout"
@@ -498,7 +495,7 @@ export default function DashboardPage() {
           brokerMap={bucketModal?.brokerMap ?? {}}
           dealerMap={bucketModal?.dealerMap ?? {}}
           referralMap={bucketModal?.referralMap ?? {}}
-          onClose={() => setBucketModal(null)}
+          onClose={closeBucket}
           onEdit={(deal) => {
             setEditModal({
               deal,
@@ -564,7 +561,7 @@ function HeroCard({
         : "bg-slate-500";
   return (
     <div
-      className={`bg-[#111213] border ${border} rounded-2xl p-6 flex flex-col gap-2`}
+      className={`crm-metric-card bg-[#111213] border ${border} rounded-2xl p-6 flex flex-col gap-2`}
     >
       <div className="flex items-center gap-2">
         <span className={`w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
@@ -607,66 +604,28 @@ function formatDays(value?: number) {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
-function AgingCard({
-  title,
-  count,
-  amount,
-  tone,
-  badge,
-  onClick,
-}: {
+function AgingCard({ title, count, amount, tone, badge, disabled, onClick }: {
   title: string;
   count: number;
   amount?: number;
   tone: "green" | "yellow" | "red";
   badge: string;
+  disabled: boolean;
   onClick: () => void;
 }) {
-  const bg =
-    tone === "green"
-      ? "bg-green-500/5"
-      : tone === "yellow"
-        ? "bg-yellow-500/5"
-        : "bg-red-500/5";
-  const border =
-    tone === "green"
-      ? "border-green-500/20"
-      : tone === "yellow"
-        ? "border-yellow-500/20"
-        : "border-red-500/20";
-  const countColor =
-    tone === "green"
-      ? "text-green-400"
-      : tone === "yellow"
-        ? "text-yellow-400"
-        : "text-red-400";
-  const badgeCls =
-    tone === "green"
-      ? "bg-green-500/15 text-green-400"
-      : tone === "yellow"
-        ? "bg-yellow-500/15 text-yellow-400"
-        : "bg-red-500/15 text-red-400";
+  const description = count === 0 ? "No outstanding payments in this group." : tone === "red" ? "Prioritize these outstanding payments." : tone === "yellow" ? "Follow up before these become overdue." : "Within the expected collection window.";
   return (
-    <button
-      onClick={onClick}
-      className={`${bg} border ${border} rounded-2xl p-5 flex flex-col gap-4 text-left w-full hover:brightness-110 transition-all cursor-pointer`}
-    >
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">
-          {title}
-        </p>
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}
-        >
-          {badge}
-        </span>
+    <button type="button" onClick={onClick} disabled={disabled || count === 0} aria-haspopup="dialog"
+      aria-label={`Review ${badge.toLowerCase()} collections: ${count} ${count === 1 ? "deal" : "deals"}, ${title}`}
+      className={`crm-collection-card crm-collection-${tone}`}>
+      <div className="crm-collection-card-top">
+        <span className="crm-collection-title">{badge}</span>
+        <span className="crm-collection-indicator" aria-hidden="true" />
       </div>
-      <div>
-        <p className={`text-4xl font-bold tracking-tight ${countColor}`}>
-          {count}
-        </p>
-        <p className="text-sm text-slate-400 mt-1">{money(amount)}</p>
-      </div>
+      <strong className="crm-collection-amount">{money(amount)}</strong>
+      <span className="crm-collection-count">{count} {count === 1 ? "deal awaiting collection" : "deals awaiting collection"}</span>
+      <p className="crm-collection-description">{description}</p>
+      <span className="crm-collection-action"><span>{count ? "Review collections" : "All clear"}</span><span aria-hidden="true">{count ? "↗" : "✓"}</span></span>
     </button>
   );
 }
@@ -711,39 +670,10 @@ function BucketModal({
         ? "border-l-amber-500"
         : "border-l-red-500";
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div
-        className="bg-[#0b0c0d] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#252628] shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628] shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-white">
-              Pending deals
-            </h2>
-            {bucket && (
-              <p className={`text-xs mt-0.5 font-medium ${tone}`}>
-                {bucketLabel[bucket]}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-600 hover:text-slate-300 text-xl transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-4 space-y-2">
+    <Modal title="Pending deals" description={bucket ? bucketLabel[bucket] : "Review outstanding payments and follow up."} onClose={onClose} size="wide">
+        <div className="crm-payment-list p-5 space-y-3">
+
           {loading ? (
             <div className="py-16 text-center text-sm text-slate-600">
               Loading...
@@ -809,7 +739,7 @@ function BucketModal({
                     </div>
                   </div>
                   {/* Stats */}
-                  <div className="flex divide-x divide-[#1e1f20]">
+                  <div className="crm-payment-stats flex flex-wrap divide-x divide-[#1e1f20]">
                     {d.broker_id && (
                       <BucketStat
                         label="Broker"
@@ -851,8 +781,7 @@ function BucketModal({
             })
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -970,11 +899,8 @@ function SegmentedButton({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-        active
-          ? "bg-blue-600/15 text-blue-400 border-blue-500/30"
-          : "text-slate-500 border-[#252628] hover:text-slate-300"
-      }`}
+      aria-pressed={active}
+      className="crm-filter-text crm-segment-button"
     >
       {children}
     </button>

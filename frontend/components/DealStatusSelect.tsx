@@ -1,12 +1,7 @@
 "use client";
 
 import type { DealStatus } from "@/lib/types";
-
-const statusStyles: Record<DealStatus, string> = {
-  paid: "bg-green-500/10 text-green-400 border-green-500/25",
-  pending: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25",
-  cancelled: "bg-red-500/10 text-red-400 border-red-500/25",
-};
+import StatusSelect, { dealOptions } from "@/components/StatusSelect";
 
 interface Props {
   value?: DealStatus;
@@ -17,22 +12,8 @@ interface Props {
 }
 
 export default function DealStatusSelect({ value = "pending", disabled, days, bucket, onChange }: Props) {
-  const color = statusStyles[value] ?? statusStyles.pending;
-  const suffix = value === "pending" && days != null ? ` · ${days}d ${bucket ?? ""}` : "";
-
-  return (
-    <label>
-      <span className="sr-only">Deal status</span>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value as DealStatus)}
-        className={`appearance-none cursor-pointer rounded-md border px-2 py-1 text-xs font-medium outline-none transition-colors disabled:cursor-wait disabled:opacity-60 ${color}`}
-      >
-        <option value="pending">NOT FUNDED{suffix}</option>
-        <option value="paid">FUNDED</option>
-        <option value="cancelled">CANCELLED</option>
-      </select>
-    </label>
-  );
+  const aging = bucket === "red" ? "Overdue" : bucket === "yellow" ? "Watch" : "On time";
+  return <StatusSelect value={value} options={dealOptions} label="Deal status" disabled={disabled}
+    detail={value === "pending" && days != null ? `${days}d · ${aging}` : undefined}
+    onChange={(status) => onChange(status as DealStatus)} />;
 }

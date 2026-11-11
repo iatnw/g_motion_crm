@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Modal from "@/components/Modal";
+import StatusSelect, { type StatusOption } from "@/components/StatusSelect";
+import useConfirmDialog from "@/components/useConfirmDialog";
 import { documents } from "@/lib/api";
 import type { Document, DocumentType } from "@/lib/types";
 
@@ -13,6 +16,19 @@ const docTypeLabels: Record<DocumentType, string> = {
   check_copy: "Check Copy",
   other: "Other",
 };
+
+const docTypeDescriptions: Record<DocumentType, string> = {
+  credit_app_pdf: "Credit application and finance intake",
+  driver_license: "Client identification document",
+  insurance: "Vehicle insurance documentation",
+  broker_agreement: "Signed agreement with a broker",
+  dealer_docs: "Dealership paperwork and records",
+  check_copy: "Copy of a payment check",
+  other: "Any supporting document",
+};
+const docTypeOptions: StatusOption[] = Object.entries(docTypeLabels).map(([value, label]) => ({
+  value, label, description: docTypeDescriptions[value as DocumentType], tone: "blue",
+}));
 
 const docTypeStyle: Record<DocumentType, string> = {
   credit_app_pdf: "bg-purple-500/10 text-purple-400 border border-purple-500/25",
@@ -36,6 +52,7 @@ function isImage(fileName: string) {
 }
 
 export default function DocumentsTab({ clientId, dealId }: { clientId?: string; dealId?: string }) {
+  const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -68,7 +85,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
         window.open(url, "_blank");
       }
     } catch {
-      alert("Failed to get link");
+      setError("Couldn’t open the document. Please try again.");
     }
   }
 
@@ -95,12 +112,12 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this document?")) return;
+    if (!(await confirmAction("This document will be permanently deleted.", "Delete document?", "Delete document"))) return;
     try {
       await documents.delete(id);
       setDocs((prev) => prev.filter((d) => d.id !== id));
     } catch {
-      alert("Failed to delete");
+      setError("Couldn’t delete the document. Please try again.");
     }
   }
 
@@ -111,15 +128,9 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
       <div className="bg-[#0b0c0d] rounded-xl border border-[#252628] p-4">
         <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Upload Document</h3>
         <div className="flex gap-3 items-center flex-wrap">
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value as DocumentType)}
-            className="bg-[#0b0c0d] border border-[#252628] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none transition-colors"
-          >
-            {Object.entries(docTypeLabels).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
+          <StatusSelect label="Document type" value={selectedType} options={docTypeOptions}
+            variant="filter" filterIcon="document" disabled={uploading}
+            onChange={(value) => setSelectedType(value as DocumentType)} />
           <label className={`cursor-pointer px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${uploading ? "bg-slate-800 text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white glow-blue-sm"}`}>
             {uploading ? `Uploading… ${uploadPct}%` : "Choose File"}
             <input
@@ -191,7 +202,7 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
                       a.click();
                       URL.revokeObjectURL(objectUrl);
                     } catch {
-                      alert("Failed to download");
+                      setError("Couldn’t download the document. Please try again.");
                     }
                   }}
                   className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
@@ -212,26 +223,19 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
     </div>
 
       {preview && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-        >
-          <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setPreview(null)}
-              className="absolute -top-10 right-0 text-slate-400 hover:text-white text-sm transition-colors"
-            >
-              ✕ Close
-            </button>
+        <Modal title="Document preview" description={preview.name} onClose={() => setPreview(null)} size="wide">
+          <div className="crm-document-preview">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={preview.url}
               alt={preview.name}
-              className="max-w-full max-h-[85vh] rounded-xl object-contain bg-white"
+              className="max-w-full max-h-[65dvh] rounded-lg object-contain bg-white"
             />
-            <p className="text-center text-slate-500 text-xs mt-2">{preview.name}</p>
+
           </div>
-        </div>
+        </Modal>
       )}
+      {confirmationDialog}
     </>
   );
 }

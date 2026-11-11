@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Modal from "@/components/Modal";
+import useConfirmDialog from "@/components/useConfirmDialog";
 import { brokers as brokersApi } from "@/lib/api";
 import type { Broker } from "@/lib/types";
 
@@ -22,6 +24,7 @@ const empty: BrokerForm = {
 };
 
 export default function BrokersPage() {
+  const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [list, setList] = useState<Broker[]>([]);
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -30,14 +33,7 @@ export default function BrokersPage() {
     open: false,
   });
 
-  useEffect(() => {
-    if (!modal.open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setModal({ open: false });
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [modal.open]);
+
   const [form, setForm] = useState<BrokerForm>(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -71,17 +67,12 @@ export default function BrokersPage() {
   }
 
   async function handleDelete(broker: Broker) {
-    if (
-      !confirm(
-        `Delete ${broker.first_name} ${broker.last_name}? This cannot be undone.`,
-      )
-    )
-      return;
+    if (!(await confirmAction(`${broker.first_name} ${broker.last_name} will be permanently removed.`))) return;
     try {
       await brokersApi.delete(broker.id);
       setList((prev) => prev.filter((b) => b.id !== broker.id));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed to delete broker");
+      setLoadError(e instanceof Error ? e.message : "Failed to delete broker");
     }
   }
 
@@ -240,23 +231,8 @@ export default function BrokersPage() {
       )}
 
       {modal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-[#0b0c0d] rounded-2xl w-full max-w-md border border-[#252628] shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#252628]">
-              <h2 className="text-base font-semibold text-white">
-                {modal.broker ? "Edit Broker" : "New Broker"}
-              </h2>
-              <button
-                onClick={() => setModal({ open: false })}
-                className="text-slate-600 hover:text-slate-300 text-xl transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+        <Modal title={modal.broker ? "Edit Broker" : "New Broker"} description="Keep partner contact details together." onClose={() => setModal({ open: false })} busy={saving}>
+            <form onSubmit={handleSave} className="crm-modal-form">
               <div className="grid grid-cols-2 gap-3">
                 <FormField
                   label="First Name *"
@@ -296,10 +272,11 @@ export default function BrokersPage() {
                 />
               </div>
               {error && <p className="text-red-400 text-sm">{error}</p>}
-              <div className="flex justify-end gap-3 pt-1">
+              <div className="crm-modal-footer">
                 <button
                   type="button"
                   onClick={() => setModal({ open: false })}
+                  disabled={saving}
                   className="px-4 py-2 border border-[#1e1e45] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors"
                 >
                   Cancel
@@ -313,9 +290,9 @@ export default function BrokersPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
+      {confirmationDialog}
     </div>
   );
 }

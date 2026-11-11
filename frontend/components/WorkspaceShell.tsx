@@ -68,7 +68,7 @@ export default function WorkspaceShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const section = pages.find(
+  const section = [...pages].sort((a, b) => b.href.length - a.href.length).find(
     (page) => pathname === page.href || pathname.startsWith(page.href + "/"),
   );
   const mobile = useRef<HTMLDialogElement>(null);
@@ -106,7 +106,7 @@ export default function WorkspaceShell({
         <Sidebar />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="crm-topbar flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-[#252628] px-4 sm:px-6 lg:px-8">
+        <header className={`crm-topbar ${pathname === "/dashboard" ? "crm-topbar-dashboard" : ""} flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-[#252628] px-4 sm:px-6 lg:px-8`}>
           <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => mobile.current?.showModal()}
@@ -127,7 +127,7 @@ export default function WorkspaceShell({
               </svg>
             </button>
             <div className="flex items-center gap-2 text-sm">
-              <span className="hidden text-slate-400 sm:inline">Workspace</span>
+              <span className="hidden text-slate-400 sm:inline">G Motion</span>
               <span
                 aria-hidden="true"
                 className="hidden text-slate-500 sm:inline"
@@ -139,7 +139,7 @@ export default function WorkspaceShell({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="crm-topbar-actions flex items-center gap-3">
             <button
               onClick={openSwitcher}
               aria-haspopup="dialog"
@@ -157,18 +157,22 @@ export default function WorkspaceShell({
                 <circle cx="10.5" cy="10.5" r="7" />
                 <path d="m16 16 4.5 4.5" />
               </svg>
-              <span className="hidden sm:inline">Go to a page…</span>
+              <span className="hidden sm:inline">Find a page or action…</span>
               <span className="sm:hidden">Go to</span>
               <kbd className="hidden rounded border border-[#252628] px-1.5 text-[10px] lg:inline">
                 ⌘ / Ctrl K
               </kbd>
             </button>
-            <span
-              aria-label="Owner workspace"
-              className="hidden h-8 w-8 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10 text-xs font-semibold text-blue-400 sm:flex"
-            >
-              GM
-            </span>
+            {pathname === "/dashboard" && (
+              <div className="crm-creation-actions" role="group" aria-label="Create a record">
+                <Link href="/clients/new" className="crm-create-action crm-create-action-secondary">
+                  <span aria-hidden="true">＋</span> New client
+                </Link>
+                <Link href="/deals?new=1" className="crm-create-action crm-create-action-primary">
+                  <span aria-hidden="true">＋</span> New deal
+                </Link>
+              </div>
+            )}
           </div>
         </header>
         <main
@@ -200,6 +204,14 @@ export default function WorkspaceShell({
         ref={switcher}
         aria-labelledby="page-switcher-title"
         className="crm-page-switcher"
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          const items = Array.from(switcher.current?.querySelectorAll<HTMLAnchorElement>("a[href]") ?? []);
+          const index = items.indexOf(document.activeElement as HTMLAnchorElement);
+          if (index < 0 || !items.length) return;
+          event.preventDefault();
+          items[(index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
+        }}
         onClick={(event) => {
           if (event.target === event.currentTarget) switcher.current?.close();
         }}
@@ -226,6 +238,12 @@ export default function WorkspaceShell({
             placeholder="Find a page or action…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown" || event.key === "Enter") {
+                const first = switcher.current?.querySelector<HTMLAnchorElement>("a[href]");
+                if (first) { event.preventDefault(); if (event.key === "Enter") first.click(); else first.focus(); }
+              }
+            }}
             className="w-full rounded-lg border border-[#252628] bg-[#0b0c0d] px-3 py-3 text-sm text-slate-200"
           />
         </div>
@@ -256,7 +274,7 @@ export default function WorkspaceShell({
           )}
         </div>
         <p className="border-t border-[#252628] px-5 py-3 text-[11px] text-slate-400">
-          Tab to move · Enter to open · Esc to close
+          ↑ ↓ to move · Enter to open · Esc to close
         </p>
       </dialog>
     </div>

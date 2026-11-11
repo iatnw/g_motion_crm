@@ -239,7 +239,7 @@ export default function ClientDetailPage() {
               key={t}
               onClick={() => setTab(t)}
               aria-current={tab === t ? "page" : undefined}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all capitalize -mb-px ${
+              className={`crm-choice-tab px-4 py-2.5 text-sm font-medium border-b-2 transition-all capitalize -mb-px ${
                 tab === t
                   ? "border-blue-500 text-blue-400"
                   : "border-transparent text-slate-500 hover:text-slate-300"

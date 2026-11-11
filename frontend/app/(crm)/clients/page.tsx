@@ -8,8 +8,10 @@ import {
   ClientAvatar,
   ClientStatusBadge,
   clientSourceLabels,
+  clientSourceOptions,
   clientStatusLabels,
 } from "@/components/ClientIdentity";
+import StatusSelect from "@/components/StatusSelect";
 import { fmtDate } from "@/lib/utils";
 
 const pageSize = 20;
@@ -84,7 +86,7 @@ export default function ClientsPage() {
     setPage(1);
   }
   const control =
-    "rounded-lg border border-[#252628] bg-[#0b0c0d] px-3 py-2.5 text-sm text-slate-300 focus-visible:outline-2 focus-visible:outline-blue-400";
+    "crm-filter-text rounded-lg border border-[#252628] bg-[#0b0c0d] px-3 py-2.5 text-sm text-slate-300 focus-visible:outline-2 focus-visible:outline-blue-400";
 
   return (
     <div className="mx-auto max-w-7xl p-4 normal-case sm:p-6 lg:p-8">
@@ -121,9 +123,9 @@ export default function ClientsPage() {
                 setStatus(value);
                 setPage(1);
               }}
-              className={`rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-blue-400 ${status === value ? "border-blue-500/50 bg-blue-500/10" : "border-[#252628] bg-[#0f1011] hover:border-blue-500/30"}`}
+              className={`crm-choice-card rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-blue-400 ${status === value ? "border-blue-500/50 bg-blue-500/10" : "border-[#252628] bg-[#0f1011] hover:border-blue-500/30"}`}
             >
-              <span className="text-xs font-medium text-slate-400">
+              <span className="crm-filter-label text-xs font-medium text-slate-400">
                 {value === "all" ? "All clients" : clientStatusLabels[value]}
               </span>
               <span className="mt-2 block text-2xl font-semibold tabular-nums text-white">
@@ -169,36 +171,17 @@ export default function ClientsPage() {
               className={`${control} w-full pl-10 placeholder:text-slate-500`}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <select
-              aria-label="Filter by source"
-              value={source}
-              onChange={(e) => {
-                setSource(e.target.value);
-                setPage(1);
-              }}
-              className={`${control} flex-1`}
-            >
-              <option value="">All sources</option>
-              {Object.entries(clientSourceLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Sort clients"
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value);
-                setPage(1);
-              }}
-              className={`${control} flex-1`}
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="name">Name A–Z</option>
-            </select>
+          <div className="crm-client-filter-menus flex flex-wrap gap-2">
+            <StatusSelect label="Filter by source" value={source} variant="filter" filterIcon="source"
+              options={[{ value: "", label: "All sources", description: "Show clients from every source", tone: "slate" }, ...clientSourceOptions]}
+              onChange={(value) => { setSource(value); setPage(1); }} />
+            <StatusSelect label="Sort clients" value={sort} variant="filter" filterIcon="sort"
+              options={[
+                { value: "newest", label: "Newest first", description: "Recently added clients appear first", tone: "blue" },
+                { value: "oldest", label: "Oldest first", description: "Earliest added clients appear first", tone: "slate" },
+                { value: "name", label: "Name A–Z", description: "Alphabetical order by client name", tone: "slate" },
+              ]}
+              onChange={(value) => { setSort(value); setPage(1); }} />
           </div>
         </div>
         <div
