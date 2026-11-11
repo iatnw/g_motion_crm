@@ -116,7 +116,7 @@ func (s *DealService) Create(ctx context.Context, in CreateDealInput) (db.Deal, 
 		LeaseTermMonths:        toInt32(in.LeaseTermMonths),
 	})
 	if err != nil {
-		return db.Deal{}, err
+		return db.Deal{}, dealWriteError(err)
 	}
 	return deal, nil
 }
@@ -282,7 +282,7 @@ func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, 
 		return db.Deal{}, err
 	}
 
-	return s.q.UpdateDeal(ctx, db.UpdateDealParams{
+	deal, err := s.q.UpdateDeal(ctx, db.UpdateDealParams{
 		ID:                     toUUID(in.ID),
 		ClientID:               toUUID(in.ClientID),
 		BrokerID:               toNullUUID(in.BrokerID),
@@ -309,6 +309,7 @@ func (s *DealService) Update(ctx context.Context, in UpdateDealInput) (db.Deal, 
 		IsCashDeal:             in.IsCashDeal,
 		LeaseTermMonths:        toInt32(in.LeaseTermMonths),
 	})
+	return deal, dealWriteError(err)
 }
 
 func (s *DealService) UpdateBrokerFeeStatus(ctx context.Context, id uuid.UUID, status db.PaymentStatus) (db.Deal, error) {

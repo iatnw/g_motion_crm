@@ -138,6 +138,11 @@ func (h *DealHandler) Create(w http.ResponseWriter, r *http.Request) {
 		LeaseTermMonths:        req.LeaseTermMonths,
 	})
 	if err != nil {
+		var referenceErr *service.DealReferenceError
+		if errors.As(err, &referenceErr) {
+			http.Error(w, referenceErr.Error(), http.StatusBadRequest)
+			return
+		}
 		slog.Error("create deal", "client_id", clientID, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -243,6 +248,11 @@ func (h *DealHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		var referenceErr *service.DealReferenceError
+		if errors.As(err, &referenceErr) {
+			http.Error(w, referenceErr.Error(), http.StatusBadRequest)
 			return
 		}
 		slog.Error("update deal", "id", id, "error", err)
