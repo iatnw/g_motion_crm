@@ -1,0 +1,148 @@
+/* G Motion V32 reference: carbon black, brushed steel, and brand blue.
+   Marketing-scale effects are reduced for a dense, daily-use workspace. */
+:root {
+  --crm-background: #0b0c0d;
+  --crm-panel: rgb(18 28 40 / 96%);
+  --crm-control: #0c131d;
+  --crm-solid-panel: #131c28;
+  --crm-floating-panel: rgb(18 28 40 / 97%);
+  --crm-ink: #f4f7fa;
+  --crm-muted: #a7b7c9;
+  --crm-line: rgb(209 226 243 / 16%);
+  --crm-accent: #267ad6;
+  --crm-choice-selected: #b9d8f6;
+  --crm-highlight: rgb(255 255 255 / 8%);
+  --crm-sheen: linear-gradient(155deg, rgb(34 48 65 / 55%), rgb(15 20 28 / 28%) 78%);
+  --crm-canvas: radial-gradient(ellipse at 94% 0%, rgb(38 122 214 / 12%), transparent 48%), radial-gradient(ellipse at 6% 95%, rgb(99 124 154 / 7%), transparent 50%), linear-gradient(145deg, #0a0c10, #101720 60%, #090b0f);
+  --crm-shadow: inset 0 1px 0 var(--crm-highlight), 0 10px 28px rgb(4 12 20 / 12%);
+  --color-blue-300: #b9d8f6;
+  --color-blue-400: #8bbdff;
+  --color-blue-500: #3b8eea;
+  --color-blue-600: #267ad6;
+  --color-blue-700: #1d64b3;
+  --color-green-400: #73c7a6;
+  --color-yellow-400: #e6b75d;
+  --color-amber-400: #e6b75d;
+  --color-red-400: #df8c93;
+}
+html[data-theme="light"] {
+  --crm-background: #e8ebef;
+  --crm-panel: rgb(255 255 255 / 91%);
+  --crm-control: #f0f3f7;
+  --crm-solid-panel: #f7f9fb;
+  --crm-floating-panel: rgb(249 251 253 / 98%);
+  --crm-ink: #111418;
+  --crm-muted: #596a7d;
+  --crm-line: rgb(72 96 124 / 19%);
+  --crm-accent: #267ad6;
+  --crm-choice-selected: #1d64b3;
+  --crm-highlight: rgb(255 255 255 / 80%);
+  --crm-sheen: linear-gradient(145deg, rgb(255 255 255 / 50%), rgb(224 231 240 / 17%) 85%);
+  --crm-canvas: radial-gradient(ellipse at 95% 5%, rgb(38 122 214 / 10%), transparent 55%), linear-gradient(126deg, #e8ebef, #f3f5f7 38%, #dce1e7 85%, #edf1f5);
+  --crm-shadow: inset 0 1px 0 var(--crm-highlight), 0 8px 24px rgb(25 39 58 / 6%);
+}
+html, body { background: var(--crm-background); color: var(--crm-ink); }
+body { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+.crm-shell { background: var(--crm-canvas); }
+.crm-topbar {
+  background: rgb(8 11 16 / 88%);
+  border-bottom-color: rgb(255 255 255 / 9%) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: none;
+}
+html[data-theme="light"] .crm-topbar { background: rgb(245 248 252 / 91%); border-bottom-color: var(--crm-line) !important; }
+.crm-sidebar, [data-theme="light"] aside.crm-sidebar {
+  background: linear-gradient(165deg, #131c28, #090c11 85%) !important;
+  border-right-color: rgb(209 226 243 / 12%) !important;
+  box-shadow: inset -1px 0 0 rgb(255 255 255 / 2%);
+}
+.crm-sidebar > a { border-bottom-color: rgb(255 255 255 / 9%) !important; }
+.crm-sidebar > a > span:first-child { background: #267ad6; border: 1px solid rgb(139 189 255 / 35%); box-shadow: none; }
+.crm-nav-link, [data-theme="light"] .crm-nav-link { color: #a7b7c9; }
+.crm-nav-active, [data-theme="light"] .crm-nav-active { color: #dbeaff; border-color: rgb(139 189 255 / 27%); background: rgb(38 122 214 / 14%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%); }
+.crm-nav-active > span:last-child { background: #8bbdff; box-shadow: none; }
+.crm-eyebrow { color: #9fbbe0; }
+html[data-theme="light"] .crm-eyebrow { color: #526d8c; }
+.crm-content h1 { font-weight: 600; letter-spacing: -0.05em; }
+.crm-content :is(.bg-\[\#0b0c0d\], .bg-\[\#0f1011\], .bg-\[\#111213\]) {
+  background: var(--crm-panel) !important;
+  background-image: var(--crm-sheen) !important;
+}
+.crm-metric-card, .crm-reporting-panel, .crm-collection-card, .crm-filter-toolbar,
+.crm-content section[aria-label="Client directory"] {
+  background-color: var(--crm-panel);
+  background-image: var(--crm-sheen);
+  border-color: var(--crm-line);
+  border-radius: 14px;
+  box-shadow: var(--crm-shadow);
+}
+.crm-metric-card { backdrop-filter: none; }
+.crm-metric-card:after { display: none; }
+.crm-metric-card > p:nth-child(2) { font-weight: 600; letter-spacing: -0.04em; }
+.crm-collection-card:hover:not(:disabled) { box-shadow: inset 0 1px 0 var(--crm-highlight), 0 14px 30px rgb(4 12 20 / 18%); }
+.crm-content :is(input:not([type="checkbox"]), select, textarea),
+.crm-topbar > div:last-child > button, .crm-segmented-group, .crm-status-filter > .crm-status-trigger {
+  background: var(--crm-control) !important;
+  border-color: var(--crm-line) !important;
+  box-shadow: none;
+}
+.crm-content :is(input, select, textarea):focus-visible { outline-color: #69adff !important; }
+.crm-content .crm-segment-button[aria-pressed="true"] {
+  background: #267ad6;
+  background-image: none;
+  color: #fff !important;
+  border-color: #267ad6;
+  box-shadow: none;
+}
+.crm-segment-button[aria-pressed="true"] .crm-filter-count { background: rgb(255 255 255 / 16%); color: white; }
+.crm-status-popup-title, .crm-choice-label, .crm-reporting-control > p { letter-spacing: 0.12em; }
+.crm-primary-button, .crm-create-action-primary, .crm-modal-footer button[type="submit"],
+.crm-content button.bg-blue-600, .crm-content a.bg-blue-600, .crm-login-form button.bg-blue-600 {
+  border: 1px solid #267ad6;
+  background: #267ad6;
+  color: white !important;
+  box-shadow: none;
+}
+.crm-primary-button:hover, .crm-create-action-primary:hover,
+.crm-modal-footer button[type="submit"]:hover:not(:disabled) { background: #3b8eea; border-color: #3b8eea; transform: none; }
+.crm-create-action-secondary { background: rgb(255 255 255 / 4%); border-color: rgb(255 255 255 / 22%); box-shadow: none; }
+html[data-theme="light"] .crm-create-action-secondary { background: var(--crm-panel); border-color: var(--crm-line); }
+.crm-modal, .crm-page-switcher, .crm-status-popup {
+  background: var(--crm-floating-panel) !important;
+  background-image: var(--crm-sheen) !important;
+  border-color: var(--crm-line);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 24px 65px rgb(0 0 0 / 30%), inset 0 1px 0 var(--crm-highlight);
+}
+.crm-modal, .crm-page-switcher { border-radius: 18px; }
+.crm-modal::backdrop, .crm-page-switcher::backdrop { background: rgb(4 8 13 / 54%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.crm-modal-header, .crm-modal-footer, .crm-deal-form .crm-modal-footer { background: var(--crm-solid-panel); }
+.crm-deal-form { background: transparent; }
+.crm-status-option:hover, .crm-status-option:focus-visible { background: var(--crm-control); }
+.crm-status-option[aria-selected="true"] { background: rgb(38 122 214 / 12%); }
+.crm-status-popup-title { color: var(--crm-muted); }
+.crm-content table thead { background: rgb(255 255 255 / 4%); }
+html[data-theme="light"] .crm-content table thead { background: var(--crm-control); }
+.crm-content tbody tr:hover { background: rgb(38 122 214 / 5%); }
+html[data-theme="light"] .crm-content .text-white,
+html[data-theme="light"] .crm-topbar .text-slate-200 { color: var(--crm-ink) !important; }
+html[data-theme="light"] .crm-content :is(.text-slate-400, .text-slate-500) { color: var(--crm-muted) !important; }
+html[data-theme="light"] .crm-content :is(.text-slate-600, .text-slate-700) { color: #617186 !important; }
+html[data-theme="light"] .crm-content :is(.bg-blue-600.text-white, .bg-blue-500.text-white) { color: white !important; }
+html[data-theme="dark"] .crm-content :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-slate-700) { color: var(--crm-muted); }
+.crm-login { background: var(--crm-canvas); }
+.crm-login-story { background: radial-gradient(ellipse at 85% 28%, rgb(38 122 214 / 20%), transparent 55%), linear-gradient(132deg, #090c11, #1a2533 65%, #090b0f); }
+.crm-login-form > div:nth-child(2) { background-image: var(--crm-sheen) !important; border-color: var(--crm-line) !important; box-shadow: var(--crm-shadow); }
+.crm-login-story-copy h2 { font-weight: 600; letter-spacing: -0.075em; }
+.crm-login-story-copy > p:not(.crm-eyebrow) { color: #c5cfdb; }
+.crm-login-preview { background: rgb(255 255 255 / 4%); border-color: rgb(209 226 243 / 20%); }
+@supports not (backdrop-filter: blur(1px)) {
+  .crm-modal, .crm-page-switcher, .crm-status-popup { background: var(--crm-solid-panel) !important; }
+}
+@media(prefers-reduced-transparency: reduce) {
+  :root, html[data-theme="light"] { --crm-panel: var(--crm-solid-panel); --crm-floating-panel: var(--crm-solid-panel); }
+  .crm-topbar, .crm-modal, .crm-page-switcher, .crm-status-popup { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .crm-modal::backdrop, .crm-page-switcher::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
