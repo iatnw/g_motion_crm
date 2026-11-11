@@ -70,6 +70,9 @@ func main() {
 	if err := seedBusiness(ctx, pool, key); err != nil {
 		log.Fatal(err)
 	}
+	if err := seedEdgeCases(ctx, pool, key); err != nil {
+		log.Fatal(err)
+	}
 	q := db.New(pool)
 	s3, err := storage.NewS3Client(cfg.AWS)
 	if err != nil {
@@ -77,6 +80,9 @@ func main() {
 	}
 	documents := service.NewDocument(q, s3, key)
 	if err := seedDocuments(ctx, pool, documents); err != nil {
+		log.Fatal(err)
+	}
+	if err := seedPreviewDocuments(ctx, pool, documents); err != nil {
 		log.Fatal(err)
 	}
 	tally := service.NewTally(service.NewClient(q, key), documents, service.NewDeal(q, pool), q, pool)

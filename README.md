@@ -66,8 +66,19 @@ linked and direct referrals in every status, and empty broker/dealer statistics.
 Dates are relative to the seeding date; choose a wider dashboard date range to
 see historical leases. New records are marked as fictional demo data.
 
-Seven clearly labelled text placeholders cover every document category and can
-be downloaded normally. A synthetic Tally intake also exercises submission
+The repeatable scenarios also add 205 deals and 206 clients for pagination and
+layout checks, including international and long names, duplicate display names,
+missing contact details, an unconverted client, exact payment-aging boundaries
+(0, 1, 30, 31, 32, 39, 40, 41, 42, and 365 days), and leases with 0, 1, 3, 6,
+12, and 24 whole months remaining. Search deal notes for `Aging boundary` or
+`Lease boundary` to find these examples. Scenario markers prevent duplicate
+records when rerunning the command; existing records and dates are preserved.
+
+Seven clearly labelled text placeholders cover every document category, plus
+a valid sample PDF and PNG exercise document downloading and image previews.
+Find these files on Avery Brooks's profile and first cash deal. All files are
+synthetic samples, not valid identity or financial documents.
+A synthetic Tally intake also exercises submission
 processing and duplicate detection without contacting Tally. It does not simulate
 external file downloads. Passwords and TOTP settings are preserved.
 
