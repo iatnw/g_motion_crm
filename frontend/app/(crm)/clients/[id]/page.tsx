@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { clients, deals, brokers, dealers } from "@/lib/api";
@@ -20,6 +20,10 @@ type Tab = "profile" | "documents" | "deals";
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  return <ClientDetail key={id} id={id} />;
+}
+
+function ClientDetail({ id }: { id: string }) {
   const router = useRouter();
 
   const [client, setClient] = useState<Client | null>(null);
@@ -29,47 +33,34 @@ export default function ClientDetailPage() {
   const [allBrokers, setAllBrokers] = useState<Broker[]>([]);
   const [allDealers, setAllDealers] = useState<Dealer[]>([]);
   const [tab, setTab] = useState<Tab>("profile");
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(id !== "new");
+  const [editing, setEditing] = useState(id === "new");
   const [dealModal, setDealModal] = useState<{ open: boolean; deal?: Deal }>({
     open: false,
   });
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    if (!id || id === "new") return;
-    try {
-      setError("");
-      const [c, d, cosigned, allC, b, dl] = await Promise.all([
-        clients.get(id),
-        deals.listByClient(id),
-        deals.listByCosigner(id),
-        clients.list(),
-        brokers.list(),
-        dealers.list(),
-      ]);
+  useEffect(() => {
+    if (id === "new") return;
+    let active = true;
+    Promise.all([
+      clients.get(id), deals.listByClient(id), deals.listByCosigner(id),
+      clients.list(), brokers.list(), dealers.list(),
+    ]).then(([c, d, cosigned, allC, b, dl]) => {
+      if (!active) return;
       setClient(c);
-      setEditing(false);
       setClientDeals(d);
       setCosignerDeals(cosigned);
       setAllClients(allC);
       setAllBrokers(b);
       setAllDealers(dl);
-    } catch {
-      setError("Failed to load client");
-    } finally {
-      setLoading(false);
-    }
+    }).catch(() => {
+      if (active) setError("Failed to load client");
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
   }, [id]);
-
-  useEffect(() => {
-    if (id === "new") {
-      setLoading(false);
-      setEditing(true);
-    } else {
-      load();
-    }
-  }, [id, load]);
 
   async function handleSaveClient(data: object) {
     try {

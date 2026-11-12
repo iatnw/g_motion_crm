@@ -1,3 +1,5 @@
+export const AUTH_EXPIRED_EVENT = "crm:auth-expired";
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -23,7 +25,7 @@ async function request<T>(
   });
 
   if (res.status === 401 && !skipAuthRedirect) {
-    window.location.href = "/login";
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
     throw new Error("Unauthorized");
   }
 

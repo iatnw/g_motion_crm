@@ -27,19 +27,21 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      setAll((await clients.list()) ?? []);
-    } catch {
-      setError("We couldn’t load your clients. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback((isActive: () => boolean = () => true) => {
+    return clients.list().then((list) => {
+      if (!isActive()) return;
+      setAll(list ?? []);
+      setError("");
+    }).catch(() => {
+      if (isActive()) setError("We couldn’t load your clients. Please try again.");
+    }).finally(() => {
+      if (isActive()) setLoading(false);
+    });
   }, []);
   useEffect(() => {
-    void load();
+    let active = true;
+    void load(() => active);
+    return () => { active = false; };
   }, [load]);
 
   const filtered = useMemo(() => {
@@ -216,7 +218,7 @@ export default function ClientsPage() {
           <div role="alert" className="px-6 py-12 text-center">
             <p className="text-sm text-red-400">{error}</p>
             <button
-              onClick={() => void load()}
+              onClick={() => { setLoading(true); setError(""); void load(); }}
               className="mt-4 text-sm text-blue-400 hover:underline"
             >
               Try again

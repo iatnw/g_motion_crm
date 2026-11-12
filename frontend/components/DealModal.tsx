@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useId } from "react";
+import { fillMissingCommission } from "@/lib/deal-finances";
 import Modal from "@/components/Modal";
 import StatusSelect, { dealOptions, referralOptions } from "@/components/StatusSelect";
 import useConfirmDialog from "@/components/useConfirmDialog";
@@ -20,7 +21,11 @@ interface Props {
 
 type ReferralDraft = { first_name: string; last_name: string; phone: string; amount: string };
 
-export default function DealModal({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose }: Props) {
+export default function DealModal(props: Props) {
+  return <DealForm key={`${props.deal?.id ?? "new"}:${props.clientId ?? ""}`} {...props} />;
+}
+
+function DealForm({ deal, clientId, nextDealNumber, clients, brokers, dealers, onSave, onClose }: Props) {
   const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [form, setForm] = useState({
     client_id: clientId ?? deal?.client_id ?? "",
@@ -57,59 +62,30 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
   const [existingReferrals, setExistingReferrals] = useState<Referral[]>([]);
   const [referralAmounts, setReferralAmounts] = useState<Record<string, string>>({});
   const [referralsLoaded, setReferralsLoaded] = useState(!deal);
-  const [didAutoCorrect, setDidAutoCorrect] = useState(false);
   const referralTotal = existingReferrals.reduce((s, r) => s + (r.amount ?? 0), 0);
   const [newReferrals, setNewReferrals] = useState<ReferralDraft[]>([]);
   const [allReferralContacts, setAllReferralContacts] = useState<Referral[]>([]);
 
-  // Auto-correct once referrals are loaded: only fill in missing values, never overwrite both.
-  useEffect(() => {
-    if (!referralsLoaded || didAutoCorrect) return;
-
-    const base = commissionBase(form.broker_fee, form.collect_amount, form.doc_fee);
-    const pct = parseFloat(form.broker_percent);
-    const com = parseFloat(form.broker_commission);
-    const hasPct = !isNaN(pct) && pct > 0;
-    const hasCom = !isNaN(com) && com > 0;
-
-    if (base > 0 && hasPct && !hasCom) {
-      // Only percent stored — compute commission
-      const commission = base * pct / 100;
-      setForm((prev) => ({ ...prev, broker_commission: commission.toFixed(2), your_net: netAfterReferral(base, commission, referralTotal) }));
-    } else if (base > 0 && hasCom && !hasPct) {
-      // Only commission stored — compute percent
-      setForm((prev) => ({ ...prev, broker_percent: (com / base * 100).toFixed(2), your_net: netAfterReferral(base, com, referralTotal) }));
-    }
-
-    setDidAutoCorrect(true);
-  }, [didAutoCorrect, form.broker_commission, form.broker_fee, form.broker_percent, form.collect_amount, form.doc_fee, referralTotal, referralsLoaded]);
-
   useEffect(() => {
     let cancelled = false;
-    setDidAutoCorrect(false);
 
     if (deal) {
-      setReferralsLoaded(false);
       referralsApi.listByDeal(deal.id).then((refs) => {
         if (cancelled) return;
         setExistingReferrals(refs);
+        setForm((previous) => fillMissingCommission(previous, refs.reduce((sum, ref) => sum + (ref.amount ?? 0), 0)));
         const amounts: Record<string, string> = {};
         for (const r of refs) amounts[r.id] = r.amount != null ? String(r.amount) : "";
         setReferralAmounts(amounts);
-      }).catch(() => {}).finally(() => {
-        if (!cancelled) setReferralsLoaded(true);
+        setReferralsLoaded(true);
+      }).catch(() => {
+        if (!cancelled) setError("Failed to load referrals. Close and reopen this deal before saving.");
       });
-    } else {
-      setExistingReferrals([]);
-      setReferralAmounts({});
-      setReferralsLoaded(true);
     }
     if (deal) {
       dealsApi.listCosigners(deal.id).then((data) => {
         if (!cancelled) setExistingCosigners(data);
       }).catch(() => {});
-    } else {
-      setExistingCosigners([]);
     }
     referralsApi.list().then((data) => {
       if (cancelled) return;
@@ -169,6 +145,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!referralsLoaded) return;
     if (!form.client_id) {
       setError("Client is required");
       return;
@@ -602,7 +579,7 @@ export default function DealModal({ deal, clientId, nextDealNumber, clients, bro
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !referralsLoaded}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-all glow-blue-sm"
             >
               {saving ? "Saving…" : "Save Deal"}

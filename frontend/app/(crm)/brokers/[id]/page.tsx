@@ -16,6 +16,10 @@ const statusBorder: Record<string, string> = {
 
 export default function BrokerDealsPage() {
   const { id } = useParams<{ id: string }>();
+  return <BrokerDeals key={id} id={id} />;
+}
+
+function BrokerDeals({ id }: { id: string }) {
   const router = useRouter();
 
   const [broker, setBroker] = useState<Broker | null>(null);
@@ -27,11 +31,13 @@ export default function BrokerDealsPage() {
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [allDealers, setAllDealers] = useState<Dealer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [modal, setModal] = useState<{ open: boolean; deal?: Deal }>({ open: false });
 
   useEffect(() => {
+    let active = true;
     Promise.all([
       brokersApi.get(id),
       brokersApi.list(),
@@ -39,6 +45,7 @@ export default function BrokerDealsPage() {
       dealers.list(),
       referralsApi.list(),
     ]).then(([b, bs, cs, ds, refs]) => {
+      if (!active) return;
       setBroker(b);
       setAllBrokers(bs ?? []);
       setAllClients(cs ?? []);
@@ -46,15 +53,22 @@ export default function BrokerDealsPage() {
       setClientMap(Object.fromEntries((cs ?? []).map((c) => [c.id, c])));
       setDealerMap(Object.fromEntries((ds ?? []).map((d) => [d.id, d.name])));
       setReferralMap(groupReferralsByDeal(refs ?? []));
+    }).catch(() => {
+      if (active) setError("Failed to load broker details");
     });
+    return () => { active = false; };
   }, [id]);
 
   useEffect(() => {
-    setLoading(true);
+    let active = true;
     dealsApi.listByBrokerPaged(id, PAGE_SIZE, offset).then((res) => {
+      if (!active) return;
       setDeals((prev) => offset === 0 ? res.data : [...prev, ...res.data]);
       setHasMore(res.has_more);
-    }).finally(() => setLoading(false));
+    }).catch(() => {
+      if (active) setError("Failed to load broker deals");
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [id, offset]);
 
   async function handleSave(data: object): Promise<Deal> {
@@ -87,6 +101,7 @@ export default function BrokerDealsPage() {
         </div>
       </div>
 
+      {error && <p role="alert" className="mb-4 text-sm text-red-400">{error}</p>}
       {/* Deal list */}
       {loading && deals.length === 0 ? (
         <div className="text-center py-12 text-slate-600 text-sm">Loading…</div>
@@ -138,7 +153,7 @@ export default function BrokerDealsPage() {
           {hasMore && (
             <div className="flex justify-center pt-2">
               <button
-                onClick={() => setOffset((o) => o + PAGE_SIZE)}
+                onClick={() => { setLoading(true); setError(""); setOffset((o) => o + PAGE_SIZE); }}
                 disabled={loading}
                 className="px-6 py-2 bg-[#0b0c0d] border border-[#252628] rounded-lg text-sm text-slate-400 hover:text-white hover:border-slate-500 transition-colors disabled:opacity-50"
               >

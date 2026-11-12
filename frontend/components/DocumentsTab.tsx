@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import StatusSelect, { type StatusOption } from "@/components/StatusSelect";
 import useConfirmDialog from "@/components/useConfirmDialog";
@@ -51,7 +51,13 @@ function isImage(fileName: string) {
   return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(fileName);
 }
 
-export default function DocumentsTab({ clientId, dealId }: { clientId?: string; dealId?: string }) {
+type DocumentsTabProps = { clientId?: string; dealId?: string };
+
+export default function DocumentsTab(props: DocumentsTabProps) {
+  return <DocumentList key={`${props.clientId ?? ""}:${props.dealId ?? ""}`} {...props} />;
+}
+
+function DocumentList({ clientId, dealId }: DocumentsTabProps) {
   const { confirmAction, confirmationDialog } = useConfirmDialog();
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,20 +67,20 @@ export default function DocumentsTab({ clientId, dealId }: { clientId?: string; 
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const list = clientId
-        ? await documents.listByClient(clientId)
-        : await documents.listByDeal(dealId!);
-      setDocs(list);
-    } catch {
-      setError("Failed to load documents");
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let active = true;
+    const request = clientId
+      ? documents.listByClient(clientId)
+      : documents.listByDeal(dealId!);
+    request.then((list) => {
+      if (active) setDocs(list);
+    }).catch(() => {
+      if (active) setError("Failed to load documents");
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
   }, [clientId, dealId]);
-
-  useEffect(() => { load(); }, [load]);
 
   async function handleOpen(doc: Document) {
     try {

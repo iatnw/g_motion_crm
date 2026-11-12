@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { auth } from "@/lib/api";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,7 +22,7 @@ export default function SettingsPage() {
     setError("");
     try {
       await auth.setPassword(newPassword, currentPassword);
-      window.location.href = "/login";
+      router.replace("/login");
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Failed to change password",
