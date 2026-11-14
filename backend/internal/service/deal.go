@@ -141,19 +141,20 @@ type DealListCounts struct {
 	Cancelled int64
 }
 
-func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilter, leaseFilter string, leaseWithin *int32, limit, offset int32) ([]db.Deal, DealListCounts, error) {
+func (s *DealService) ListFiltered(ctx context.Context, status, search, vinFilter, leaseFilter string, warningsOnly bool, leaseWithin *int32, limit, offset int32) ([]db.Deal, DealListCounts, error) {
 	var leaseFilterParam pgtype.Text
 	if leaseFilter != "" {
 		leaseFilterParam = pgtype.Text{String: leaseFilter, Valid: true}
 	}
 	rows, err := s.q.ListDealsFiltered(ctx, db.ListDealsFilteredParams{
-		Status:      status,
-		Search:      search,
-		VinFilter:   vinFilter,
-		LeaseFilter: leaseFilterParam,
-		LeaseWithin: toInt32(leaseWithin),
-		Lim:         limit,
-		Off:         offset,
+		WarningsOnly: warningsOnly,
+		Status:       status,
+		Search:       search,
+		VinFilter:    vinFilter,
+		LeaseFilter:  leaseFilterParam,
+		LeaseWithin:  toInt32(leaseWithin),
+		Lim:          limit,
+		Off:          offset,
 	})
 	if err != nil {
 		return nil, DealListCounts{}, err

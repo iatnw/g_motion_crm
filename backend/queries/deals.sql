@@ -110,6 +110,7 @@ WITH search_filtered AS (
               AND (deals.lease_term_months - (EXTRACT(YEAR FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))) * 12 + EXTRACT(MONTH FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))))::int) BETWEEN 1 AND sqlc.narg('lease_within')::int
           )
       )
+      AND (NOT sqlc.arg(warnings_only)::boolean OR vin_has_warning(deals.vin))
 ),
 counts AS (
     SELECT

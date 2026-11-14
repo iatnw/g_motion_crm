@@ -315,6 +315,11 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid vin filter", http.StatusBadRequest)
 		return
 	}
+	warningsFilter := r.URL.Query().Get("warnings")
+	if warningsFilter != "" && warningsFilter != "any" {
+		http.Error(w, "invalid warnings filter, expected any", http.StatusBadRequest)
+		return
+	}
 	leaseFilter := r.URL.Query().Get("lease_filter")
 	if leaseFilter != "" && leaseFilter != "any" && leaseFilter != "ended" {
 		http.Error(w, "invalid lease_filter, expected any or ended", http.StatusBadRequest)
@@ -421,7 +426,7 @@ func (h *DealHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
-	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, vinFilter, leaseFilter, leaseWithin, limit+1, offset)
+	deals, counts, err := h.deal.ListFiltered(r.Context(), status, search, vinFilter, leaseFilter, warningsFilter == "any", leaseWithin, limit+1, offset)
 	if err != nil {
 		slog.Error("list deals", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

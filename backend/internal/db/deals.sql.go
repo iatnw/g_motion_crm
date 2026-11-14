@@ -738,6 +738,7 @@ WITH search_filtered AS (
               AND (deals.lease_term_months - (EXTRACT(YEAR FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))) * 12 + EXTRACT(MONTH FROM age(CURRENT_DATE, COALESCE(deals.deal_date, deals.created_at::date))))::int) BETWEEN 1 AND $3::int
           )
       )
+      AND (NOT $4::boolean OR vin_has_warning(deals.vin))
 ),
 counts AS (
     SELECT
@@ -752,16 +753,16 @@ page AS (
     SELECT id, client_id, broker_id, dealer_id, deal_date, deal_number, vin, make, model, trim_level, down_payment, down_payment_method, monthly_payment, broker_fee, broker_percent, broker_commission, broker_commission_status, broker_commission_paid_date, your_net, broker_fee_status, broker_fee_paid_date, created_at, updated_at, deal_status, collect_amount, doc_fee, broker_payment_method, notes, deal_status_pending_since, payment_reminder_email_sent_at, is_cash_deal, lease_term_months
     FROM search_filtered
     WHERE (
-        ($4::text = '' AND deal_status != 'cancelled')
-        OR deal_status::text = $4
+        ($5::text = '' AND deal_status != 'cancelled')
+        OR deal_status::text = $5
       )
       AND (
-        $5::text = ''
-        OR ($5::text = 'present' AND NULLIF(BTRIM(vin), '') IS NOT NULL)
-        OR ($5::text = 'missing' AND NULLIF(BTRIM(vin), '') IS NULL)
+        $6::text = ''
+        OR ($6::text = 'present' AND NULLIF(BTRIM(vin), '') IS NOT NULL)
+        OR ($6::text = 'missing' AND NULLIF(BTRIM(vin), '') IS NULL)
       )
     ORDER BY COALESCE(deal_date, created_at::date) DESC, created_at DESC
-    LIMIT $7 OFFSET $6
+    LIMIT $8 OFFSET $7
 )
 SELECT
     page.id,
@@ -807,13 +808,14 @@ ORDER BY COALESCE(page.deal_date, page.created_at::date) DESC, page.created_at D
 `
 
 type ListDealsFilteredParams struct {
-	Search      string      `json:"search"`
-	LeaseFilter pgtype.Text `json:"lease_filter"`
-	LeaseWithin pgtype.Int4 `json:"lease_within"`
-	Status      string      `json:"status"`
-	VinFilter   string      `json:"vin_filter"`
-	Off         int32       `json:"off"`
-	Lim         int32       `json:"lim"`
+	Search       string      `json:"search"`
+	LeaseFilter  pgtype.Text `json:"lease_filter"`
+	LeaseWithin  pgtype.Int4 `json:"lease_within"`
+	WarningsOnly bool        `json:"warnings_only"`
+	Status       string      `json:"status"`
+	VinFilter    string      `json:"vin_filter"`
+	Off          int32       `json:"off"`
+	Lim          int32       `json:"lim"`
 }
 
 type ListDealsFilteredRow struct {
@@ -861,6 +863,7 @@ func (q *Queries) ListDealsFiltered(ctx context.Context, arg ListDealsFilteredPa
 		arg.Search,
 		arg.LeaseFilter,
 		arg.LeaseWithin,
+		arg.WarningsOnly,
 		arg.Status,
 		arg.VinFilter,
 		arg.Off,
