@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useId } from "react";
 import { fillMissingCommission } from "@/lib/deal-finances";
+import VinField from "@/components/VinField";
+import { normalizeVin } from "@/lib/vin";
 import Modal from "@/components/Modal";
 import StatusSelect, { dealOptions, referralOptions } from "@/components/StatusSelect";
 import useConfirmDialog from "@/components/useConfirmDialog";
@@ -166,7 +168,7 @@ function DealForm({ deal, clientId, nextDealNumber, clients, brokers, dealers, o
       ]);
 
       // Always recompute broker_percent from commission at save time to ensure consistency
-      const finalForm = { ...form };
+      const finalForm = { ...form, vin: normalizeVin(form.vin) };
       const saveCom = parseFloat(finalForm.broker_commission);
       const saveBase = commissionBase(finalForm.broker_fee, finalForm.collect_amount, finalForm.doc_fee);
       if (!isNaN(saveCom) && saveCom > 0 && saveBase > 0) {
@@ -277,7 +279,7 @@ function DealForm({ deal, clientId, nextDealNumber, clients, brokers, dealers, o
               <Field label="Make" value={form.make} onChange={(v) => set("make", v)} />
               <Field label="Model" value={form.model} onChange={(v) => set("model", v)} />
               <Field label="Trim" value={form.trim_level} onChange={(v) => set("trim_level", v)} />
-              <Field label="VIN" value={form.vin} onChange={(v) => set("vin", v)} />
+              <VinField value={form.vin} onChange={(v) => set("vin", v)} />
             </div>
           </section>
 
