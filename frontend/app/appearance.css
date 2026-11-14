@@ -152,3 +152,9 @@ body,
 body * {
   text-transform: uppercase !important;
 }
+
+/* Outline VIN warnings without changing the card's normal background. */
+.crm-content .crm-deal-card[data-vin-warning="true"] {
+  outline: 1px solid rgb(220 75 86 / 75%);
+  outline-offset: 1px;
+}

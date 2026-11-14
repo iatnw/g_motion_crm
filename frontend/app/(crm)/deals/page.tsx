@@ -406,8 +406,11 @@ function DealsWorkspace() {
             return (
               <div
                 key={d.id}
-                className={`bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}
+                className={`crm-deal-card bg-[#0b0c0d] border border-[#252628] border-l-4 ${borderColor} rounded-xl hover:border-[#333436] hover:border-l-4 transition-colors`}
+                data-vin-warning={vinProblem ? "true" : undefined}
+                aria-describedby={vinProblem ? `vin-warning-${d.id}` : undefined}
               >
+                {vinProblem && <span id={`vin-warning-${d.id}`} className="sr-only">VIN needs review. {vinProblem}</span>}
                 {/* Top bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-5 border-b border-[#1e1f20]">
                   <div className="flex items-center gap-4 min-w-0 flex-wrap">
@@ -432,21 +435,6 @@ function DealsWorkspace() {
                       <span className="text-xs font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded-md">
                         CASH
                       </span>
-                    )}
-                    {vinProblem && (
-                      <button
-                        type="button"
-                        onClick={() => setModal({ open: true, deal: d })}
-                        title={`${vinProblem} Click to edit this deal.`}
-                        aria-label={`Invalid VIN ${d.vin}. ${vinProblem} Edit this deal.`}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
-                      >
-                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
-                          <path d="M8 2 15 14H1L8 2Z" stroke="currentColor" strokeLinejoin="round" />
-                          <path d="M8 6v4M8 12v.1" stroke="currentColor" strokeLinecap="round" />
-                        </svg>
-                        Invalid VIN
-                      </button>
                     )}
                     {vehicle && (
                       <span className="text-slate-300 text-sm">{vehicle}</span>
