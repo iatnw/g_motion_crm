@@ -411,64 +411,35 @@ function DealsWorkspace() {
                 aria-describedby={vinProblem ? `vin-warning-${d.id}` : undefined}
               >
                 {vinProblem && <span id={`vin-warning-${d.id}`} className="sr-only">VIN needs review. {vinProblem}</span>}
-                {/* Top bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-5 border-b border-[#1e1f20]">
-                  <div className="flex items-center gap-4 min-w-0 flex-wrap">
-                    {client ? (
-                      <Link
-                        href={`/clients/${d.client_id}`}
-                        className="text-white font-semibold hover:text-blue-400 transition-colors whitespace-nowrap"
-                      >
-                        {client.first_name} {client.last_name}
-                      </Link>
-                    ) : (
-                      <span className="text-slate-600 font-semibold">
-                        Unknown
-                      </span>
-                    )}
-                    {d.deal_number && (
-                      <span className="text-xs font-mono bg-[#111213] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">
-                        #{d.deal_number}
-                      </span>
-                    )}
-                    {d.is_cash_deal && (
-                      <span className="text-xs font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded-md">
-                        CASH
-                      </span>
-                    )}
-                    {vehicle && (
-                      <span className="text-slate-300 text-sm">{vehicle}</span>
-                    )}
-                    {(d.trim_level || d.vin) && (
-                      <span className="text-slate-600 text-xs hidden lg:inline">
-                        {[d.trim_level, d.vin].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
+                {/* Vehicle details shrink independently of the fixed action layout. */}
+                <div className="crm-deal-header px-4 py-3.5 sm:px-5 border-b border-[#1e1f20]">
+                  <div className="crm-deal-identity">
+                    <div className="crm-deal-client-line">
+                      {client ? (
+                        <Link href={`/clients/${d.client_id}`} className="crm-deal-client-name text-white font-semibold hover:text-blue-400 transition-colors">
+                          {client.first_name} {client.last_name}
+                        </Link>
+                      ) : <span className="text-slate-600 font-semibold">Unknown</span>}
+                      {d.deal_number && <span className="shrink-0 text-xs font-mono bg-[#111213] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">#{d.deal_number}</span>}
+                      {d.is_cash_deal && <span className="shrink-0 text-xs font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded-md">CASH</span>}
+                      {d.deal_date && <span className="shrink-0 text-slate-600 text-xs">{fmtDate(d.deal_date)}</span>}
+                    </div>
+                    {(vehicle || d.trim_level || d.vin) && <div className="crm-deal-vehicle">
+                      {vehicle && <span className="crm-deal-vehicle-name text-slate-300 text-sm">{vehicle}</span>}
+                      {d.trim_level && <span className="crm-deal-trim text-slate-500 text-xs" title={d.trim_level}>{d.trim_level}</span>}
+                      {d.vin && <span className="crm-deal-vin text-slate-600 text-xs font-mono">{d.vin}</span>}
+                    </div>}
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {d.deal_date && (
-                      <span className="text-slate-600 text-xs hidden sm:inline">
-                        {fmtDate(d.deal_date)}
-                      </span>
-                    )}
-                    <DealStatusSelect
-                      value={d.deal_status}
-                      days={d.pending_payment_days}
-                      bucket={d.pending_payment_bucket}
-                      onChange={(status) => handleStatusChange(d, status)}
-                    />
-                    <button type="button" onClick={() => setCoverDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">
-                      Deal cover
-                    </button>
-                    <button type="button" onClick={() => setAgreementDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">
-                      Broker agreement
-                    </button>
-                    <button
-                      onClick={() => setModal({ open: true, deal: d })}
-                      className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
-                    >
-                      Edit
-                    </button>
+                  <div className="crm-deal-controls">
+                    <div className="crm-deal-status-control">
+                      <DealStatusSelect value={d.deal_status} days={d.pending_payment_days} bucket={d.pending_payment_bucket}
+                        onChange={(status) => handleStatusChange(d, status)} />
+                    </div>
+                    <div className="crm-deal-action-links">
+                      <button type="button" onClick={() => setCoverDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">Deal cover</button>
+                      <button type="button" onClick={() => setAgreementDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">Broker agreement</button>
+                      <button type="button" onClick={() => setModal({ open: true, deal: d })} className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors">Edit</button>
+                    </div>
                   </div>
                 </div>
 

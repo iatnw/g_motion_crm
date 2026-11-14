@@ -158,3 +158,29 @@ body * {
   outline: 1px solid rgb(220 75 86 / 75%);
   outline-offset: 1px;
 }
+
+/* Header layout depends on the card width, never the length of its trim. */
+.crm-deal-card { container-type: inline-size; }
+.crm-deal-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.crm-deal-identity, .crm-deal-vehicle { min-width: 0; }
+.crm-deal-client-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.crm-deal-client-name { min-width: 0; overflow-wrap: anywhere; }
+.crm-deal-vehicle { display: grid; gap: 4px; margin-top: 8px; }
+.crm-deal-vehicle-name, .crm-deal-vin { overflow-wrap: anywhere; }
+.crm-deal-trim { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; line-height: 1.5; }
+.crm-deal-controls { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.crm-deal-status-control { flex-shrink: 0; align-self: start; }
+.crm-deal-action-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.crm-deal-action-links button { min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid var(--crm-line); border-radius: 8px; font-size: 12px; line-height: 1.4; }
+.crm-deal-action-links button:hover { background: var(--crm-control); }
+@container (min-width: 540px) {
+  .crm-deal-controls { flex-direction: row; align-items: center; gap: 14px; }
+  .crm-deal-status-control { align-self: center; }
+  .crm-deal-action-links { flex: 1; }
+}
+@container (min-width: 880px) {
+  .crm-deal-header { grid-template-columns: minmax(0, 1fr) max-content; gap: 20px; }
+  .crm-deal-controls { justify-self: end; }
+  .crm-deal-action-links { display: flex; flex: none; }
+  .crm-deal-action-links button { white-space: nowrap; }
+}
