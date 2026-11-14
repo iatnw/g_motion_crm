@@ -3,9 +3,10 @@
 import { useId } from "react";
 import { normalizeVin, vinError } from "@/lib/vin";
 
-export default function VinField({ value, onChange }: {
+export default function VinField({ value, onChange, warningHint = "You can still save this deal and correct the VIN later." }: {
   value: string;
   onChange: (value: string) => void;
+  warningHint?: string;
 }) {
   const id = useId();
   const normalized = normalizeVin(value);
@@ -31,7 +32,7 @@ export default function VinField({ value, onChange }: {
       </div>
       <p id={`${id}-help`} aria-live="polite" className={`mt-1.5 text-xs leading-relaxed ${problem ? "text-red-400" : normalized ? "text-green-400" : "text-slate-500"}`}>
         {problem
-          ? `${problem} You can still save this deal and correct the VIN later.`
+          ? `${problem} ${warningHint}`
           : normalized ? "VIN format and check digit pass. Confirm it matches the vehicle." : "Optional. Enter the 17-character VIN from the vehicle or paperwork."}
       </p>
     </div>

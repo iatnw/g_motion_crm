@@ -19,6 +19,7 @@ import type {
   Referral,
   ReferralStatus,
 } from "@/lib/types";
+import BrokerAgreementModal from "@/components/BrokerAgreementModal";
 import DealModal from "@/components/DealModal";
 import StatusSelect, { paymentOptions, referralOptions, type StatusOption } from "@/components/StatusSelect";
 import PageHeading from "@/components/PageHeading";
@@ -91,6 +92,7 @@ function DealsWorkspace() {
       ? (value as FilterTab)
       : "all";
   });
+  const [agreementDeal, setAgreementDeal] = useState<Deal | null>(null);
   const [warningsOnly, setWarningsOnly] = useState(false);
   const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>("");
   const [modal, setModal] = useState<{
@@ -453,7 +455,7 @@ function DealsWorkspace() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex flex-wrap items-center gap-3">
                     {d.deal_date && (
                       <span className="text-slate-600 text-xs hidden sm:inline">
                         {fmtDate(d.deal_date)}
@@ -465,6 +467,9 @@ function DealsWorkspace() {
                       bucket={d.pending_payment_bucket}
                       onChange={(status) => handleStatusChange(d, status)}
                     />
+                    <button type="button" onClick={() => setAgreementDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">
+                      Broker agreement
+                    </button>
                     <button
                       onClick={() => setModal({ open: true, deal: d })}
                       className="text-slate-500 hover:text-blue-400 text-sm font-medium transition-colors"
@@ -575,6 +580,7 @@ function DealsWorkspace() {
         </div>
       )}
 
+      {agreementDeal && <BrokerAgreementModal deal={agreementDeal} client={clientMap[agreementDeal.client_id]} onClose={() => setAgreementDeal(null)} />}
       {modal.open && (
         <DealModal
           deal={modal.deal}
