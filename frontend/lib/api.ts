@@ -313,3 +313,9 @@ export const documents = {
   uploadForDeal: (dealId: string, file: File, documentType: string, onProgress?: (pct: number) => void) =>
     presignedUpload(file, documentType, onProgress, { deal_id: dealId }),
 };
+
+// Vehicle identification (NHTSA vPIC, proxied through the authenticated API).
+export const vehicles = {
+  decodeVin: (vin: string, signal?: AbortSignal) =>
+    request<import("./vehicle-lookup").DecodedVehicle>(`/vehicles/vin/${encodeURIComponent(vin)}`, { signal }),
+};

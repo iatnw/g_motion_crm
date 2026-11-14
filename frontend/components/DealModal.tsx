@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { fillMissingCommission } from "@/lib/deal-finances";
 import VinField from "@/components/VinField";
-import { normalizeVin } from "@/lib/vin";
+import { applyVehicleLookup, vehicleFields } from "@/lib/vehicle-lookup";
+import { vehicles } from "@/lib/api";
+import { normalizeVin, vinError } from "@/lib/vin";
 import Modal from "@/components/Modal";
 import StatusSelect, { dealOptions, referralOptions } from "@/components/StatusSelect";
 import useConfirmDialog from "@/components/useConfirmDialog";
@@ -103,7 +105,31 @@ function DealForm({ deal, clientId, nextDealNumber, clients, brokers, dealers, o
     return () => { cancelled = true; };
   }, [deal]);
 
+  const manualVehicleFields = useRef(new Set<string>());
+  const [vinLookup, setVinLookup] = useState<{ vin: string; message: string; failed?: boolean }>({ vin: "", message: "" });
+  const [vinLookupAttempt, setVinLookupAttempt] = useState(0);
+  const normalizedVIN = normalizeVin(form.vin);
+
+  useEffect(() => {
+    if (!normalizedVIN || vinError(normalizedVIN)) return;
+    // Existing records only decode after the VIN is changed or a lookup is requested.
+    if (normalizedVIN === normalizeVin(deal?.vin ?? "") && vinLookupAttempt === 0) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setVinLookup({ vin: normalizedVIN, message: "Looking up vehicle details…" });
+      vehicles.decodeVin(normalizedVIN, controller.signal).then((vehicle) => {
+        if (controller.signal.aborted) return;
+        setForm((previous) => applyVehicleLookup(previous, vehicle, manualVehicleFields.current));
+        setVinLookup({ vin: normalizedVIN, message: `Vehicle details found: ${[vehicle.model_year, vehicle.make, vehicle.model, vehicle.trim_level].filter(Boolean).join(" ")}. Your manually edited fields are kept. ${vehicle.trim_level ? "Review before saving." : "Trim was not available; enter it manually."}` });
+      }).catch(() => {
+        if (!controller.signal.aborted) setVinLookup({ vin: normalizedVIN, failed: true, message: "Vehicle lookup unavailable or incomplete. You can enter the car details manually and still save." });
+      });
+    }, 450);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [normalizedVIN, deal?.vin, vinLookupAttempt]);
+
   function set(field: string, value: string) {
+    if (vehicleFields.some((item) => item === field)) manualVehicleFields.current.add(field);
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -279,7 +305,17 @@ function DealForm({ deal, clientId, nextDealNumber, clients, brokers, dealers, o
               <Field label="Make" value={form.make} onChange={(v) => set("make", v)} />
               <Field label="Model" value={form.model} onChange={(v) => set("model", v)} />
               <Field label="Trim" value={form.trim_level} onChange={(v) => set("trim_level", v)} />
-              <VinField value={form.vin} onChange={(v) => set("vin", v)} />
+              <div>
+                <VinField value={form.vin} onChange={(v) => set("vin", v)} />
+                {normalizedVIN && !vinError(normalizedVIN) && (
+                  <div className="mt-2 space-y-1.5">
+                    {vinLookup.vin === normalizedVIN && <p role="status" className={`text-xs leading-relaxed ${vinLookup.failed ? "text-amber-400" : "text-slate-400"}`}>{vinLookup.message}</p>}
+                    <button type="button" onClick={() => setVinLookupAttempt((attempt) => attempt + 1)} className="text-xs font-medium text-blue-400 hover:underline">
+                      {vinLookup.vin === normalizedVIN && vinLookup.failed ? "Retry vehicle lookup" : "Look up vehicle details"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
