@@ -421,6 +421,18 @@ function DealsWorkspace() {
                         </Link>
                       ) : <span className="text-slate-600 font-semibold">Unknown</span>}
                       {d.deal_number && <span className="shrink-0 text-xs font-mono bg-[#111213] border border-[#252628] text-slate-400 px-2 py-0.5 rounded-md">#{d.deal_number}</span>}
+                      {vinProblem && (
+                        <button type="button" onClick={() => setModal({ open: true, deal: d })}
+                          aria-label="VIN warning. Edit this deal to review the VIN."
+                          title={vinProblem}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20">
+                          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 2 15 14H1L8 2Z" stroke="currentColor" strokeLinejoin="round" />
+                            <path d="M8 6v4M8 12v.1" stroke="currentColor" strokeLinecap="round" />
+                          </svg>
+                          VIN warning
+                        </button>
+                      )}
                       {d.is_cash_deal && <span className="shrink-0 text-xs font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded-md">CASH</span>}
                       {d.deal_date && <span className="shrink-0 text-slate-600 text-xs">{fmtDate(d.deal_date)}</span>}
                     </div>
