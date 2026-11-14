@@ -153,11 +153,12 @@ export const clients = {
 export const deals = {
   nextNumber: () => request<{ deal_number: string }>("/deals/next-number").then((r) => r.deal_number),
   list: (params: Record<string, string> = {}) => fetchAll<import("./types").Deal>("/deals", params),
-  listPaged: (params: { limit: number; offset: number; status?: string; search?: string; vin?: "present" | "missing"; leaseFilter?: string; leaseWithin?: number }) => {
+  listPaged: (params: { limit: number; offset: number; status?: string; search?: string; vin?: "present" | "missing"; leaseFilter?: string; leaseWithin?: number; warnings?: "any" }) => {
     const qs = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
     if (params.status) qs.set("status", params.status);
     if (params.search) qs.set("search", params.search);
     if (params.vin) qs.set("vin", params.vin);
+    if (params.warnings) qs.set("warnings", params.warnings);
     if (params.leaseFilter) qs.set("lease_filter", params.leaseFilter);
     if (params.leaseWithin) qs.set("lease_within", String(params.leaseWithin));
     return request<DealsPaginatedResponse>(`/deals?${qs}`);

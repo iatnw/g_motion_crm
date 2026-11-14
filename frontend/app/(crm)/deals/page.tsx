@@ -24,6 +24,7 @@ import StatusSelect, { paymentOptions, referralOptions, type StatusOption } from
 import PageHeading from "@/components/PageHeading";
 import DealStatusSelect from "@/components/DealStatusSelect";
 import { fmtDate, groupReferralsByDeal } from "@/lib/utils";
+import { vinError } from "@/lib/vin";
 
 type FilterTab = "all" | "new" | "pending" | "paid" | "cancelled";
 type LeaseFilter = "" | "any" | "3" | "6" | "12" | "ended";
@@ -90,6 +91,7 @@ function DealsWorkspace() {
       ? (value as FilterTab)
       : "all";
   });
+  const [warningsOnly, setWarningsOnly] = useState(false);
   const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>("");
   const [modal, setModal] = useState<{
     open: boolean;
@@ -173,6 +175,7 @@ function DealsWorkspace() {
             ? tab
             : undefined,
         search: querySearch,
+        warnings: warningsOnly ? "any" : undefined,
         vin:
           tab === "new"
             ? "missing"
@@ -213,7 +216,7 @@ function DealsWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [tab, querySearch, offset, refreshVersion, leaseFilter]);
+  }, [tab, querySearch, offset, refreshVersion, leaseFilter, warningsOnly]);
 
   async function handleSave(data: object): Promise<Deal> {
     if (modal.deal) {
@@ -328,6 +331,15 @@ function DealsWorkspace() {
             className="crm-filter-text w-full bg-[#0b0c0d] border border-[#252628] rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-slate-700 focus:outline-none"
           />
         </div>
+        <StatusSelect label="Filter deals by warnings" value={warningsOnly ? "any" : ""}
+          options={[
+            { value: "", label: "All", description: "Show deals with or without warnings", tone: "slate" },
+            { value: "any", label: "Has warnings", description: "VIN format or check digit needs attention", tone: "red" },
+          ]} variant="filter" onChange={(value) => {
+            setLoading(true);
+            setWarningsOnly(value === "any");
+            setOffset(0);
+          }} />
         <StatusSelect label="Filter deals by lease term" value={leaseFilter} options={leaseFilterOptions} variant="filter"
           onChange={(value) => {
             setLoading(true);
@@ -355,18 +367,19 @@ function DealsWorkspace() {
       ) : dealList.length === 0 ? (
         <div className="crm-empty-state">
           <span className="crm-empty-symbol" aria-hidden="true">◇</span>
-          <h2>{search || tab !== "all" || leaseFilter !== "" ? "No deals match these filters" : "Your next deal starts here"}</h2>
-          <p>{search || tab !== "all" || leaseFilter !== "" ? "Try a different search or reset your filters to see more deals." : "Create a deal to keep its vehicle, payments, and partners together."}</p>
+          <h2>{search || tab !== "all" || leaseFilter !== "" || warningsOnly ? "No deals match these filters" : "Your next deal starts here"}</h2>
+          <p>{search || tab !== "all" || leaseFilter !== "" || warningsOnly ? "Try a different search or reset your filters to see more deals." : "Create a deal to keep its vehicle, payments, and partners together."}</p>
           <button className="crm-primary-button" onClick={async () => {
-            if (search || tab !== "all" || leaseFilter !== "") { setSearch(""); setTab("all"); setLeaseFilter(""); setOffset(0); }
+            if (search || tab !== "all" || leaseFilter !== "" || warningsOnly) { setLoading(true); setSearch(""); setTab("all"); setLeaseFilter(""); setWarningsOnly(false); setOffset(0); }
             else { const num = await deals.nextNumber().catch(() => ""); setModal({ open: true, nextNumber: num }); }
-          }}>{search || tab !== "all" || leaseFilter !== "" ? "Reset filters" : "+ Create your first deal"}</button>
+          }}>{search || tab !== "all" || leaseFilter !== "" || warningsOnly ? "Reset filters" : "+ Create your first deal"}</button>
         </div>
       ) : (
         <div className="space-y-3">
           {dealList.map((d) => {
             const client = clientMap[d.client_id];
             const vehicle = [d.make, d.model].filter(Boolean).join(" ");
+            const vinProblem = vinError(d.vin ?? "");
             const borderColor =
               statusBorder[d.deal_status ?? ""] ?? "border-l-[#252628]";
             const dealReferrals = referralMap[d.id] ?? [];
@@ -415,6 +428,21 @@ function DealsWorkspace() {
                       <span className="text-xs font-semibold bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded-md">
                         CASH
                       </span>
+                    )}
+                    {vinProblem && (
+                      <button
+                        type="button"
+                        onClick={() => setModal({ open: true, deal: d })}
+                        title={`${vinProblem} Click to edit this deal.`}
+                        aria-label={`Invalid VIN ${d.vin}. ${vinProblem} Edit this deal.`}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+                      >
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                          <path d="M8 2 15 14H1L8 2Z" stroke="currentColor" strokeLinejoin="round" />
+                          <path d="M8 6v4M8 12v.1" stroke="currentColor" strokeLinecap="round" />
+                        </svg>
+                        Invalid VIN
+                      </button>
                     )}
                     {vehicle && (
                       <span className="text-slate-300 text-sm">{vehicle}</span>
