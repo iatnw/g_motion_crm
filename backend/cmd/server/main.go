@@ -88,6 +88,7 @@ func main() {
 	tallyService := service.NewTally(clientService, documentService, dealService, queries, pool)
 	referralService := service.NewReferral(queries)
 
+	vehicleHandler := handler.NewVehicleHandler(service.NewVINDecoder(nil))
 	authHandler := handler.NewAuthHandler(authService, cfg.App.Env == "production")
 	brokerHandler := handler.NewBrokerHandler(brokerService)
 	dealHandler := handler.NewDealHandler(dealService)
@@ -164,6 +165,8 @@ func main() {
 		r.Post("/auth/totp/enable", authHandler.EnableTOTP)
 		r.With(httprate.LimitByIP(10, time.Minute)).Post("/auth/totp/disable", authHandler.DisableTOTP)
 		r.Post("/auth/password", authHandler.SetPassword)
+
+		r.With(httprate.LimitByIP(30, time.Minute)).Get("/vehicles/vin/{vin}", vehicleHandler.DecodeVIN)
 
 		// Dashboard
 		r.Get("/dashboard/summary", dashboardHandler.Summary)
