@@ -19,6 +19,7 @@ import type {
   Referral,
   ReferralStatus,
 } from "@/lib/types";
+import DealCoverModal from "@/components/DealCoverModal";
 import BrokerAgreementModal from "@/components/BrokerAgreementModal";
 import DealModal from "@/components/DealModal";
 import StatusSelect, { paymentOptions, referralOptions, type StatusOption } from "@/components/StatusSelect";
@@ -92,6 +93,7 @@ function DealsWorkspace() {
       ? (value as FilterTab)
       : "all";
   });
+  const [coverDeal, setCoverDeal] = useState<Deal | null>(null);
   const [agreementDeal, setAgreementDeal] = useState<Deal | null>(null);
   const [warningsOnly, setWarningsOnly] = useState(false);
   const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>("");
@@ -467,6 +469,9 @@ function DealsWorkspace() {
                       bucket={d.pending_payment_bucket}
                       onChange={(status) => handleStatusChange(d, status)}
                     />
+                    <button type="button" onClick={() => setCoverDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">
+                      Deal cover
+                    </button>
                     <button type="button" onClick={() => setAgreementDeal(d)} className="text-sm font-medium text-slate-400 transition-colors hover:text-blue-400">
                       Broker agreement
                     </button>
@@ -580,6 +585,7 @@ function DealsWorkspace() {
         </div>
       )}
 
+      {coverDeal && <DealCoverModal deal={coverDeal} client={clientMap[coverDeal.client_id]} onClose={() => setCoverDeal(null)} />}
       {agreementDeal && <BrokerAgreementModal deal={agreementDeal} client={clientMap[agreementDeal.client_id]} onClose={() => setAgreementDeal(null)} />}
       {modal.open && (
         <DealModal
